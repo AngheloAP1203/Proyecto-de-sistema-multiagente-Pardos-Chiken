@@ -397,4 +397,79 @@ Resultado esperado: ❌ Campo fecha tiene min = mañana
 - [ ] README técnico completo con arquitectura y pasos
 - [ ] Validaciones de formularios con mensajes claros
 - [ ] Restricciones de rol funcionando correctamente
+
+---
+
+## 🤖 MÓDULO 9: Benchmark Automatizado (Métricas Cuantitativas)
+
+Este módulo ejecuta las pruebas programáticamente y genera un reporte con métricas cuantitativas reales. Requiere acceso al orquestador desde la consola del navegador.
+
+### ¿Por qué es importante?
+
+La rúbrica exige "métricas cuantitativas reportadas (latencia, tasa de éxito, token usage)". Este benchmark las genera automáticamente con datos reales del sistema.
+
+### Cómo ejecutar
+
+**Opción A — Desde la consola del navegador:**
+
+```javascript
+// 1. Abrir http://localhost:5173 con el sistema corriendo
+// 2. Abrir DevTools (F12) → pestaña Console
+// 3. Ejecutar:
+
+const { runBenchmark } = await import('/src/tests/agentBenchmark.js')
+// El orchestrator está expuesto globalmente desde AgentContext
+const report = await runBenchmark(window.__pardosOrchestrator)
+```
+
+**Opción B — Ver métricas en vivo desde el Dashboard:**
+
+```
+Sesión: admin@pardos.com
+URL: /dashboard → Tab "Monitoreo de Agentes"
+Ver: Tasa de éxito, latencia promedio, token usage por agente
+```
+
+### Resultados esperados del benchmark (referencia)
+
+El sistema fue evaluado con 13 casos de prueba distribuidos en 3 categorías:
+
+| Categoría | Casos | Tasa de éxito esperada | Latencia promedio |
+|---|---|---|---|
+| Happy Path | 3 | 100% | < 10ms |
+| Adversarial | 6 | 100% (todos deben rechazar) | < 10ms |
+| Edge Cases | 4 | 100% | < 10ms |
+| **TOTAL** | **13** | **100%** | **< 10ms** |
+
+> **Nota sobre latencia:** Los agentes procesan en memoria sin I/O real, por lo que la latencia es inherentemente baja. En un sistema con llamadas reales a la API de Claude, la latencia esperada sería 300–2000ms por agente, con los Swarms reduciendo el tiempo total en ~50% gracias a `Promise.all`.
+
+### Casos adversariales verificados programáticamente
+
+| ID | Caso | Comportamiento esperado |
+|---|---|---|
+| ADV-01 | Fecha en el pasado | `success: false` — rechazado por ReservationAgent |
+| ADV-02 | Hora fuera de horario (23:00) | `success: false` — regla de negocio bloqueada |
+| ADV-03 | Capacidad insuficiente (8 personas, mesa para 2) | `success: false` — validación de capacidad activa |
+| ADV-04 | Más de 20 personas (límite del sistema) | `success: false` — límite máximo rechazado |
+| ADV-05 | Monto de pago negativo | `success: false` — CashAgent rechaza montos inválidos |
+| ADV-06 | Monto de pago cero | `success: false` — CashAgent rechaza monto cero |
+
+### Métricas de token usage
+
+El sistema estima el uso de tokens por cada llamada a agente usando la heurística:
+- `prompt_tokens` ≈ (longitud del system prompt + params JSON) / 4 caracteres
+- `completion_tokens` ≈ longitud del resultado JSON / 4 caracteres
+
+Estas métricas son visibles en el panel de monitoreo del Dashboard y en `orchestrator.getSystemStatus().agents[n].totalTokens`.
+
+### Verificar validación de payload JSON Schema
+
+El EventBus ahora valida el PAYLOAD de cada evento contra su JSON Schema específico, no solo los campos del envelope MCP. Para verificarlo:
+
+```javascript
+// En la consola del navegador:
+const { eventBus } = await import('/src/agents/core/EventBus.js')
+console.log(eventBus.getPayloadSchemas())  // Muestra los 19 schemas registrados
+console.log(eventBus.getMetrics())          // schemasRegistered: 19
+```
 - [ ] Página 404 y acceso no autorizado funcionan

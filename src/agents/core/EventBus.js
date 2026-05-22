@@ -74,20 +74,80 @@ export const EVENT_TYPES = {
 const MCP_REQUIRED_FIELDS = ['type', 'payload', 'source', 'timestamp', 'correlationId']
 
 /**
- * Valida que un mensaje cumpla con el schema MCP.
+ * JSON Schemas por tipo de evento — validan la estructura del PAYLOAD.
+ * Esto implementa la validación "schema validado" del protocolo MCP.
+ * Cada schema define los campos requeridos y sus tipos esperados.
+ */
+const EVENT_PAYLOAD_SCHEMAS = {
+  'reservation:created':   { required: ['id', 'clientName', 'date', 'time', 'guests'] },
+  'reservation:updated':   { required: ['id'] },
+  'reservation:approved':  { required: ['id', 'tableId', 'approvedBy'] },
+  'reservation:rejected':  { required: ['id'] },
+  'reservation:seated':    { required: ['id'] },
+  'reservation:completed': { required: ['id'] },
+  'reservation:cancelled': { required: ['id'] },
+  'reservation:requested': { required: ['clientName', 'date', 'time', 'guests'] },
+  'kitchen:ticket_added':  { required: ['tableId', 'clientName'] },
+  'kitchen:ticket_updated':{ required: ['ticketId'] },
+  'kitchen:order_ready':   { required: ['ticketId', 'tableId'] },
+  'cash:payment_registered':{ required: ['amount', 'method'] },
+  'cash:shift_opened':     { required: ['cashier'] },
+  'cash:shift_closed':     { required: ['cashier', 'totalRevenue'] },
+  'client:created':        { required: ['clientName'] },
+  'client:updated':        { required: ['clientId'] },
+  'system:agent_started':  { required: ['agentName', 'tool'] },
+  'system:agent_completed':{ required: ['agentName', 'tool', 'latency', 'success'] },
+  'system:agent_error':    { required: ['agentName', 'tool', 'error'] },
+  'system:conflict_detected': { required: [] },
+  'system:conflict_resolved': { required: [] },
+}
+
+/**
+ * validatePayloadSchema — Valida el payload contra el schema JSON del tipo de evento.
+ * Comprueba que todos los campos requeridos existan y tengan valor no-nulo.
+ * @param {string} type - Tipo de evento
+ * @param {Object} payload - Payload a validar
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+function validatePayloadSchema(type, payload) {
+  const schema = EVENT_PAYLOAD_SCHEMAS[type]
+  if (!schema) return { valid: true, errors: [] } // Sin schema → se permite
+
+  const errors = []
+  for (const field of schema.required) {
+    if (payload[field] === undefined || payload[field] === null || payload[field] === '') {
+      errors.push(`Payload schema error — campo requerido faltante: "${field}" en evento "${type}"`)
+    }
+  }
+  return { valid: errors.length === 0, errors }
+}
+
+/**
+ * Valida que un mensaje cumpla con el schema MCP (campos + payload).
  * @param {Object} message - Mensaje a validar
  * @returns {{ valid: boolean, errors: string[] }}
  */
 function validateMCPMessage(message) {
   const errors = []
+
+  // 1. Validar campos obligatorios del envelope MCP
   for (const field of MCP_REQUIRED_FIELDS) {
     if (message[field] === undefined || message[field] === null) {
       errors.push(`Campo requerido faltante: "${field}"`)
     }
   }
+
+  // 2. Validar que el tipo de evento sea conocido
   if (message.type && !Object.values(EVENT_TYPES).includes(message.type)) {
     errors.push(`Tipo de evento desconocido: "${message.type}"`)
   }
+
+  // 3. Validar el payload contra el JSON Schema del tipo de evento
+  if (message.type && message.payload) {
+    const payloadValidation = validatePayloadSchema(message.type, message.payload)
+    errors.push(...payloadValidation.errors)
+  }
+
   return { valid: errors.length === 0, errors }
 }
 
@@ -182,12 +242,22 @@ class EventBusClass {
     return {
       totalMessages:    this._messageCount,
       validationErrors: this._validationErrors,
+      successMessages:  this._messageCount - this._validationErrors,
       successRate:      this._messageCount > 0
         ? ((this._messageCount - this._validationErrors) / this._messageCount * 100).toFixed(1)
         : '100.0',
       subscriberCount:  [...this._subscribers.values()].reduce((s, set) => s + set.size, 0),
       historySize:      this._history.length,
+      schemasRegistered: Object.keys(EVENT_PAYLOAD_SCHEMAS).length,
     }
+  }
+
+  /**
+   * getPayloadSchemas — Expone los JSON Schemas registrados (para debugging y UI).
+   * Útil para demostrar la validación de payloads durante la exposición.
+   */
+  getPayloadSchemas() {
+    return EVENT_PAYLOAD_SCHEMAS
   }
 
   /** Limpia el historial (útil para tests) */

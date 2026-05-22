@@ -68,6 +68,15 @@ export function AgentProvider({ children, reservationActions, kitchenActions, ca
     })
 
     isInjected.current = true
+
+    // Exponer el orquestador globalmente para debugging y benchmark desde la consola.
+    // Permite ejecutar: window.__pardosOrchestrator.getSystemStatus()
+    // o el benchmark: runBenchmark(window.__pardosOrchestrator)
+    if (typeof window !== 'undefined') {
+      window.__pardosOrchestrator = orchestrator
+      window.__pardosEventBus     = eventBus
+      console.log('[AgentContext] 🔧 Orquestador expuesto en window.__pardosOrchestrator')
+    }
   }, [reservationActions, kitchenActions, cashActions, clientActions])
 
   // ── Polling del estado del sistema (cada 2 segundos) ─────────────────────

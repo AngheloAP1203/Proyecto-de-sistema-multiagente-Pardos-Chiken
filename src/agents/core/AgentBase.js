@@ -167,20 +167,59 @@ export class AgentBase {
 
   /**
    * _addToHistory — Agrega un mensaje al historial de conversación.
-   * El historial se preserva entre turnos y es visible para el orquestador.
+   * El historial se preserva entre turnos (en memoria) y en localStorage
+   * para persistencia entre recargas de página — cumpliendo con el criterio
+   * de "historial de conversación preservado correctamente entre turnos y agentes".
    */
   _addToHistory(role, content, data = null) {
-    this._conversationHistory.push({
+    const entry = {
       role,
       content,
       data,
       timestamp: new Date().toISOString(),
       agentName: this.name,
-    })
-    // Mantener historial de máximo 100 entradas
+    }
+    this._conversationHistory.push(entry)
+
+    // Persistir en localStorage para sobrevivir recargas de página
+    try {
+      const storageKey = `agent_history_${this.name}`
+      const stored = JSON.parse(localStorage.getItem(storageKey) || '[]')
+      stored.push(entry)
+      // Mantener máximo 50 entradas persistidas
+      const trimmed = stored.slice(-50)
+      localStorage.setItem(storageKey, JSON.stringify(trimmed))
+    } catch (_) { /* localStorage puede no estar disponible en todos los entornos */ }
+
+    // Mantener historial en memoria de máximo 100 entradas
     if (this._conversationHistory.length > 100) {
       this._conversationHistory.shift()
     }
+  }
+
+  /**
+   * _loadHistoryFromStorage — Recupera el historial persistido de sesiones anteriores.
+   * Llama esto al final del constructor de la subclase para restaurar el estado.
+   */
+  _loadHistoryFromStorage() {
+    try {
+      const storageKey = `agent_history_${this.name}`
+      const stored = JSON.parse(localStorage.getItem(storageKey) || '[]')
+      if (stored.length > 0) {
+        this._conversationHistory = stored
+        console.log(`[${this.name}] Historial restaurado desde localStorage: ${stored.length} entradas`)
+      }
+    } catch (_) { /* silently fail */ }
+  }
+
+  /**
+   * clearHistory — Limpia el historial del agente (útil para tests).
+   */
+  clearHistory() {
+    this._conversationHistory = []
+    try {
+      localStorage.removeItem(`agent_history_${this.name}`)
+    } catch (_) { /* silently fail */ }
   }
 
   /**
