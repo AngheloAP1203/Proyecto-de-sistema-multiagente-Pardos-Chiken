@@ -24,23 +24,34 @@ El sistema utiliza conceptos avanzados de inteligencia artificial y automatizaci
 La arquitectura define un Orquestador (`AgentOrchestrator`) como nodo central que delega tareas y coordina los flujos de información hacia los agentes de dominio (SRP - Principio de Responsabilidad Única).
 
 ```mermaid
-graph TD
-    classDef hub fill:#2d3748,stroke:#4a5568,stroke-width:2px,color:#fff,rx:8px,ry:8px;
-    classDef agent fill:#2b6cb0,stroke:#2c5282,stroke-width:2px,color:#fff,rx:5px,ry:5px;
-    classDef bus fill:#4a5568,stroke:#a0aec0,stroke-width:2px,stroke-dasharray: 5 5,color:#fff;
+flowchart TD
+    %% Estilos Visuales Modernos
+    classDef hub fill:#0f172a,stroke:#38bdf8,stroke-width:3px,color:#f8fafc,rx:12px,ry:12px;
+    classDef agent fill:#1e40af,stroke:#60a5fa,stroke-width:2px,color:#eff6ff,rx:8px,ry:8px;
+    classDef bus fill:#1e293b,stroke:#10b981,stroke-width:2px,stroke-dasharray: 5 5,color:#f8fafc,rx:15px,ry:15px;
 
-    HUB["AgentOrchestrator<br/>(Topología Estrella)"]:::hub
+    %% Orquestador Central
+    HUB{{"👑 AgentOrchestrator<br/><span style='font-size:12px;color:#94a3b8'>Topología Estrella (Hub)</span>"}}:::hub
 
-    R["📅 Reservation Agent<br/>(Reservas)"]:::agent
-    K["🍳 Kitchen Agent<br/>(Cocina)"]:::agent
-    C["💳 Cash Agent<br/>(Cobros)"]:::agent
-    CL["👤 Client Agent<br/>(CRM)"]:::agent
-    N["🔔 Notification Agent<br/>(Alertas)"]:::agent
+    %% Capa de Agentes de Dominio
+    subgraph Dominio [Capa de Agentes de Dominio]
+        direction LR
+        R["📅 Reservation<br/>Agent"]:::agent
+        K["🍳 Kitchen<br/>Agent"]:::agent
+        C["💳 Cash<br/>Agent"]:::agent
+        CL["👤 Client<br/>Agent"]:::agent
+        N["🔔 Notification<br/>Agent"]:::agent
+    end
 
-    EB{"Comunicación vía EventBus<br/>(MCP con JSON schema validado)"}:::bus
+    %% Capa de Comunicación
+    EB[/"🌐 EventBus<br/><span style='font-size:12px;color:#94a3b8'>Comunicación MCP con validación JSON Schema</span>"\]:::bus
 
-    HUB --> R & K & C & CL & N
-    R & K & C & CL & N -.-> EB
+    %% Relaciones
+    HUB ==>|Delega Tareas<br/>& Crea Swarms| Dominio
+    
+    R & K & C & CL & N -.-|Publica / Suscribe| EB
+
+    style Dominio fill:transparent,stroke:#475569,stroke-width:2px,stroke-dasharray: 5 5,rx:10px
 ```
 
 ### Componentes del Sistema Multiagente
