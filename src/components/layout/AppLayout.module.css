@@ -224,6 +224,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0; /* Permite que el flex container se encoja si es necesario */
 }
 
 /* ── Header ────────────────────────── */
@@ -317,5 +318,125 @@
 }
 
 @media (max-width: 600px) {
-  .content { padding: 16px; }
+  .content { 
+    padding: 16px 12px;
+    flex: none; /* En móviles muy pequeños, dejamos que el contenido crezca naturalmente */
+  }
 }
+
+/* ── Botón Especial del Sidebar: Agentes IA ─────────────────────────────────
+   Botón destacado al inicio del sidebar para abrir el panel de agentes.
+──────────────────────────────────────────────────────────────────────────── */
+.agentSidebarBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, rgba(232, 69, 60, 0.15), rgba(232, 69, 60, 0.05));
+  border: 1px solid rgba(232, 69, 60, 0.2);
+  border-radius: var(--radius-md);
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Efecto de hover tipo brillo */
+.agentSidebarBtn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: all 0.4s ease;
+}
+
+.agentSidebarBtn:hover {
+  background: linear-gradient(135deg, rgba(232, 69, 60, 0.25), rgba(232, 69, 60, 0.1));
+  border-color: rgba(232, 69, 60, 0.4);
+  box-shadow: 0 4px 12px rgba(232, 69, 60, 0.15);
+  transform: translateY(-1px);
+}
+
+.agentSidebarBtn:hover::before {
+  left: 200%;
+}
+
+.agentSidebarBtn:active {
+  transform: translateY(0);
+}
+
+.agentSidebarIcon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #e8453c;
+  border-radius: 8px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(232, 69, 60, 0.4);
+}
+
+/* Punto animado de agentes activos en el icono */
+.agentSidebarActiveDot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
+  background: #10b981;
+  border-radius: 50%;
+  border: 2px solid var(--color-bg-sidebar);
+  animation: sidebarPulse 1.5s infinite;
+}
+
+@keyframes sidebarPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.3); opacity: 0.8; }
+}
+
+.agentSidebarText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.agentSidebarTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.3px;
+}
+
+.agentSidebarSub {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.agentSidebarBadge {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: 20px;
+  margin-right: 4px;
+}
+
+.agentSidebarChevron {
+  color: rgba(255, 255, 255, 0.4);
+  transition: transform 0.2s;
+}
+
+.agentSidebarBtn:hover .agentSidebarChevron {
+  transform: translateX(2px);
+  color: #fff;
+}
+

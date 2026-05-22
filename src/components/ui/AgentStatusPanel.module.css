@@ -1,0 +1,676 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   AgentStatusPanel.module.css
+   Estilos del panel de monitoreo del sistema multiagente.
+   Usa variables CSS globales de index.css para coherencia de diseño.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Contenedor principal del panel ─────────────────────────────────────────── */
+.panel {
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  margin-bottom: 24px;
+  transition: box-shadow var(--transition-mid);
+}
+.panel:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Header colapsable ───────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #1e1b2e 0%, #2d1f3d 100%);
+  cursor: pointer;
+  user-select: none;
+  gap: 12px;
+  transition: background var(--transition-mid);
+}
+
+/* Estado especial cuando hay un Swarm ejecutándose en paralelo */
+.headerSwarmActive {
+  background: linear-gradient(135deg, #1a1f35 0%, #0f2027 40%, #1a2a1a 100%);
+  animation: swarmPulse 2s ease-in-out infinite;
+}
+
+@keyframes swarmPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  50%       { box-shadow: 0 0 20px 4px rgba(16, 185, 129, 0.25); }
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.headerIcon { color: #a78bfa; }
+
+.headerTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: 0.3px;
+}
+
+/* Badge de agentes registrados / activos */
+.headerBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  background: rgba(255,255,255,0.08);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* Badge de SWARM ACTIVO — aparece con animación cuando hay ≥ 2 agentes en paralelo */
+.swarmActiveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 3px 10px;
+  border-radius: 999px;
+  animation: swarmBadgePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes swarmBadgePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.8; transform: scale(1.03); }
+}
+
+/* Badge de swarms ya ejecutados (histórico, sin animación) */
+.swarmBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.successBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: #86efac;
+  background: rgba(134, 239, 172, 0.1);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(134, 239, 172, 0.2);
+}
+
+/* ── Barra de métricas globales ──────────────────────────────────────────────── */
+.globalMetrics {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  overflow-x: auto;
+}
+
+.globalMetricItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 18px;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  cursor: help;
+  transition: background var(--transition-fast);
+  min-width: fit-content;
+}
+.globalMetricItem:last-child { border-right: none; }
+.globalMetricItem:hover { background: rgba(255,255,255,0.04); }
+
+.globalMetricValue {
+  font-size: 15px;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Roboto Mono', monospace;
+  line-height: 1;
+}
+
+.globalMetricLabel {
+  font-size: 9px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* ── Navegación de tabs ───────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 14px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-text-light);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+.tab:hover {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+.tabActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: transparent;
+}
+
+/* Badge numérico en el tab (ej: agentes activos) */
+.tabBadge {
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--color-primary);
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Cuerpo del panel (contenido de cada tab) ────────────────────────────────── */
+.body {
+  padding: 16px;
+  max-height: 540px;
+  overflow-y: auto;
+  background: #fafafa;
+}
+
+/* ── Sección del orquestador ─────────────────────────────────────────────────── */
+.orchHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #1e1b2e, #2d1f3d);
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+
+.orchBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #c4b5fd;
+}
+
+.orchStats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.orchStat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+/* ── Grid de tarjetas de agentes ─────────────────────────────────────────────── */
+.agentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+/* ── Tarjeta individual de agente ────────────────────────────────────────────── */
+.agentCard {
+  border: 1.5px solid;
+  border-radius: 12px;
+  padding: 12px;
+  position: relative;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  overflow: hidden;
+}
+.agentCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+/* Brillo sutil cuando el agente está activo */
+.agentCardActive {
+  box-shadow: 0 0 0 2px rgba(16,185,129,0.3);
+  animation: activeCardPulse 2s ease-in-out infinite;
+}
+@keyframes activeCardPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(16,185,129,0.2); }
+  50%       { box-shadow: 0 0 12px 4px rgba(16,185,129,0.35); }
+}
+
+/* Punto de estado (verde pulsante = activo, gris = inactivo) */
+.agentDot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d1d5db;
+  transition: background var(--transition-mid);
+}
+.agentDotActive {
+  background: #10b981;
+  animation: dotPulse 1.5s ease-in-out infinite;
+}
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+}
+
+.agentHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.agentIcon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.agentInfo { flex: 1; min-width: 0; }
+
+.agentName {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  line-height: 1.2;
+}
+.agentRole {
+  font-size: 10px;
+  color: var(--color-text-light);
+  margin-top: 1px;
+}
+.agentMeta {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* Métricas cuantitativas de cada agente */
+.agentMetrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.metricLabel {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.metricValue {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-text-dark);
+  font-family: 'SF Mono', 'Roboto Mono', monospace;
+}
+
+/* Barra de éxito semafórica */
+.successBar {
+  height: 5px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.successBarFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+.successBarLabel {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--color-text-muted);
+}
+
+/* ── Historial de eventos MCP ────────────────────────────────────────────────── */
+.eventList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.eventListHint {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  padding: 6px 10px;
+  background: #f0f9ff;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border: 1px solid #bae6fd;
+}
+.eventListHint code {
+  font-family: monospace;
+  background: #e0f2fe;
+  padding: 0 3px;
+  border-radius: 3px;
+  color: #0369a1;
+}
+
+.eventRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  flex-wrap: wrap;
+  border-bottom: 1px solid #f1f5f9;
+}
+.eventRow:hover { background: #f8fafc; }
+.eventRow:last-child { border-bottom: none; }
+
+.eventDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.eventContent {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.eventType {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Roboto Mono', monospace;
+}
+.eventSource {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+.eventCorrelation {
+  font-size: 9px;
+  font-family: monospace;
+  background: #f1f5f9;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+.eventTime {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-family: monospace;
+  flex-shrink: 0;
+}
+/* Payload expandible al hacer clic */
+.eventPayload {
+  width: 100%;
+  margin-top: 6px;
+  background: #0f172a;
+  border-radius: 6px;
+  padding: 8px 12px;
+  overflow: auto;
+}
+.eventPayload pre {
+  font-size: 10px;
+  color: #94a3b8;
+  font-family: 'SF Mono', 'Roboto Mono', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Diagrama de topología ───────────────────────────────────────────────────── */
+.topology { padding: 8px 0; }
+
+/* Hub central de la topología estrella */
+.topoHub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.topoHubInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: linear-gradient(135deg, #1e1b2e, #2d1f3d);
+  border: 2px solid #7c3aed;
+  border-radius: 16px;
+  padding: 14px 24px;
+  box-shadow: 0 0 24px rgba(124, 58, 237, 0.3);
+}
+.topoHubIcon { font-size: 28px; }
+.topoHubLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: #c4b5fd;
+}
+.topoHubSub {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+/* Spokes — las líneas hacia los subagentes */
+.topoSpokes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.topoSpoke {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.topoLine {
+  width: 2px;
+  height: 24px;
+  border-radius: 999px;
+}
+.topoAgent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: 1.5px solid;
+  border-radius: 10px;
+  padding: 8px 10px;
+  min-width: 72px;
+  font-size: 16px;
+  transition: transform var(--transition-fast);
+}
+.topoAgent:hover { transform: scale(1.05); }
+
+.topologyLabel {
+  font-size: 11px;
+  color: var(--color-text-light);
+  text-align: center;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* Info de Swarms en el tab topología */
+.swarmInfo {
+  background: #0f172a;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.swarmTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fbbf24;
+  margin-bottom: 10px;
+}
+.swarmList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.swarmItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.swarmDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.swarmItem > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.swarmItem strong {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f8fafc;
+  font-family: monospace;
+}
+.swarmItem span {
+  font-size: 10px;
+  color: #64748b;
+}
+
+/* ── Notificaciones ──────────────────────────────────────────────────────────── */
+.notifRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  border-left: 3px solid transparent;
+}
+.notif_urgent    { background: #fff1f2; border-left-color: #ef4444; }
+.notif_important { background: #fffbeb; border-left-color: #f59e0b; }
+.notif_success   { background: #f0fdf4; border-left-color: #22c55e; }
+.notif_info      { background: #eff6ff; border-left-color: #3b82f6; }
+
+.notifTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+}
+.notifMsg {
+  font-size: 11px;
+  color: var(--color-text-mid);
+  line-height: 1.4;
+}
+.notifTime {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  font-family: monospace;
+  margin-top: 2px;
+}
+
+/* ── Badge de métrica en el header ───────────────────────────────────────────── */
+.metricBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 10px;
+}
+.metricBadgeValue {
+  font-weight: 700;
+  font-family: monospace;
+}
+.metricBadgeLabel {
+  color: #94a3b8;
+}
+
+/* ── Estado vacío ────────────────────────────────────────────────────────────── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 16px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+.empty p {
+  font-size: 12px;
+  max-width: 300px;
+}
+.emptyHint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  max-width: 320px;
+  line-height: 1.5;
+}

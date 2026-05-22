@@ -129,3 +129,136 @@
 .sysRow:last-child { border-bottom: none; }
 .sysRow span  { color: var(--color-text-mid); }
 .sysRow strong { color: var(--color-text-dark); }
+
+/* ── Menu Manager ──────────────────── */
+.menuToolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.menuCatTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.catTab {
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-mid);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.catTab:hover     { border-color: var(--color-primary-light); color: var(--color-primary); }
+.catTabActive     { background: var(--color-primary); border-color: var(--color-primary); color: #fff; font-weight: 600; }
+
+.menuEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.menuGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+@media (max-width: 600px) {
+  .menuGrid { max-height: none; overflow: visible; }
+}
+
+.dishCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--color-cream);
+  border: 1.5px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast);
+}
+.dishCard:hover { border-color: var(--color-primary-light); }
+
+.dishIcon { font-size: 18px; flex-shrink: 0; }
+
+.dishInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dishName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dishCat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.dishPrice {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dishActions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dishBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  transition: all var(--transition-fast);
+}
+.dishBtn:hover        { background: var(--color-primary-soft); color: var(--color-primary); }
+.dishBtnDanger:hover  { background: #fee2e2; color: var(--color-danger, #e8453c); }
+
+/* ── Dish Form ─────────────────────── */
+.dishForm { display: flex; flex-direction: column; gap: 14px; }
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-light);
+}
+

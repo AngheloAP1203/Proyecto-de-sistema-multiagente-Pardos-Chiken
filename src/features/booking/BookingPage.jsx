@@ -38,9 +38,12 @@ const OCCASIONS = [
   { value: 'Otro',        label: '✨ Otro' },
 ]
 
-// ── Horarios disponibles ──────────────────────────────────────────────────────
+// ── Horarios disponibles ─────────────────────────────────────────────────────
+// Horario de atención: 11:00 AM – 10:00 PM. Última reserva a las 21:30
+// para garantizar al menos 30 min de servicio antes del cierre a las 22:00.
 const TIME_SLOTS = [
-  '12:00','12:30','13:00','13:30','14:00','14:30',
+  '11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30',
+  '15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30',
   '19:00','19:30','20:00','20:30','21:00','21:30',
 ]
 
@@ -73,10 +76,15 @@ export default function BookingPage() {
   const [step,    setStep]    = useState('form')  // 'form' | 'confirmed'
   const [booking, setBooking] = useState(null)
 
-  // Fecha mínima: mañana
+  // Fecha mínima: mañana (reservas online con 1 día de anticipación)
   const minDate = new Date()
   minDate.setDate(minDate.getDate() + 1)
   const minDateStr = minDate.toISOString().split('T')[0]
+
+  // Fecha máxima: 90 días en el futuro (no se aceptan reservas con más de 3 meses)
+  const maxDate = new Date()
+  maxDate.setDate(maxDate.getDate() + 90)
+  const maxDateStr = maxDate.toISOString().split('T')[0]
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -193,7 +201,8 @@ export default function BookingPage() {
           </div>
           <div className={styles.infoItem}>
             <Clock size={15} />
-            <span>Lun–Dom: 12:00 – 22:30</span>
+            {/* Horario real de atención: 11 AM – 10 PM */}
+            <span>Lun–Dom: 11:00 AM – 10:00 PM</span>
           </div>
           <div className={styles.infoItem}>
             <Phone size={15} />
@@ -276,6 +285,7 @@ export default function BookingPage() {
                     <input className={`${styles.input} ${errors.date ? styles.inputError : ''}`}
                       type="date" name="date" id="booking-date"
                       min={minDateStr}
+                      max={maxDateStr}
                       value={form.date} onChange={handleChange} />
                   </div>
                 </Field>

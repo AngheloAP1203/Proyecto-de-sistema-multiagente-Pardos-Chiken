@@ -208,8 +208,16 @@
   display: flex;
   align-items: baseline;
   gap: 5px;
-  font-size: 12px;
-  color: var(--color-text-mid);
+  font-size: 13px;
+  color: var(--color-text-dark);
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.item:hover {
+  background: rgba(0,0,0,0.03);
+  cursor: pointer;
 }
 
 .itemQty {
@@ -224,6 +232,32 @@
   font-size: 11px;
   color: var(--color-text-muted);
   font-style: italic;
+}
+
+.itemReady {
+  text-decoration: line-through;
+  opacity: 0.5;
+  color: var(--color-text-muted);
+}
+
+.itemCheckMark {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--color-border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  color: #fff;
+  background: var(--color-cream);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.itemReady .itemCheckMark {
+  background: var(--color-success);
+  border-color: var(--color-success);
 }
 
 .ticketNote {

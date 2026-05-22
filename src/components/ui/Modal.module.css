@@ -11,11 +11,18 @@
   background: rgba(59, 26, 26, 0.55);
   backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: center; /* Centrado perfecto vertical */
+  justify-content: center; /* Centrado perfecto horizontal */
   z-index: 1000;
-  padding: 16px;
+  padding: 16px; /* Espacio para que nunca toque los bordes de la pantalla */
+  overflow: hidden; /* El overlay no scrollea */
   animation: overlayIn 200ms ease both;
+}
+
+@media (max-width: 480px) {
+  .overlay {
+    padding: 12px;
+  }
 }
 
 @keyframes overlayIn {
@@ -27,10 +34,18 @@
   background: var(--color-bg-card);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
-  max-height: 90vh;
-  overflow-y: auto;
   width: 100%;
+  max-height: calc(100vh - 32px); /* Respeta el padding del overlay */
+  display: flex;
+  flex-direction: column; /* Estructura flex para que el header se quede arriba y el body scrollee */
   animation: dialogIn 250ms cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+@media (max-width: 480px) {
+  .dialog {
+    max-height: calc(100vh - 24px); /* Ajuste sutil para padding reducido */
+    border-radius: var(--radius-lg);
+  }
 }
 
 @keyframes dialogIn {
@@ -49,11 +64,9 @@
   justify-content: space-between;
   padding: 20px 24px 16px;
   border-bottom: 1px solid var(--color-border-light);
-  position: sticky;
-  top: 0;
   background: var(--color-bg-card);
-  z-index: 1;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  flex-shrink: 0; /* Evita que el header se encoja al scrollear */
 }
 
 .title {
@@ -84,4 +97,6 @@
 
 .body {
   padding: 24px;
+  overflow-y: auto; /* Aquí es donde ocurre el scroll mágico */
+  flex: 1; /* Ocupa el espacio restante del dialog */
 }

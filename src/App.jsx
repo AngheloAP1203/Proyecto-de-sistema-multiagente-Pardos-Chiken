@@ -1,12 +1,19 @@
 /**
  * src/App.jsx
  * ─────────────────────────────────────────────────────────────────────────────
- * Componente raíz de la aplicación Pardos Chicken — Sistema de Reservas.
+ * Componente raíz de la aplicación Pardos Chicken — Sistema Multiagente.
  * Define la estructura de rutas con React Router v6 y envuelve
  * la app con los providers globales de estado.
  *
+ * ARQUITECTURA MULTIAGENTE (Topología Estrella):
+ *   El AgentProvider es el puente entre los contexts de React y el
+ *   sistema de agentes. Necesita acceso a las funciones de los contexts
+ *   para inyectarlas en cada agente. Por eso se implementa como un
+ *   componente interno que ya tiene acceso a los contexts montados.
+ *
  * Estructura de rutas:
  *   /login          → Inicio de sesión (público)
+ *   /reservar       → Página pública de solicitud de reserva
  *   /dashboard      → Dashboard principal (admin, cajero, hostess)
  *   /analiticas     → Gráficos de ingresos y personas (solo admin)
  *   /reservas       → Gestión de reservas en tiempo real (todos los roles)
@@ -22,7 +29,8 @@
  *
  * Proveedores (de afuera hacia adentro):
  *   BrowserRouter → AuthProvider → ReservationProvider → ClientProvider
- *                → CashProvider → KitchenProvider → Routes
+ *                → CashProvider → MenuProvider → KitchenProvider
+ *                → AgentBridge (conecta contexts con agentes) → Routes
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -34,6 +42,16 @@ import { ReservationProvider } from './context/ReservationContext'
 import { ClientProvider }      from './context/ClientContext'
 import { CashProvider }        from './context/CashContext'
 import { KitchenProvider }     from './context/KitchenContext'
+import { MenuProvider }        from './context/MenuContext'
+
+// Sistema multiagente — conecta los contexts con el Orquestador
+import { AgentProvider }       from './context/AgentContext'
+
+// Hooks de los contexts (para el AgentBridge)
+import { useReservations }     from './context/ReservationContext'
+import { useKitchen }          from './context/KitchenContext'
+import { useCash }             from './context/CashContext'
+import { useClients }          from './context/ClientContext'
 
 // Route guards
 import { ProtectedRoute, PublicOnlyRoute } from './components/auth/ProtectedRoute'
@@ -88,6 +106,56 @@ function UnauthorizedPage() {
   )
 }
 
+/**
+ * AgentBridge — Componente interno que ya tiene acceso a los contexts montados.
+ * Su única función es leer los contexts y pasarlos como props al AgentProvider,
+ * permitiendo que el sistema multiagente opere sobre el estado real de la app.
+ *
+ * Se llama "Bridge" porque es el puente entre el mundo de React Contexts
+ * y el mundo de los Agentes JavaScript.
+ */
+function AgentBridge({ children }) {
+  // Acceder a los contexts ya montados en el árbol superior
+  const reservationCtx = useReservations()
+  const kitchenCtx     = useKitchen()
+  const cashCtx        = useCash()
+  const clientCtx      = useClients()
+
+  // Empaquetar las acciones de cada context y pasarlas al AgentProvider
+  return (
+    <AgentProvider
+      reservationActions={{
+        addReservation:      reservationCtx.addReservation,
+        updateReservation:   reservationCtx.updateReservation,
+        cancelReservation:   reservationCtx.cancelReservation,
+        completeReservation: reservationCtx.completeReservation,
+        seatReservation:     reservationCtx.seatReservation,
+        approveReservation:  reservationCtx.approveReservation,
+        rejectReservation:   reservationCtx.rejectReservation,
+        requestReservation:  reservationCtx.requestReservation,
+      }}
+      kitchenActions={{
+        addTicket:           kitchenCtx.addTicket,
+        updateTicketStatus:  kitchenCtx.updateTicketStatus,
+        updateTicket:        kitchenCtx.updateTicket,
+        advanceItem:         kitchenCtx.advanceItem,
+      }}
+      cashActions={{
+        addPayment:  cashCtx.addPayment,
+        openShift:   cashCtx.openShift,
+        closeShift:  cashCtx.closeShift,
+      }}
+      clientActions={{
+        addClient:   clientCtx.addClient,
+        updateClient: clientCtx.updateClient,
+        findByPhone:  clientCtx.findByPhone,
+      }}
+    >
+      {children}
+    </AgentProvider>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -95,70 +163,75 @@ export default function App() {
         <ReservationProvider>
           <ClientProvider>
             <CashProvider>
-              <KitchenProvider>
-                <Routes>
-                  {/* ── Ruta raíz → login ── */}
-                  <Route path="/" element={<Navigate to="/login" replace />} />
+              <MenuProvider>
+                <KitchenProvider>
+                  {/* AgentBridge conecta los contexts con el sistema multiagente */}
+                  <AgentBridge>
+                    <Routes>
+                      {/* ── Ruta raíz → login ── */}
+                      <Route path="/" element={<Navigate to="/login" replace />} />
 
-                  {/* ── Página pública de reservas (sin login) ── */}
-                  <Route path="/reservar" element={<BookingPage />} />
+                      {/* ── Página pública de reservas (sin login) ── */}
+                      <Route path="/reservar" element={<BookingPage />} />
 
-                  {/* ── Rutas públicas (solo accesibles sin sesión) ── */}
-                  <Route element={<PublicOnlyRoute />}>
-                    <Route path="/login" element={<LoginPage />} />
-                  </Route>
-
-                  {/* ── Rutas protegidas (requieren autenticación) ── */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route element={<AppLayout />}>
-                      {/* Redirigir raíz al login */}
-                      <Route index element={<Navigate to="/login" replace />} />
-
-                      {/* Dashboard (admin, cajero, hostess) */}
-                      <Route path="/dashboard"  element={<DashboardPage />} />
-
-                      {/* Analíticas — solo admin */}
-                      <Route element={<ProtectedRoute requiredPermission="canViewIncomesChart" />}>
-                        <Route path="/analiticas" element={<AnalyticsPage />} />
+                      {/* ── Rutas públicas (solo accesibles sin sesión) ── */}
+                      <Route element={<PublicOnlyRoute />}>
+                        <Route path="/login" element={<LoginPage />} />
                       </Route>
 
-                      {/* Reservas (todos los roles autenticados) */}
-                      <Route path="/reservas"   element={<ReservationsPage />} />
+                      {/* ── Rutas protegidas (requieren autenticación) ── */}
+                      <Route element={<ProtectedRoute />}>
+                        <Route element={<AppLayout />}>
+                          {/* Redirigir raíz al login */}
+                          <Route index element={<Navigate to="/login" replace />} />
 
-                      {/* Mesas */}
-                      <Route path="/mesas"      element={<TablesPage />} />
+                          {/* Dashboard (admin, cajero, hostess) */}
+                          <Route path="/dashboard"  element={<DashboardPage />} />
 
-                      {/* Clientes */}
-                      <Route path="/clientes"   element={<ClientsPage />} />
+                          {/* Analíticas — solo admin */}
+                          <Route element={<ProtectedRoute requiredPermission="canViewIncomesChart" />}>
+                            <Route path="/analiticas" element={<AnalyticsPage />} />
+                          </Route>
 
-                      {/* Caja — cajero y admin */}
-                      <Route element={<ProtectedRoute requiredPermission="canManageCash" />}>
-                        <Route path="/caja"     element={<CashPage />} />
+                          {/* Reservas (todos los roles autenticados) */}
+                          <Route path="/reservas"   element={<ReservationsPage />} />
+
+                          {/* Mesas */}
+                          <Route path="/mesas"      element={<TablesPage />} />
+
+                          {/* Clientes */}
+                          <Route path="/clientes"   element={<ClientsPage />} />
+
+                          {/* Caja — cajero y admin */}
+                          <Route element={<ProtectedRoute requiredPermission="canManageCash" />}>
+                            <Route path="/caja"     element={<CashPage />} />
+                          </Route>
+
+                          {/* Cocina — jefe_cocina y admin */}
+                          <Route element={<ProtectedRoute requiredPermission="canManageKitchenOrders" />}>
+                            <Route path="/cocina"   element={<KitchenPage />} />
+                          </Route>
+
+                          {/* Historial */}
+                          <Route path="/historial"   element={<HistoryPage />} />
+
+                          {/* Reportes */}
+                          <Route path="/reportes"    element={<ReportsPage />} />
+
+                          {/* Configuración — solo admin */}
+                          <Route element={<ProtectedRoute requiredPermission="canConfigureSystem" />}>
+                            <Route path="/configuracion" element={<SettingsPage />} />
+                          </Route>
+                        </Route>
                       </Route>
 
-                      {/* Cocina — jefe_cocina y admin */}
-                      <Route element={<ProtectedRoute requiredPermission="canManageKitchenOrders" />}>
-                        <Route path="/cocina"   element={<KitchenPage />} />
-                      </Route>
-
-                      {/* Historial */}
-                      <Route path="/historial"   element={<HistoryPage />} />
-
-                      {/* Reportes */}
-                      <Route path="/reportes"    element={<ReportsPage />} />
-
-                      {/* Configuración — solo admin */}
-                      <Route element={<ProtectedRoute requiredPermission="canConfigureSystem" />}>
-                        <Route path="/configuracion" element={<SettingsPage />} />
-                      </Route>
-                    </Route>
-                  </Route>
-
-                  {/* ── Páginas de error ── */}
-                  <Route path="/no-autorizado" element={<UnauthorizedPage />} />
-                  <Route path="*"              element={<NotFoundPage />} />
-                </Routes>
-              </KitchenProvider>
+                      {/* ── Páginas de error ── */}
+                      <Route path="/no-autorizado" element={<UnauthorizedPage />} />
+                      <Route path="*"              element={<NotFoundPage />} />
+                    </Routes>
+                  </AgentBridge>
+                </KitchenProvider>
+              </MenuProvider>
             </CashProvider>
           </ClientProvider>
         </ReservationProvider>

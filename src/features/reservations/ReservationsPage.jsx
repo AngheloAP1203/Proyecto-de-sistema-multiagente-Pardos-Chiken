@@ -18,6 +18,8 @@ import { useState } from 'react'
 import { Plus, Search, CalendarCheck, Bell, CheckCircle2, XCircle, Clock, Users, Phone } from 'lucide-react'
 import { useReservations, RESERVATION_STATUS, STATUS_LABELS, STATUS_COLORS } from '../../context/ReservationContext'
 import { useAuth } from '../../context/AuthContext'
+import { useClients } from '../../context/ClientContext'
+import { useKitchen } from '../../context/KitchenContext'
 import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
@@ -61,10 +63,6 @@ function RequestsPanel({ requests, onApprove, onReject }) {
     setTableId('T01')
   }
 
-  const occ = {
-    'Cumpleaños': '🎂', 'Aniversario': '💑', 'Reunión': '💼',
-    'Graduación': '🎓', 'Familiar': '👨‍👩‍👧', 'Otro': '✨',
-  }
 
   return (
     <>
@@ -83,7 +81,6 @@ function RequestsPanel({ requests, onApprove, onReject }) {
               <div className={styles.requestInfo}>
                 <div className={styles.requestHeader}>
                   <span className={styles.requestId}>#{r.id}</span>
-                  {r.occasion && <span className={styles.requestOcc}>{occ[r.occasion] || '✨'} {r.occasion}</span>}
                   {r.source === 'public' && <span className={styles.requestSource}>🌐 Web</span>}
                 </div>
                 <h4 className={styles.requestName}>{r.clientName}</h4>
@@ -117,7 +114,6 @@ function RequestsPanel({ requests, onApprove, onReject }) {
           <div className={styles.approveModal}>
             <div className={styles.approveInfo}>
               <p><strong>{selected.clientName}</strong> · {selected.date} {selected.time} · {selected.guests} pers.</p>
-              {selected.occasion && <p>Ocasión: {selected.occasion}</p>}
             </div>
 
             {action === 'approve' ? (
@@ -162,8 +158,11 @@ export default function ReservationsPage() {
     addReservation, updateReservation, cancelReservation,
     seatReservation, completeReservation,
     approveReservation, rejectReservation,
+    deleteReservationFromDB,
   } = useReservations()
   const { user, hasPermission } = useAuth()
+  const { findByPhone, addClient, updateClient } = useClients()
+  const { addTicket } = useKitchen()
 
   const [search,       setSearch]     = useState('')
   const [statusFilter, setStatus]     = useState('all')
@@ -199,8 +198,57 @@ export default function ReservationsPage() {
     setEdit(null)
   }
 
+  // Al sentar: cambia el estado de la reserva Y envía un ticket a cocina si hay platos
+  const handleSeat = (reservation) => {
+    seatReservation(reservation.id)
+    if (reservation.items && reservation.items.length > 0) {
+      addTicket({
+        tableId:    reservation.tableId,
+        clientName: reservation.clientName,
+        guests:     reservation.guests,
+        notes:      reservation.notes || '',
+        priority:   'normal',
+        items:      reservation.items.map(item => ({ ...item, itemStatus: 'pending' })),
+      })
+    }
+  }
+
+
+  /**
+   * handleApprove — Aprueba la reserva y registra/actualiza el cliente.
+   * - Si el cliente ya existe (por teléfono) → incrementa sus reservas.
+   * - Si es nuevo → lo crea automáticamente en el módulo de clientes.
+   */
   const handleApprove = (id, tableId) => {
+    const reservation = reservations.find(r => r.id === id)
     approveReservation(id, tableId, user.name)
+
+    if (reservation) {
+      const existing = findByPhone(reservation.clientPhone)
+      if (existing) {
+        // Cliente ya registrado → actualizar contador y email si faltaba
+        updateClient(existing.id, {
+          totalReservations: (existing.totalReservations || 0) + 1,
+          email: existing.email || reservation.clientEmail || '',
+        })
+      } else {
+        // Cliente nuevo → registrar automáticamente
+        addClient({
+          name:              reservation.clientName,
+          phone:             reservation.clientPhone,
+          email:             reservation.clientEmail || '',
+          dni:               '',
+          birthday:          '',
+          preferences:       '',
+          allergies:         '',
+          notes:             reservation.notes
+                               ? `Registrado vía web. Nota: ${reservation.notes}`
+                               : 'Registrado automáticamente al aprobar reserva web.',
+          totalReservations: 1,
+          vip:               false,
+        })
+      }
+    }
   }
 
   const handleReject = (id, reason) => {
@@ -283,10 +331,12 @@ export default function ReservationsPage() {
               key={r.id}
               reservation={r}
               onEdit={hasPermission('canManageReservations') ? () => handleEdit(r) : null}
-              onSeat={() => seatReservation(r.id)}
-              onComplete={() => completeReservation(r.id)}
+              onSeat={hasPermission('canSeatGuests') ? () => handleSeat(r) : null}
               onCancel={(reason) => cancelReservation(r.id, reason)}
               canCancel={hasPermission('canCancelAnyReservation')}
+              onDelete={hasPermission('canDeleteReservations') ? () => deleteReservationFromDB(r.id) : null}
+              onUpdateItems={(newItems, notes) => updateReservation(r.id, { items: newItems, ...(notes !== undefined && { notes }) })}
+              canAddItems={['mozo', 'cajero', 'admin'].includes(user?.role)}
             />
           ))}
         </div>

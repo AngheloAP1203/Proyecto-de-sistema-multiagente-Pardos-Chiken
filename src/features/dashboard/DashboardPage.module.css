@@ -177,3 +177,115 @@
   font-weight: 800;
   color: var(--color-primary);
 }
+
+/* ── Sección de métricas del sistema multiagente ── */
+/*
+ * Esta sección muestra evidencia cuantitativa del funcionamiento del sistema.
+ * Diseñada para ser visible y llamativa durante la demo en vivo (criterio 5 rúbrica).
+ */
+.sysMetricsSection {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f2027 100%);
+  border-radius: 16px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  animation: fadeIn 0.5s ease 0.1s both;
+}
+
+.sysMetricsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.sysMetricsTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c4b5fd;
+}
+
+.sysMetricsBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  background: rgba(255,255,255,0.07);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.sysMetricsTopology {
+  font-size: 10px;
+  color: #475569;
+}
+
+/* Grid de métricas — muestra 6 indicadores en fila */
+.sysMetricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+/* Tarjeta individual de métrica cuantitativa */
+.sysMetric {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: help;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.sysMetric:hover {
+  background: rgba(255,255,255,0.08);
+  transform: translateY(-1px);
+}
+
+.sysMetricIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sysMetricContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sysMetricValue {
+  font-size: 18px;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Roboto Mono', monospace;
+  line-height: 1;
+}
+
+.sysMetricLabel {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .sysMetricsGrid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+  .sysMetricsGrid { grid-template-columns: repeat(2, 1fr); }
+}

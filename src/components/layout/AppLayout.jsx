@@ -21,9 +21,12 @@ import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard, CalendarCheck, Users, Clock, ChartBar,
   Settings, LogOut, Menu, X, UtensilsCrossed, ChevronRight,
-  TableProperties, CreditCard, ChefHat, TrendingUp,
+  TableProperties, CreditCard, ChefHat, TrendingUp, Cpu,
 } from 'lucide-react'
 import { useAuth, ROLE_PERMISSIONS } from '../../context/AuthContext'
+import { useAgents } from '../../context/AgentContext'
+// Drawer de pruebas del sistema multiagente
+import AgentTestDrawer from '../ui/AgentTestDrawer'
 import toast from 'react-hot-toast'
 import styles from './AppLayout.module.css'
 
@@ -103,7 +106,9 @@ const NAV_ITEMS = [
 
 export default function AppLayout() {
   const { user, logout } = useAuth()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { systemStatus }  = useAgents()
+  const [sidebarOpen, setSidebarOpen]     = useState(false)
+  const [agentDrawerOpen, setAgentDrawer] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -113,6 +118,10 @@ export default function AppLayout() {
   // Filtrar menú según el rol del usuario
   const allowedNav = NAV_ITEMS.filter(item => item.roles.includes(user?.role))
   const roleInfo = ROLE_PERMISSIONS[user?.role]
+
+  // Contar agentes activos para el badge del botón flotante
+  const activeAgents = systemStatus?.agents?.filter(a => a.isActive).length || 0
+  const totalEvents  = systemStatus?.eventBus?.totalMessages || 0
 
   return (
     <div className={styles.layout}>
@@ -147,6 +156,29 @@ export default function AppLayout() {
 
         {/* Navegación */}
         <nav className={styles.nav} aria-label="Navegación principal">
+          {/* Botón especial para el Sistema Multiagente */}
+          <button
+            className={styles.agentSidebarBtn}
+            onClick={() => setAgentDrawer(true)}
+            title="Verificar Sistema Multiagente"
+            aria-label="Abrir panel de agentes"
+          >
+            <div className={styles.agentSidebarIcon}>
+              <Cpu size={18} />
+              {/* Indicador de agentes activos */}
+              {activeAgents > 0 && <span className={styles.agentSidebarActiveDot} />}
+            </div>
+            <div className={styles.agentSidebarText}>
+              <span className={styles.agentSidebarTitle}>Agentes IA</span>
+              <span className={styles.agentSidebarSub}>Panel de control</span>
+            </div>
+            {/* Badge con total de eventos MCP procesados */}
+            {totalEvents > 0 && (
+              <span className={styles.agentSidebarBadge}>{totalEvents > 99 ? '99+' : totalEvents}</span>
+            )}
+            <ChevronRight size={14} className={styles.agentSidebarChevron} />
+          </button>
+
           <ul className={styles.navList}>
             {allowedNav.map(item => (
               <li key={item.id}>
@@ -223,6 +255,13 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Drawer de pruebas del sistema multiagente */}
+      <AgentTestDrawer
+        isOpen={agentDrawerOpen}
+        onClose={() => setAgentDrawer(false)}
+        currentRole={user?.role || 'admin'}
+      />
     </div>
   )
 }

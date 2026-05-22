@@ -65,7 +65,16 @@
 .methodPct    { font-size: 11px; color: var(--color-text-muted); }
 
 /* ── Payment list ──────────────────── */
-.paymentList { display: flex; flex-direction: column; max-height: 360px; overflow-y: auto; }
+.paymentList { 
+  display: flex; 
+  flex-direction: column; 
+  max-height: 450px; 
+  overflow-y: auto; 
+}
+
+@media (max-width: 600px) {
+  .paymentList { max-height: none; overflow: visible; }
+}
 
 .paymentEntry { border-bottom: 1px solid var(--color-border-light); }
 .paymentEntry:last-child { border-bottom: none; }
@@ -128,7 +137,14 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  max-height: 320px;
+  max-height: 400px;
+}
+
+@media (max-width: 700px) { 
+  .menuAndOrder { 
+    grid-template-columns: 1fr; 
+    max-height: none; 
+  } 
 }
 
 @media (max-width: 700px) { .menuAndOrder { grid-template-columns: 1fr; } }
@@ -161,6 +177,41 @@
 .menuItemName  { font-size: 12px; font-weight: 500; color: var(--color-text-dark); flex: 1; }
 .menuItemPrice { font-size: 12px; font-weight: 700; color: var(--color-primary); }
 .menuItemAdd   { color: var(--color-primary); flex-shrink: 0; }
+.menuItemInfo  { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+
+/* ── Menu Card Grid (nueva UI) ─────── */
+.menuGridCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.menuCardBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  text-align: center;
+  transition: all var(--transition-fast);
+  width: 100%;
+}
+.menuCardBtn:hover { border-color: var(--color-primary); background: var(--color-primary-soft); transform: translateY(-1px); box-shadow: 0 3px 10px rgba(232,69,60,0.12); }
+.menuCardBtnActive { border-color: var(--color-primary) !important; background: var(--color-primary-soft) !important; box-shadow: 0 0 0 2px var(--color-primary-soft); }
+
+.menuCardIcon  { font-size: 22px; line-height: 1; }
+.menuCardName  { font-size: 10px; font-weight: 600; color: var(--color-text-dark); line-height: 1.3; }
+.menuCardFooter { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 2px; }
+.menuCardPrice { font-size: 11px; font-weight: 700; color: var(--color-primary); }
+.menuCardAdd   { font-size: 11px; font-weight: 700; color: var(--color-primary); display: flex; align-items: center; }
+
+
 
 /* Orden */
 .orderSide {
@@ -313,3 +364,591 @@
   .boletaActions { display: none; }
   .boleta { max-width: 100%; }
 }
+
+/* ── Panel Reservas pendientes de cobro ── */
+.reservasFiltro { display: flex; flex-direction: column; gap: 14px; }
+
+.reservasFiltroRow {
+  display: flex; align-items: center; gap: 10px;
+}
+
+.reservasIcon { color: var(--color-primary); flex-shrink: 0; }
+
+.dateInput {
+  flex: 1; padding: 8px 12px; border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md); font-family: var(--font-sans); font-size: 13px;
+  color: var(--color-text-dark); background: var(--color-surface);
+  cursor: pointer; transition: border-color var(--transition-fast);
+  max-width: 180px;
+}
+.dateInput:hover  { border-color: var(--color-primary-light); }
+.dateInput:focus  { border-color: var(--color-primary); outline: none; box-shadow: 0 0 0 3px var(--color-primary-soft); }
+
+.resetDateBtn {
+  padding: 6px 14px; border-radius: var(--radius-md); font-size: 12px; font-weight: 600;
+  border: 1.5px solid var(--color-primary); color: var(--color-primary);
+  background: var(--color-primary-soft); cursor: pointer; white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+.resetDateBtn:hover { background: var(--color-primary); color: #fff; }
+
+.reservasEmpty {
+  display: flex; align-items: center; gap: 10px; padding: 16px;
+  background: var(--color-cream); border-radius: var(--radius-md);
+  color: var(--color-text-muted); font-size: 13px;
+}
+
+.reservasList { display: flex; flex-direction: column; gap: 8px; }
+
+.reservaItem {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  background: var(--color-surface); border: 1.5px solid var(--color-border-light);
+  border-radius: var(--radius-md); transition: border-color var(--transition-fast);
+}
+.reservaItem:hover { border-color: var(--color-primary-light); }
+
+.reservaInfo { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.reservaClient { font-size: 13px; font-weight: 700; color: var(--color-text-dark); }
+.reservaMeta   { font-size: 11px; color: var(--color-text-muted); }
+
+.reservaStatus {
+  font-size: 11px; font-weight: 700; padding: 3px 9px;
+  border-radius: var(--radius-full); white-space: nowrap; flex-shrink: 0;
+}
+.status_seated  { background: var(--color-success-soft); color: var(--color-success); }
+.status_pending { background: var(--color-warning-soft); color: #b8860b; }
+
+/* ── Notes Box ────────────────────── */
+.notesBox {
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow: hidden;
+  border-left: 4px solid var(--color-primary-soft);
+}
+
+.notesBoxHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--color-cream);
+  border-bottom: 1px solid var(--color-border-light);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+.notesBoxHeader svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.notesBox > div:last-child textarea {
+  border: none;
+  border-radius: 0;
+  background: var(--color-surface);
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* ── Botón para abrir el overlay de menú ── */
+.openMenuBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  background: var(--color-primary-soft);
+  border: 2px dashed var(--color-primary);
+  border-radius: var(--radius-lg);
+  color: var(--color-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  letter-spacing: 0.2px;
+}
+.openMenuBtn:hover {
+  background: var(--color-primary);
+  color: #fff;
+  border-style: solid;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(232,69,60,0.2);
+}
+
+/* ── Resumen compacto del pedido (dentro del modal de cobro) ── */
+.orderSummaryCompact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--color-cream);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.orderRowCompact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border-light);
+}
+.orderRowCompact:last-of-type { border-bottom: none; }
+
+.orderNameCompact {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-dark);
+}
+
+.orderQtyCtrlCompact {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.orderQtyCtrlCompact button {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border);
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  transition: all var(--transition-fast);
+}
+.orderQtyCtrlCompact button:hover { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.orderQtyCtrlCompact span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  min-width: 18px;
+  text-align: center;
+}
+
+.orderPriceCompact {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-success);
+  white-space: nowrap;
+}
+
+.orderTotalCompact {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--color-text-mid);
+  padding-top: 6px;
+  margin-top: 4px;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.grandTotalCompact {
+  font-size: 14px !important;
+  color: var(--color-text-dark) !important;
+  border-top: 2px solid var(--color-primary) !important;
+}
+
+/* ── Overlay fullscreen del menú (igual al de ReservationCard) ── */
+.menuOverlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeInOverlay 0.35s ease-out;
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to   { opacity: 1; backdrop-filter: blur(12px); }
+}
+
+.menuOverlayModal {
+  background: #f8fafc;
+  border-radius: 20px;
+  width: 95vw;
+  max-width: 1200px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+  animation: slideUpModal 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 900px) {
+  .menuOverlayModal {
+    height: 95vh;
+    width: 100vw;
+    border-radius: 0;
+  }
+}
+
+@keyframes slideUpModal {
+  from { opacity: 0; transform: translateY(40px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.menuOverlayHeader {
+  padding: 24px 32px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--color-border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
+  z-index: 2;
+}
+
+.menuOverlayTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.menuOverlayTitle h3 {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-text-dark);
+  margin: 0;
+}
+
+.menuOverlayBadge {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.menuOverlayBody {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+@media (max-width: 900px) {
+  .menuOverlayBody { grid-template-columns: 1fr; overflow-y: auto; }
+  .menuOverlayRight { border-left: none !important; border-top: 1px solid var(--color-border-light); }
+}
+
+/* Izquierda: catálogo */
+.menuOverlayLeft {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.menuOverlayControls {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.menuOverlayControls > div { flex: 1; }
+.menuOverlayControls select,
+.menuOverlayControls input {
+  height: 48px;
+  font-size: 15px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--color-border-light);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.menuOverlayCats {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  overflow-y: auto;
+  padding-right: 12px;
+  padding-bottom: 24px;
+}
+.menuOverlayCats::-webkit-scrollbar { width: 6px; }
+.menuOverlayCats::-webkit-scrollbar-track { background: transparent; }
+.menuOverlayCats::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+.menuOverlayCat { display: flex; flex-direction: column; gap: 16px; }
+
+.menuOverlayCatTitle {
+  font-weight: 800;
+  font-size: 14px;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  border-left: 4px solid var(--color-primary);
+  padding-left: 10px;
+  margin: 0;
+}
+
+.menuOverlayCatGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.menuOverlayCard {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid var(--color-border-light);
+  border-radius: 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  position: relative;
+  overflow: hidden;
+}
+.menuOverlayCard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 4px;
+  background: var(--color-primary);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.menuOverlayCard:hover { border-color: var(--color-primary-soft); transform: translateY(-4px); box-shadow: 0 12px 24px -8px rgba(0,0,0,0.1); }
+.menuOverlayCard:hover::before { opacity: 1; }
+.menuOverlayCard:active { transform: translateY(0); }
+
+.menuOverlayCardImg {
+  width: 100%;
+  height: 110px;
+  background: linear-gradient(135deg, var(--color-cream) 0%, #fde6de 100%);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary-soft);
+}
+
+.menuOverlayCardName {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  line-height: 1.3;
+  margin-bottom: 8px;
+  min-height: 38px;
+}
+
+.menuOverlayCardBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-top: auto;
+}
+
+.menuOverlayCardPrice {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.menuOverlayCardAdd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  transition: all 0.2s;
+}
+.menuOverlayCard:hover .menuOverlayCardAdd { background: var(--color-primary); color: #fff; transform: scale(1.1); }
+
+/* Derecha: resumen del pedido */
+.menuOverlayRight {
+  background: #ffffff;
+  border-left: 1px solid var(--color-border-light);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 15px rgba(0,0,0,0.02);
+  overflow: hidden;
+}
+
+.menuOverlayOrderHeader {
+  padding: 24px;
+  border-bottom: 1px solid var(--color-border-light);
+  background: #fafafa;
+}
+.menuOverlayOrderTitle {
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--color-text-dark);
+  margin: 0 0 4px 0;
+}
+.menuOverlayOrderSub { font-size: 13px; color: var(--color-text-muted); }
+
+.menuOverlayOrderBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.menuOverlayOrderEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 100%;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.menuOverlayOrderList { display: flex; flex-direction: column; gap: 16px; }
+
+.menuOverlayOrderRow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #fafafa;
+  border: 1px solid var(--color-border-light);
+  border-radius: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+.menuOverlayOrderRowTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.menuOverlayOrderName {
+  flex: 1;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-text-dark);
+  line-height: 1.3;
+}
+
+.menuOverlayRemoveBtn {
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.menuOverlayRemoveBtn:hover { background: #fee2e2; color: var(--color-primary); }
+
+.menuOverlayOrderRowBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.menuOverlayOrderPrice {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--color-primary);
+}
+
+.menuOverlayQtyCtrl {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.menuOverlayQtyCtrl button {
+  width: 32px; height: 32px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-dark);
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.menuOverlayQtyCtrl button:hover { background: var(--color-cream); color: var(--color-primary); }
+.menuOverlayQtyCtrl span {
+  width: 32px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-text-dark);
+}
+
+.menuOverlayOrderFooter {
+  padding: 24px;
+  background: #ffffff;
+  border-top: 1px dashed var(--color-border-light);
+}
+
+.menuOverlayTotalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.menuOverlayTotalLabel {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-mid);
+}
+.menuOverlayTotalValue {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--color-text-dark);
+}
+
+.menuOverlayConfirmBtn {
+  width: 100%;
+  height: 54px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 12px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(232,69,60,0.25);
+  transition: transform 0.2s, box-shadow 0.2s;
+  font-family: var(--font-sans);
+  letter-spacing: 0.2px;
+}
+.menuOverlayConfirmBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 20px rgba(232,69,60,0.35);
+}
+.menuOverlayConfirmBtn:disabled {
+  background: var(--color-text-muted);
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+

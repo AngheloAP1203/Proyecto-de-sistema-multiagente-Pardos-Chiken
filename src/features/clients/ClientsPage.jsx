@@ -15,7 +15,7 @@
  */
 
 import { useState } from 'react'
-import { Plus, Search, Users, Star, Phone, Mail, Edit2, Crown } from 'lucide-react'
+import { Plus, Search, Users, Star, Phone, Mail, Edit2, Crown, Trash2 } from 'lucide-react'
 import { useClients } from '../../context/ClientContext'
 import { useAuth } from '../../context/AuthContext'
 import { Button } from '../../components/ui/Button'
@@ -32,8 +32,10 @@ const EMPTY = {
 }
 
 export default function ClientsPage() {
-  const { clients, addClient, updateClient, searchClients } = useClients()
-  const { hasPermission } = useAuth()
+  const { clients, addClient, updateClient, searchClients, deleteClient } = useClients()
+  const { user, hasPermission } = useAuth()
+  const canDeleteClients = hasPermission('canDeleteClients')
+  const canEditClients   = hasPermission('canManageClients')
 
   const [query,      setQuery]   = useState('')
   const [isOpen,     setOpen]    = useState(false)
@@ -95,6 +97,13 @@ export default function ClientsPage() {
   const toggleVip = (client) => {
     updateClient(client.id, { vip: !client.vip })
     toast.success(client.vip ? 'Cliente removido de VIP' : '⭐ Cliente marcado como VIP')
+  }
+
+  const handleDelete = (id) => {
+    if (window.confirm('¿Estás seguro de eliminar este cliente? Esta acción no se puede deshacer.')) {
+      deleteClient(id)
+      toast.success('Cliente eliminado permanentemente')
+    }
   }
 
   return (
@@ -161,7 +170,7 @@ export default function ClientsPage() {
                     {client.totalVisits || 0} visita{client.totalVisits !== 1 ? 's' : ''}
                   </span>
                 </div>
-                {hasPermission('canManageClients') && (
+                {canEditClients && (
                   <button
                     className={`${styles.starBtn} ${client.vip ? styles.starActive : ''}`}
                     onClick={() => toggleVip(client)}
@@ -199,11 +208,18 @@ export default function ClientsPage() {
                 <span className={styles.lastVisit}>
                   Última visita: {client.lastVisit || 'Sin visitas'}
                 </span>
-                {hasPermission('canManageClients') && (
-                  <button className={styles.editBtn} onClick={() => openEdit(client)} title="Editar cliente">
-                    <Edit2 size={14} />
-                  </button>
-                )}
+                <div style={{display: 'flex', gap: '4px'}}>
+                  {canEditClients && (
+                    <button className={styles.editBtn} onClick={() => openEdit(client)} title="Editar cliente">
+                      <Edit2 size={14} />
+                    </button>
+                  )}
+                  {canDeleteClients && (
+                    <button className={styles.editBtn} style={{color: 'var(--color-danger)'}} onClick={() => handleDelete(client.id)} title="Eliminar cliente">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

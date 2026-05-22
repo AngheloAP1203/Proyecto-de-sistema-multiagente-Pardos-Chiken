@@ -13,9 +13,12 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { useState, useRef } from 'react'
-import { CreditCard, DollarSign, Plus, Clock, CheckCircle, X, Printer, Receipt, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
+import { format } from 'date-fns'
+import { CreditCard, DollarSign, Plus, Clock, CheckCircle, X, Printer, Receipt, ChevronDown, ChevronUp, Trash2, Search, Calendar, AlertCircle, MessageSquare, Utensils } from 'lucide-react'
 import { useCash, PAYMENT_METHODS } from '../../context/CashContext'
+import { useReservations, RESERVATION_STATUS } from '../../context/ReservationContext'
 import { useAuth } from '../../context/AuthContext'
 import { MENU_ITEMS } from '../../context/KitchenContext'
 import { Card, StatCard } from '../../components/ui/Card'
@@ -25,9 +28,18 @@ import { Modal } from '../../components/ui/Modal'
 import toast from 'react-hot-toast'
 import styles from './CashPage.module.css'
 
+const TODAY_STR = format(new Date(), 'yyyy-MM-dd')
+
+// Statuses que el cajero puede cobrar
+const PAYABLE_STATUSES = [
+  RESERVATION_STATUS.PENDING,
+  RESERVATION_STATUS.SEATED,
+]
+
 const IGV_RATE = 0.18   // 18% IGV peruano
 
 const EMPTY_PAYMENT = {
+  reservationId: '',
   clientName: '',
   method: 'efectivo',
   guests: '',
@@ -193,6 +205,7 @@ function PaymentRow({ p, onViewBoleta }) {
 export default function CashPage() {
   const { user } = useAuth()
   const { payments, todayPayments, todayTotal, todayByMethod, shift, openShift, closeShift, addPayment } = useCash()
+  const { updateReservation, completeReservation, getReservationsByDate } = useReservations()
 
   const [isPaymentOpen, setPaymentOpen] = useState(false)
   const [isShiftOpen,   setShiftOpen]   = useState(false)
@@ -205,6 +218,18 @@ export default function CashPage() {
 
   // Ítems del pedido en el formulario
   const [orderItems, setOrderItems] = useState([])
+  const [activeCategory, setActiveCategory] = useState('Todas')
+  const [menuQuery, setMenuQuery] = useState('')
+  const [isMenuOpen, setMenuOpen] = useState(false)
+
+  // Fecha seleccionada para filtrar reservas en Caja (default = hoy)
+  const [filterDate, setFilterDate] = useState(TODAY_STR)
+
+  // Reservas de la fecha seleccionada (sin pagar y con estado cobrable)
+  const reservasDelDia = useMemo(
+    () => getReservationsByDate(filterDate).filter(r => !r.isPaid && PAYABLE_STATUSES.includes(r.status)),
+    [getReservationsByDate, filterDate]
+  )
 
   const orderTotal = orderItems.reduce((s, i) => s + i.price * i.qty, 0)
 
@@ -255,6 +280,17 @@ export default function CashPage() {
       cashierId:  user.id,
       cashierName: user.name,
     })
+
+    if (form.reservationId) {
+      const res = reservasDelDia.find(r => r.id === form.reservationId)
+      if (res && res.status === RESERVATION_STATUS.SEATED) {
+        completeReservation(res.id)
+        toast.success(`Mesa ${res.tableId} liberada automáticamente`)
+      } else if (res) {
+        updateReservation(res.id, { isPaid: true })
+        toast.success(`Reserva marcada como pagada`)
+      }
+    }
 
     toast.success(`Boleta generada: S/ ${totalAmount.toFixed(2)}`)
     setBoletaPayment(newPayment)
@@ -339,6 +375,84 @@ export default function CashPage() {
         <StatCard label="IGV (18%)"       value={`S/ ${(todayTotal * IGV_RATE / (1 + IGV_RATE)).toFixed(2)}`} icon={<Receipt size={22} />} color="warning" />
       </div>
 
+
+      {/* Panel: Reservas pendientes de cobro — siempre visible */}
+      <Card
+        title="Reservas pendientes de cobro"
+        subtitle="Selecciona una fecha para buscar reservas — abre un turno para cobrar"
+      >
+        <div className={styles.reservasFiltro}>
+          <div className={styles.reservasFiltroRow}>
+            <Calendar size={16} className={styles.reservasIcon} />
+            <input
+              type="date"
+              className={styles.dateInput}
+              value={filterDate}
+              max={TODAY_STR}
+              onChange={e => setFilterDate(e.target.value)}
+              id="cash-filter-date"
+            />
+            {filterDate !== TODAY_STR && (
+              <button
+                className={styles.resetDateBtn}
+                onClick={() => setFilterDate(TODAY_STR)}
+                title="Volver a hoy"
+              >
+                Hoy
+              </button>
+            )}
+          </div>
+
+          {reservasDelDia.length === 0 ? (
+            <div className={styles.reservasEmpty}>
+              <AlertCircle size={20} />
+              <span>No hay reservas pendientes de cobro para esta fecha</span>
+            </div>
+          ) : (
+            <div className={styles.reservasList}>
+              {reservasDelDia.map(r => (
+                <div key={r.id} className={styles.reservaItem}>
+                  <div className={styles.reservaInfo}>
+                    <span className={styles.reservaClient}>{r.clientName}</span>
+                    <span className={styles.reservaMeta}>
+                      {r.date} &middot; {r.time} &middot; {r.guests} pers.
+                      {r.tableId && <> &middot; Mesa <strong>{r.tableId}</strong></>}
+                    </span>
+                  </div>
+                  <span className={`${styles.reservaStatus} ${styles[`status_${r.status}`]}`}>
+                    {r.status === RESERVATION_STATUS.SEATED ? 'En mesa' : 'Pendiente'}
+                  </span>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<Receipt size={13} />}
+                    onClick={() => {
+                      if (!shift) {
+                        toast.error('Abre un turno de caja antes de cobrar')
+                        setShiftOpen(true)
+                        return
+                      }
+                      setForm(f => ({
+                        ...f,
+                        reservationId: r.id,
+                        clientName: r.clientName,
+                        guests: r.guests,
+                      }))
+                      if (r.items && r.items.length > 0) setOrderItems(r.items)
+                      setPaymentOpen(true)
+                    }}
+                    id={`btn-cobrar-${r.id}`}
+                  >
+                    Cobrar
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
+
+
       <div className={styles.grid2}>
         {/* Métodos de pago */}
         <Card title="Cobros por método" subtitle="Resumen del día">
@@ -387,88 +501,117 @@ export default function CashPage() {
         title="Registrar Cobro / Generar Boleta" size="lg">
         <form onSubmit={handleRegisterPayment} className={styles.form} noValidate>
           <div className={styles.row2}>
+            <div>
+              <div>
+                <div style={{display:'flex', gap:'8px', alignItems:'center', marginBottom:'6px'}}>
+                  <label style={{fontSize:'12px', fontWeight:600, color:'var(--color-text-secondary)'}}>Fecha de reserva</label>
+                  <input
+                    type="date"
+                    className={styles.dateInput}
+                    value={filterDate}
+                    max={TODAY_STR}
+                    onChange={e => {
+                      setFilterDate(e.target.value)
+                      setForm(f => ({ ...f, reservationId: '', clientName: '', guests: '' }))
+                      setOrderItems([])
+                    }}
+                    style={{flex:1}}
+                    id="pay-filter-date"
+                  />
+                </div>
+                <Select label="Vincular a Reserva (Opcional)" name="reservationId" id="pay-res" value={form.reservationId} onChange={(e) => {
+                  const val = e.target.value
+                  handleChange(e)
+                  if (val) {
+                    const res = reservasDelDia.find(r => r.id === val)
+                    if (res) {
+                      setForm(f => ({...f, clientName: res.clientName, guests: res.guests, reservationId: val}))
+                      if (res.items && res.items.length > 0) setOrderItems(res.items)
+                    }
+                  } else {
+                    setForm(f => ({...f, clientName: '', guests: '', reservationId: ''}))
+                    setOrderItems([])
+                  }
+                }}>
+                  <option value="">-- Cobro general sin reserva --</option>
+                  {reservasDelDia.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {r.clientName} ({r.status === RESERVATION_STATUS.SEATED ? `Mesa ${r.tableId}` : 'Pendiente'}) &mdash; {r.time}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
             <Input label="Nombre del cliente" name="clientName" id="pay-client"
               placeholder="Nombre del cliente" value={form.clientName}
               onChange={handleChange} error={errors.clientName} required />
-            <div className={styles.row2}>
-              <Input label="N° personas" name="guests" id="pay-guests" type="number"
-                min={1} max={20} placeholder="2"
-                value={form.guests} onChange={handleChange} />
-              <Select label="Método de pago" name="method" id="pay-method"
-                value={form.method} onChange={handleChange} error={errors.method} required>
-                {PAYMENT_METHODS.map(m => (
-                  <option key={m.id} value={m.id}>{m.icon} {m.label}</option>
-                ))}
-              </Select>
-            </div>
           </div>
 
-          {/* Selector de ítems del menú */}
+          <div className={styles.row2}>
+            <Input label="N° personas" name="guests" id="pay-guests" type="number"
+              min={1} max={20} placeholder="2"
+              value={form.guests} onChange={handleChange} />
+            <Select label="Método de pago" name="method" id="pay-method"
+              value={form.method} onChange={handleChange} error={errors.method} required>
+              {PAYMENT_METHODS.map(m => (
+                <option key={m.id} value={m.id}>{m.icon} {m.label}</option>
+              ))}
+            </Select>
+          </div>
+
+          {/* Resumen del pedido + botón para abrir selector de platos */}
           <div className={styles.menuSection}>
-            <p className={styles.menuTitle}>Pedido (selecciona ítems del menú)</p>
             {errors.items && <p className={styles.errorText}>{errors.items}</p>}
 
-            <div className={styles.menuAndOrder}>
-              {/* Menú por categoría */}
-              <div className={styles.menuCategories}>
-                {categories.map(cat => (
-                  <div key={cat} className={styles.menuCat}>
-                    <p className={styles.catTitle}>{cat}</p>
-                    {MENU_ITEMS.filter(m => m.category === cat).map(item => (
-                      <button key={item.id} type="button"
-                        className={styles.menuItemBtn}
-                        onClick={() => addOrderItem(item)}>
-                        <span className={styles.menuItemName}>{item.name}</span>
-                        <span className={styles.menuItemPrice}>S/ {item.price.toFixed(2)}</span>
-                        <Plus size={13} className={styles.menuItemAdd} />
-                      </button>
-                    ))}
+            {/* Vista compacta del pedido actual */}
+            {orderItems.length > 0 && (
+              <div className={styles.orderSummaryCompact}>
+                {orderItems.map(item => (
+                  <div key={item.menuId} className={styles.orderRowCompact}>
+                    <span className={styles.orderNameCompact}>{item.qty}× {item.name}</span>
+                    <div className={styles.orderQtyCtrlCompact}>
+                      <button type="button" onClick={() => updateQty(item.menuId, -1)}>−</button>
+                      <span>{item.qty}</span>
+                      <button type="button" onClick={() => updateQty(item.menuId, +1)}>+</button>
+                    </div>
+                    <span className={styles.orderPriceCompact}>S/ {(item.price * item.qty).toFixed(2)}</span>
+                    <button type="button" className={styles.removeBtn} onClick={() => removeOrderItem(item.menuId)}>
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 ))}
+                <div className={styles.orderTotalCompact}>
+                  <span>IGV (18%)</span>
+                  <span>S/ {(orderTotal - orderTotal / (1 + IGV_RATE)).toFixed(2)}</span>
+                </div>
+                <div className={`${styles.orderTotalCompact} ${styles.grandTotalCompact}`}>
+                  <strong>TOTAL</strong>
+                  <strong>S/ {orderTotal.toFixed(2)}</strong>
+                </div>
               </div>
+            )}
 
-              {/* Orden actual */}
-              <div className={styles.orderSide}>
-                <p className={styles.menuTitle}>Orden actual</p>
-                {orderItems.length === 0 ? (
-                  <p className={styles.orderEmpty}>Sin ítems aún</p>
-                ) : (
-                  <div className={styles.orderList}>
-                    {orderItems.map(item => (
-                      <div key={item.menuId} className={styles.orderRow}>
-                        <span className={styles.orderName}>{item.name}</span>
-                        <div className={styles.orderQtyCtrl}>
-                          <button type="button" onClick={() => updateQty(item.menuId, -1)}>−</button>
-                          <span>{item.qty}</span>
-                          <button type="button" onClick={() => updateQty(item.menuId, +1)}>+</button>
-                        </div>
-                        <span className={styles.orderPrice}>S/ {(item.price * item.qty).toFixed(2)}</span>
-                        <button type="button" className={styles.removeBtn} onClick={() => removeOrderItem(item.menuId)}>
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    ))}
-                    <div className={styles.orderTotalRow}>
-                      <span>Subtotal</span>
-                      <span>S/ {(orderTotal / (1 + IGV_RATE)).toFixed(2)}</span>
-                    </div>
-                    <div className={styles.orderTotalRow}>
-                      <span>IGV (18%)</span>
-                      <span>S/ {(orderTotal - orderTotal / (1 + IGV_RATE)).toFixed(2)}</span>
-                    </div>
-                    <div className={`${styles.orderTotalRow} ${styles.grandTotal}`}>
-                      <strong>TOTAL</strong>
-                      <strong>S/ {orderTotal.toFixed(2)}</strong>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* Botón que abre el overlay fullscreen */}
+            <button
+              type="button"
+              className={styles.openMenuBtn}
+              onClick={() => setMenuOpen(true)}
+              id="btn-abrir-menu"
+            >
+              <Plus size={16} strokeWidth={3} />
+              {orderItems.length === 0 ? 'Agregar platos del menú' : `Editar pedido · ${orderItems.length} ítem${orderItems.length !== 1 ? 's' : ''}`}
+            </button>
           </div>
 
-          <Textarea label="Notas" name="notes" id="pay-notes"
-            placeholder="Observaciones del cobro..."
-            value={form.notes} onChange={handleChange} />
+          <div className={styles.notesBox}>
+            <div className={styles.notesBoxHeader}>
+              <MessageSquare size={14} />
+              <span>Observaciones del cobro</span>
+            </div>
+            <Textarea name="notes" id="pay-notes"
+              placeholder="Ej: cliente prefiere mesa interior, alérgico a mariscos, celebración especial..."
+              value={form.notes} onChange={handleChange} />
+          </div>
 
           <div className={styles.formActions}>
             <Button type="button" variant="ghost" onClick={() => { setPaymentOpen(false); setOrderItems([]) }}>Cancelar</Button>
@@ -479,6 +622,140 @@ export default function CashPage() {
           </div>
         </form>
       </Modal>
+
+      {/* ── Overlay fullscreen: Selector de platos (igual al de la anfitriona) ── */}
+      {isMenuOpen && createPortal(
+        <div className={styles.menuOverlay}>
+          <div className={styles.menuOverlayModal}>
+
+            {/* Header */}
+            <div className={styles.menuOverlayHeader}>
+              <div className={styles.menuOverlayTitle}>
+                <h3>Seleccionar Platos</h3>
+                {form.clientName && <span className={styles.menuOverlayBadge}>{form.clientName}</span>}
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setMenuOpen(false)}>✕ Cerrar</Button>
+            </div>
+
+            {/* Body: split grid */}
+            <div className={styles.menuOverlayBody}>
+
+              {/* Izquierda: Catálogo */}
+              <div className={styles.menuOverlayLeft}>
+                <div className={styles.menuOverlayControls}>
+                  <Input
+                    placeholder="Buscar plato o bebida..."
+                    value={menuQuery}
+                    onChange={e => setMenuQuery(e.target.value)}
+                    icon={<Search size={16} />}
+                  />
+                  <Select value={activeCategory} onChange={e => setActiveCategory(e.target.value)}>
+                    <option value="Todas">Todas las categorías</option>
+                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </Select>
+                </div>
+
+                <div className={styles.menuOverlayCats}>
+                  {categories.filter(c => activeCategory === 'Todas' || activeCategory === c).map(cat => {
+                    const itemsOfCat = MENU_ITEMS.filter(m =>
+                      m.category === cat && (!menuQuery || m.name.toLowerCase().includes(menuQuery.toLowerCase()))
+                    )
+                    if (itemsOfCat.length === 0) return null
+                    return (
+                      <div key={cat} className={styles.menuOverlayCat}>
+                        <h4 className={styles.menuOverlayCatTitle}>{cat}</h4>
+                        <div className={styles.menuOverlayCatGrid}>
+                          {itemsOfCat.map(item => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              className={styles.menuOverlayCard}
+                              onClick={() => addOrderItem(item)}
+                            >
+                              <div className={styles.menuOverlayCardImg}>
+                                <Utensils size={32} opacity={0.5} />
+                              </div>
+                              <div className={styles.menuOverlayCardName}>{item.name}</div>
+                              <div className={styles.menuOverlayCardBottom}>
+                                <span className={styles.menuOverlayCardPrice}>S/ {item.price.toFixed(2)}</span>
+                                <div className={styles.menuOverlayCardAdd}>
+                                  <Plus size={16} strokeWidth={3} />
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Derecha: Resumen de orden */}
+              <div className={styles.menuOverlayRight}>
+                <div className={styles.menuOverlayOrderHeader}>
+                  <h3 className={styles.menuOverlayOrderTitle}>Resumen de Pedido</h3>
+                  <div className={styles.menuOverlayOrderSub}>
+                    {orderItems.length} {orderItems.length === 1 ? 'ítem' : 'ítems'} en la orden
+                  </div>
+                </div>
+
+                <div className={styles.menuOverlayOrderBody}>
+                  {orderItems.length === 0 ? (
+                    <div className={styles.menuOverlayOrderEmpty}>
+                      <Utensils size={48} />
+                      <p>Añade platos del menú para armar la comanda.</p>
+                    </div>
+                  ) : (
+                    <div className={styles.menuOverlayOrderList}>
+                      {orderItems.map(item => (
+                        <div key={item.menuId} className={styles.menuOverlayOrderRow}>
+                          <div className={styles.menuOverlayOrderRowTop}>
+                            <span className={styles.menuOverlayOrderName}>{item.name}</span>
+                            <button
+                              type="button"
+                              className={styles.menuOverlayRemoveBtn}
+                              onClick={() => removeOrderItem(item.menuId)}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                          <div className={styles.menuOverlayOrderRowBottom}>
+                            <span className={styles.menuOverlayOrderPrice}>S/ {(item.price * item.qty).toFixed(2)}</span>
+                            <div className={styles.menuOverlayQtyCtrl}>
+                              <button type="button" onClick={() => updateQty(item.menuId, -1)}>−</button>
+                              <span>{item.qty}</span>
+                              <button type="button" onClick={() => updateQty(item.menuId, +1)}>+</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className={styles.menuOverlayOrderFooter}>
+                  <div className={styles.menuOverlayTotalRow}>
+                    <span className={styles.menuOverlayTotalLabel}>Total a Pagar</span>
+                    <span className={styles.menuOverlayTotalValue}>S/ {orderTotal.toFixed(2)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.menuOverlayConfirmBtn}
+                    onClick={() => setMenuOpen(false)}
+                    disabled={orderItems.length === 0}
+                    id="btn-confirmar-comanda-caja"
+                  >
+                    Confirmar pedido · S/ {orderTotal.toFixed(2)}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* ── Modal: Boleta ───────────────────────── */}
       <Modal isOpen={!!boletaPayment} onClose={() => setBoletaPayment(null)} title="Boleta de Venta" size="sm">
