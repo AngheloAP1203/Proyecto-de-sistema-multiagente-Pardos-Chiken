@@ -72,6 +72,7 @@ import KitchenPage      from './features/kitchen/KitchenPage'
 import HistoryPage      from './features/history/HistoryPage'
 import ReportsPage      from './features/reports/ReportsPage'
 import SettingsPage     from './features/settings/SettingsPage'
+import AdminPromptPage  from './features/admin/AdminPromptPage'
 import NotFoundPage     from './pages/NotFoundPage'
 
 // ── Página de acceso denegado ─────────────────────────────────────────────────
@@ -222,6 +223,9 @@ export default function App() {
                           <Route element={<ProtectedRoute requiredPermission="canConfigureSystem" />}>
                             <Route path="/configuracion" element={<SettingsPage />} />
                           </Route>
+
+                          {/* Asistente IA — admin, cajero, hostess */}
+                          <Route path="/asistente" element={<AdminPromptPage />} />
                         </Route>
                       </Route>
 
