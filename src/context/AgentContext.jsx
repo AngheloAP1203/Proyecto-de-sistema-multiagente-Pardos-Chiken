@@ -26,7 +26,7 @@ import { NOTIFICATION_PRIORITY } from '../agents/NotificationAgent.js'
 
 const AgentContext = createContext(null)
 
-export function AgentProvider({ children, reservationActions, kitchenActions, cashActions, clientActions }) {
+export function AgentProvider({ children, reservationActions, kitchenActions, cashActions, clientActions, complaintActions, resolutionActions }) {
   // Estado del sistema multiagente (para el panel de monitoreo)
   const [systemStatus,  setSystemStatus]  = useState(null)
   const [eventHistory,  setEventHistory]  = useState([])
@@ -44,7 +44,8 @@ export function AgentProvider({ children, reservationActions, kitchenActions, ca
       kitchen:      kitchenActions,
       cash:         cashActions,
       client:       clientActions,
-      // El NotificationAgent recibe un callback para disparar toasts
+      complaint:    complaintActions,
+      resolution:   resolutionActions,
       notification: (notification) => {
         // Agregar a la lista local de notificaciones
         setNotifications(prev => [notification, ...prev].slice(0, 30))
@@ -77,7 +78,7 @@ export function AgentProvider({ children, reservationActions, kitchenActions, ca
       window.__pardosEventBus     = eventBus
       console.log('[AgentContext] 🔧 Orquestador expuesto en window.__pardosOrchestrator')
     }
-  }, [reservationActions, kitchenActions, cashActions, clientActions])
+  }, [reservationActions, kitchenActions, cashActions, clientActions, complaintActions, resolutionActions])
 
   // ── Polling del estado del sistema (cada 2 segundos) ─────────────────────
   useEffect(() => {
@@ -131,6 +132,45 @@ export function AgentProvider({ children, reservationActions, kitchenActions, ca
     setNotifications([])
   }, [])
 
+  // ── Módulo de Quejas con IA (M1, M2, M3) ──────────────────────────────────
+
+  /** triageComplaint — M1: analiza y registra una queja de cliente. */
+  const triageComplaint = useCallback(async (data) => {
+    return orchestrator.triageComplaint(data)
+  }, [])
+
+  /** askLeaderQuery — M2: responde una pregunta del líder sobre las quejas. */
+  const askLeaderQuery = useCallback(async (pregunta) => {
+    return orchestrator.askLeaderQuery(pregunta)
+  }, [])
+
+  /** auditProcess — M3: audita un proceso con Self-Consistency. */
+  const auditProcess = useCallback(async (data) => {
+    return orchestrator.auditProcess(data)
+  }, [])
+
+  // ── Módulo de Resolución con IA (M4) ──────────────────────────────────────
+
+  /** resolveComplaintAction — M4: inicia resolución inteligente. */
+  const resolveComplaintAction = useCallback(async (data) => {
+    return orchestrator.resolveComplaint(data)
+  }, [])
+
+  /** proposeResponse — M4: genera propuesta RAG para una resolución. */
+  const proposeResponse = useCallback(async (data) => {
+    return orchestrator.proposeResponse(data)
+  }, [])
+
+  /** handleDirectResolution — M4: mesero se encarga directamente. */
+  const handleDirectResolution = useCallback(async (data) => {
+    return orchestrator.handleDirectResolution(data)
+  }, [])
+
+  /** cancelResolution — M4: cancela resolución. */
+  const cancelResolution = useCallback(async (data) => {
+    return orchestrator.cancelResolution(data)
+  }, [])
+
   const value = {
     // Acceso directo al orquestador (para llamadas avanzadas)
     orchestrator,
@@ -146,6 +186,17 @@ export function AgentProvider({ children, reservationActions, kitchenActions, ca
     registerPayment,
     validateReservation,
     clearNotifications,
+
+    // Módulo de Quejas con IA
+    triageComplaint,
+    askLeaderQuery,
+    auditProcess,
+
+    // Módulo de Resolución (M4)
+    resolveComplaintAction,
+    proposeResponse,
+    handleDirectResolution,
+    cancelResolution,
 
     // Delegación directa a un agente específico
     delegate: (agentName, tool, params) => orchestrator.delegate(agentName, tool, params),

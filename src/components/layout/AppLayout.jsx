@@ -21,7 +21,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard, CalendarCheck, Users, Clock, ChartBar,
   Settings, LogOut, Menu, X, UtensilsCrossed, ChevronRight,
-  TableProperties, CreditCard, ChefHat, TrendingUp, Cpu, Bot,
+  TableProperties, CreditCard, ChefHat, TrendingUp, Cpu, Bot, MessageSquare,
 } from 'lucide-react'
 import { useAuth, ROLE_PERMISSIONS } from '../../context/AuthContext'
 import { useAgents } from '../../context/AgentContext'
@@ -107,6 +107,13 @@ const NAV_ITEMS = [
     path: '/asistente',
     label: 'Asistente IA',
     icon: <Bot size={20} />,
+    roles: ['admin', 'cajero', 'hostess'],
+  },
+  {
+    id: 'complaints',
+    path: '/quejas',
+    label: 'Quejas IA',
+    icon: <MessageSquare size={20} />,
     roles: ['admin', 'cajero', 'hostess'],
   },
 ]

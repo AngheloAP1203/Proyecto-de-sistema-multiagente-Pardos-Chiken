@@ -35,11 +35,35 @@ export const MEMORY_KEYS = {
   CLIENTS:          'clients',
   VIP_CLIENTS:      'vip_clients',
 
+  // Estado de quejas (módulo de IA)
+  COMPLAINTS:          'complaints',
+  COMPLAINTS_BY_SEDE:  'complaints_by_sede',
+
+  // Estado de resoluciones (módulo de IA — ResolutionAgent)
+  RESOLUTION_POLICIES:  'resolution_policies',
+  ACTIVE_RESOLUTIONS:   'active_resolutions',
+  PROMOTIONS:           'promotions',
+
   // Métricas del sistema
   AGENT_METRICS:    'agent_metrics',
 
   // Bloqueos activos (para resolución de conflictos)
   ACTIVE_LOCKS:     'active_locks',
+}
+
+// ── Permisos de acceso por agente (aislamiento de memoria) ───────────────────
+// Cada agente solo puede leer/escribir sus propias claves. Esto previene que
+// el LLM mezcle datos de dominios distintos (anti-alucinación).
+export const AGENT_PERMISSIONS = {
+  ReservationAgent:      { write: ['reservations', 'today_stats', 'pending_requests'], read: ['reservations', 'today_stats', 'pending_requests'] },
+  KitchenAgent:          { write: ['kitchen_tickets', 'kitchen_queue'], read: ['kitchen_tickets', 'kitchen_queue'] },
+  CashAgent:             { write: ['current_shift', 'today_payments', 'today_revenue'], read: ['current_shift', 'today_payments', 'today_revenue', 'reservations'] },
+  ClientAgent:           { write: ['clients', 'vip_clients'], read: ['clients', 'vip_clients'] },
+  NotificationAgent:     { write: [], read: [] },
+  ComplaintAgent:        { write: ['complaints', 'complaints_by_sede'], read: ['complaints', 'complaints_by_sede'] },
+  LeaderAnalystAgent:    { write: [], read: ['complaints', 'complaints_by_sede'] },
+  SecurityAuditorAgent:  { write: [], read: [] },
+  ResolutionAgent:       { write: ['active_resolutions'], read: ['complaints', 'complaints_by_sede', 'resolution_policies', 'active_resolutions', 'promotions', 'reservations', 'today_payments'] },
 }
 
 /**
@@ -71,6 +95,7 @@ class SharedMemoryClass {
    * @returns {{ success: boolean, version: number, conflict?: Object }}
    */
   set(key, value, agentName, expectedVersion = null) {
+    this._checkPermission(agentName, key, 'write')
     const existing = this._store.get(key)
     const now = new Date().toISOString()
 
@@ -147,6 +172,19 @@ class SharedMemoryClass {
       ? [...existing, ...patch]  // Arrays: concatenar
       : { ...existing, ...patch } // Objetos: merge
     return this.set(key, merged, agentName)
+  }
+
+  /**
+   * _checkPermission — Valida que el agente tiene permiso para operar sobre la clave.
+   * Modo permisivo: loguea warning pero no bloquea (para no romper agentes existentes).
+   */
+  _checkPermission(agentName, key, op) {
+    if (!agentName || !AGENT_PERMISSIONS[agentName]) return
+    const perms = AGENT_PERMISSIONS[agentName]
+    const allowed = op === 'write' ? perms.write : perms.read
+    if (allowed.length > 0 && !allowed.includes(key)) {
+      console.warn(`[SharedMemory] AISLAMIENTO: ${agentName} intentó ${op} en "${key}" sin permiso. Claves permitidas: [${allowed.join(', ')}]`)
+    }
   }
 
   /**

@@ -43,6 +43,8 @@ import { ClientProvider }      from './context/ClientContext'
 import { CashProvider }        from './context/CashContext'
 import { KitchenProvider }     from './context/KitchenContext'
 import { MenuProvider }        from './context/MenuContext'
+import { ComplaintProvider }   from './context/ComplaintContext'
+import { ResolutionProvider } from './context/ResolutionContext'
 
 // Sistema multiagente — conecta los contexts con el Orquestador
 import { AgentProvider }       from './context/AgentContext'
@@ -52,6 +54,8 @@ import { useReservations }     from './context/ReservationContext'
 import { useKitchen }          from './context/KitchenContext'
 import { useCash }             from './context/CashContext'
 import { useClients }          from './context/ClientContext'
+import { useComplaints }       from './context/ComplaintContext'
+import { useResolutions }      from './context/ResolutionContext'
 
 // Route guards
 import { ProtectedRoute, PublicOnlyRoute } from './components/auth/ProtectedRoute'
@@ -73,6 +77,7 @@ import HistoryPage      from './features/history/HistoryPage'
 import ReportsPage      from './features/reports/ReportsPage'
 import SettingsPage     from './features/settings/SettingsPage'
 import AdminPromptPage  from './features/admin/AdminPromptPage'
+import ComplaintsPage   from './features/complaints/ComplaintsPage'
 import NotFoundPage     from './pages/NotFoundPage'
 
 // ── Página de acceso denegado ─────────────────────────────────────────────────
@@ -121,8 +126,9 @@ function AgentBridge({ children }) {
   const kitchenCtx     = useKitchen()
   const cashCtx        = useCash()
   const clientCtx      = useClients()
+  const complaintCtx   = useComplaints()
+  const resolutionCtx  = useResolutions()
 
-  // Empaquetar las acciones de cada context y pasarlas al AgentProvider
   return (
     <AgentProvider
       reservationActions={{
@@ -151,6 +157,22 @@ function AgentBridge({ children }) {
         updateClient: clientCtx.updateClient,
         findByPhone:  clientCtx.findByPhone,
       }}
+      complaintActions={{
+        addComplaint:    complaintCtx.addComplaint,
+        updateComplaint: complaintCtx.updateComplaint,
+        getComplaints:   complaintCtx.getComplaints,
+        getBySede:       complaintCtx.getBySede,
+      }}
+      resolutionActions={{
+        addResolution:      resolutionCtx.addResolution,
+        updateResolution:   resolutionCtx.updateResolution,
+        getResolution:      resolutionCtx.getResolution,
+        getResolutions:     resolutionCtx.getResolutions,
+        getActiveResolutions: resolutionCtx.getActiveResolutions,
+        findPolicy:         resolutionCtx.findPolicy,
+        findPromotion:      resolutionCtx.findPromotion,
+        generateVoucherCode: resolutionCtx.generateVoucherCode,
+      }}
     >
       {children}
     </AgentProvider>
@@ -166,7 +188,8 @@ export default function App() {
             <CashProvider>
               <MenuProvider>
                 <KitchenProvider>
-                  {/* AgentBridge conecta los contexts con el sistema multiagente */}
+                  <ComplaintProvider>
+                  <ResolutionProvider>
                   <AgentBridge>
                     <Routes>
                       {/* ── Ruta raíz → login ── */}
@@ -226,6 +249,9 @@ export default function App() {
 
                           {/* Asistente IA — admin, cajero, hostess */}
                           <Route path="/asistente" element={<AdminPromptPage />} />
+
+                          {/* Quejas con IA — admin, cajero, hostess */}
+                          <Route path="/quejas" element={<ComplaintsPage />} />
                         </Route>
                       </Route>
 
@@ -234,6 +260,8 @@ export default function App() {
                       <Route path="*"              element={<NotFoundPage />} />
                     </Routes>
                   </AgentBridge>
+                  </ResolutionProvider>
+                  </ComplaintProvider>
                 </KitchenProvider>
               </MenuProvider>
             </CashProvider>

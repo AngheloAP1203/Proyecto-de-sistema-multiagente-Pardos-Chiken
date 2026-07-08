@@ -167,9 +167,72 @@ export class NotificationAgent extends AgentBase {
         correlationId: msg.correlationId,
       })
     })
+
+    // Nueva queja registrada → important
+    this.bus.subscribe(EVENT_TYPES.COMPLAINT_CREATED, (msg) => {
+      this._createNotification({
+        priority: NOTIFICATION_PRIORITY.IMPORTANT,
+        title:    '📣 Nueva queja registrada',
+        message:  `Queja ${msg.payload.id} — ${msg.payload.prioridad} · Sede: ${msg.payload.sede}`,
+        eventType: msg.type,
+        correlationId: msg.correlationId,
+      })
+    })
+
+    // Queja crítica escalada → urgent (alerta al líder)
+    this.bus.subscribe(EVENT_TYPES.COMPLAINT_ESCALATED, (msg) => {
+      this._createNotification({
+        priority: NOTIFICATION_PRIORITY.URGENT,
+        title:    '🚨 Queja CRÍTICA escalada',
+        message:  `Queja ${msg.payload.id} escalada al líder${msg.payload.sede ? ` — Sede ${msg.payload.sede}` : ''}. Motivo: ${msg.payload.motivo || 'crítico'}`,
+        eventType: msg.type,
+        correlationId: msg.correlationId,
+      })
+    })
+
+    // Resolución de queja solicitada → notificación interactiva al mesero
+    this.bus.subscribe(EVENT_TYPES.COMPLAINT_RESOLUTION_REQUESTED, (msg) => {
+      const { tableId, problema, prioridad, sede, guestName, resolutionId } = msg.payload
+      this._createNotification({
+        priority: NOTIFICATION_PRIORITY.URGENT,
+        title:    tableId ? `🚨 PROBLEMA EN MESA ${tableId}` : '🚨 PROBLEMA REPORTADO',
+        message:  `${problema} · ${prioridad} · ${sede || 'Sede no especificada'}`,
+        eventType: msg.type,
+        correlationId: msg.correlationId,
+        actionable: true,
+        actions: [
+          { id: 'direct',  label: 'Me encargaré directamente',           action: 'handle_direct' },
+          { id: 'propose', label: 'Propón una respuesta',                 action: 'propose_response' },
+          { id: 'cancel',  label: 'Esa mesa no está registrada, cancela', action: 'cancel_resolution' },
+        ],
+        resolutionId,
+      })
+    })
+
+    // RAG propuso respuesta → notificar
+    this.bus.subscribe(EVENT_TYPES.COMPLAINT_RESOLUTION_PROPOSED, (msg) => {
+      this._createNotification({
+        priority: NOTIFICATION_PRIORITY.IMPORTANT,
+        title:    '💡 Propuesta de resolución generada',
+        message:  `${msg.payload.hasPaid ? 'Cliente ya pagó' : 'Cliente en mesa'}${msg.payload.promocion ? ` — ${msg.payload.promocion}` : ''}`,
+        eventType: msg.type,
+        correlationId: msg.correlationId,
+      })
+    })
+
+    // Queja resuelta
+    this.bus.subscribe(EVENT_TYPES.COMPLAINT_RESOLVED, (msg) => {
+      this._createNotification({
+        priority: NOTIFICATION_PRIORITY.SUCCESS,
+        title:    '✅ Queja resuelta',
+        message:  `Queja ${msg.payload.complaintId} resuelta (resolución ${msg.payload.resolutionId})`,
+        eventType: msg.type,
+        correlationId: msg.correlationId,
+      })
+    })
   }
 
-  _createNotification({ priority, title, message, eventType, correlationId }) {
+  _createNotification({ priority, title, message, eventType, correlationId, actionable, actions, resolutionId }) {
     const notification = {
       id:            ++this._notificationId,
       priority,
@@ -179,6 +242,10 @@ export class NotificationAgent extends AgentBase {
       correlationId,
       timestamp:     new Date().toISOString(),
       read:          false,
+      actionable:    actionable || false,
+      actions:       actions || null,
+      resolutionId:  resolutionId || null,
+      actionTaken:   null,
     }
 
     this._notificationQueue.push(notification)

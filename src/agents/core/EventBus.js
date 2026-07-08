@@ -61,6 +61,16 @@ export const EVENT_TYPES = {
   CLIENT_CREATED: 'client:created',
   CLIENT_UPDATED: 'client:updated',
 
+  // Quejas (módulo de IA)
+  COMPLAINT_CREATED:   'complaint:created',
+  COMPLAINT_ESCALATED: 'complaint:escalated',
+
+  // Resolución de quejas (RAG + acciones interactivas)
+  COMPLAINT_RESOLUTION_REQUESTED: 'complaint:resolution_requested',
+  COMPLAINT_RESOLUTION_ACTION:    'complaint:resolution_action',
+  COMPLAINT_RESOLUTION_PROPOSED:  'complaint:resolution_proposed',
+  COMPLAINT_RESOLVED:             'complaint:resolved',
+
   // Sistema
   AGENT_STARTED:    'system:agent_started',
   AGENT_COMPLETED:  'system:agent_completed',
@@ -95,6 +105,12 @@ const EVENT_PAYLOAD_SCHEMAS = {
   'cash:shift_closed':     { required: ['cashier', 'totalRevenue'] },
   'client:created':        { required: ['clientName'] },
   'client:updated':        { required: ['clientId'] },
+  'complaint:created':     { required: ['id', 'prioridad', 'sede'] },
+  'complaint:escalated':   { required: ['id', 'prioridad'] },
+  'complaint:resolution_requested': { required: ['complaintId', 'problema'] },
+  'complaint:resolution_action':    { required: ['resolutionId', 'accionElegida'] },
+  'complaint:resolution_proposed':  { required: ['resolutionId', 'propuesta'] },
+  'complaint:resolved':             { required: ['complaintId', 'resolutionId'] },
   'system:agent_started':  { required: ['agentName', 'tool'] },
   'system:agent_completed':{ required: ['agentName', 'tool', 'latency', 'success'] },
   'system:agent_error':    { required: ['agentName', 'tool', 'error'] },

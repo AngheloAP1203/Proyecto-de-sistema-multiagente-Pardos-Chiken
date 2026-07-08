@@ -33,8 +33,14 @@ import { kitchenAgent }     from '../KitchenAgent.js'
 import { cashAgent }        from '../CashAgent.js'
 import { clientAgent }      from '../ClientAgent.js'
 import { notificationAgent } from '../NotificationAgent.js'
+import { complaintAgent }       from '../ComplaintAgent.js'
+import { leaderAnalystAgent }   from '../LeaderAnalystAgent.js'
+import { securityAuditorAgent } from '../SecurityAuditorAgent.js'
+import { resolutionAgent }      from '../ResolutionAgent.js'
 import { eventBus, EVENT_TYPES } from './EventBus.js'
 import { sharedMemory, MEMORY_KEYS } from './SharedMemory.js'
+import { RESOLUTION_POLICIES } from '../../data/seeds/resolutionPoliciesSeed.js'
+import { PROMOTIONS } from '../../data/seeds/promotionsSeed.js'
 
 /**
  * AgentRegistry — Registro centralizado de todos los agentes del sistema.
@@ -123,6 +129,15 @@ class AgentOrchestratorClass {
     this.registry.register(cashAgent)
     this.registry.register(clientAgent)
     this.registry.register(notificationAgent)
+    this.registry.register(complaintAgent)
+    this.registry.register(leaderAnalystAgent)
+    this.registry.register(securityAuditorAgent)
+    this.registry.register(resolutionAgent)
+
+    // 1b. Inicializar seeds de resolución y promociones en SharedMemory
+    sharedMemory.set(MEMORY_KEYS.RESOLUTION_POLICIES, RESOLUTION_POLICIES, this.name)
+    sharedMemory.set(MEMORY_KEYS.PROMOTIONS, PROMOTIONS, this.name)
+    sharedMemory.set(MEMORY_KEYS.ACTIVE_RESOLUTIONS, [], this.name)
 
     // 2. Inicializar memoria compartida con estado base
     sharedMemory.set(MEMORY_KEYS.AGENT_METRICS, {
@@ -157,6 +172,14 @@ class AgentOrchestratorClass {
     if (actions.cash)        cashAgent.setContextActions(actions.cash)
     if (actions.client)      clientAgent.setContextActions(actions.client)
     if (actions.notification) notificationAgent.setNotificationCallback(actions.notification)
+    if (actions.complaint) {
+      complaintAgent.setContextActions(actions.complaint)
+      leaderAnalystAgent.setContextActions(actions.complaint)
+      resolutionAgent.setContextActions(actions.complaint)
+    }
+    if (actions.resolution) {
+      resolutionAgent.setResolutionActions(actions.resolution)
+    }
 
     console.log('[Orchestrator] Context actions inyectadas en todos los agentes')
   }
@@ -341,6 +364,84 @@ class AgentOrchestratorClass {
    */
   async validatePayment(data) {
     return cashAgent.execute('validate_payment', data)
+  }
+
+  // ── Módulo de Quejas con IA (M1, M2, M3) ──────────────────────────────────
+
+  /**
+   * _unwrap — Desempaqueta la envoltura de AgentBase.execute() y devuelve el
+   * resultado propio de la tool ({ success, result?, error? }). Si la ejecución
+   * falló (excepción), normaliza a { success:false, error }.
+   */
+  _unwrap(envelope) {
+    if (!envelope || envelope.success === false) {
+      return { success: false, error: envelope?.error || 'Error desconocido en el agente' }
+    }
+    return envelope.result
+  }
+
+  /**
+   * triageComplaint — M1: estructura y registra una queja de cliente (CoT + JSON).
+   * @param {{ mensaje, canal?, cliente?, telefono? }} data
+   */
+  async triageComplaint(data) {
+    this._metrics.totalOrchestrations++
+    const correlationId = `complaint_${Date.now()}`
+    return this._unwrap(await complaintAgent.execute('triage_complaint', data, correlationId))
+  }
+
+  /**
+   * askLeaderQuery — M2: responde una pregunta del líder consultando las quejas (ReAct).
+   * @param {string} pregunta
+   */
+  async askLeaderQuery(pregunta) {
+    this._metrics.totalOrchestrations++
+    return this._unwrap(await leaderAnalystAgent.execute('answer_leader_query', { pregunta }))
+  }
+
+  /**
+   * auditProcess — M3: audita un proceso con Self-Consistency.
+   * @param {{ nombreProceso, definicion }} data
+   */
+  async auditProcess(data) {
+    this._metrics.totalOrchestrations++
+    return this._unwrap(await securityAuditorAgent.execute('audit_process', data))
+  }
+
+  /**
+   * resolveComplaint — M4: inicia resolución inteligente de una queja.
+   * @param {{ complaintId, tableId? }} data
+   */
+  async resolveComplaint(data) {
+    this._metrics.totalOrchestrations++
+    return this._unwrap(await resolutionAgent.execute('resolve_complaint', data))
+  }
+
+  /**
+   * proposeResponse — M4: genera propuesta RAG para una resolución.
+   * @param {{ resolutionId }} data
+   */
+  async proposeResponse(data) {
+    this._metrics.totalOrchestrations++
+    return this._unwrap(await resolutionAgent.execute('propose_response', data))
+  }
+
+  /**
+   * handleDirectResolution — M4: mesero se encarga directamente.
+   * @param {{ resolutionId }} data
+   */
+  async handleDirectResolution(data) {
+    this._metrics.totalOrchestrations++
+    return this._unwrap(await resolutionAgent.execute('handle_direct', data))
+  }
+
+  /**
+   * cancelResolution — M4: cancela resolución (mesa no registrada).
+   * @param {{ resolutionId }} data
+   */
+  async cancelResolution(data) {
+    this._metrics.totalOrchestrations++
+    return this._unwrap(await resolutionAgent.execute('cancel_resolution', data))
   }
 
   // ── Métricas y estado del sistema ─────────────────────────────────────────
