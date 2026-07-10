@@ -60,7 +60,7 @@
  * Regla de diseño: es preferible bloquear de más que bloquear de menos.
  * Un falso positivo se puede aclarar; una acción destructiva no se puede deshacer.
  */
-const BLOCKED_PATTERNS = [
+export const BLOCKED_PATTERNS = [
   // ── Verbos destructivos directos ────────────────────────────────────────────
   // "borra", "borrar", "borre", "borraste" + cualquier complemento
   /\b(borra(r|s|n|d[ao]s?|ndo|me|te|le|les|mos|ron)?)\b/i,
@@ -805,3 +805,21 @@ class PromptInterpreterClass {
 // Singleton
 export const promptInterpreter = new PromptInterpreterClass()
 export default promptInterpreter
+
+/**
+ * isDestructivePrompt — Guardrail reutilizable por AssistantAgent.
+ *
+ * Se evalúa contra el texto normalizado y contra el crudo: la normalización
+ * elimina la puntuación, y patrones como `; drop` o `-- delete` la necesitan.
+ * En caso de duda se bloquea (ver regla de diseño de BLOCKED_PATTERNS).
+ */
+export function isDestructivePrompt(rawPrompt) {
+  const text       = String(rawPrompt || '')
+  const normalized = promptInterpreter._normalize(text)
+  return BLOCKED_PATTERNS.some(p => p.test(normalized) || p.test(text))
+}
+
+/** Roles sin ningún acceso al asistente. */
+export function roleHasAssistantAccess(role) {
+  return (ROLE_PERMISSIONS[role] || []).length > 0
+}

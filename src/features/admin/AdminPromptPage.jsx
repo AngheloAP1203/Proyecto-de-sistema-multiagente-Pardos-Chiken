@@ -13,13 +13,14 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Bot, Send, ShieldAlert, ShieldCheck, BarChart2, PieChart, List, FileText, Cpu, Loader2, Trash2, Info } from 'lucide-react'
+import { Bot, Send, ShieldAlert, ShieldCheck, BarChart2, PieChart, List, FileText, Cpu, Loader2, Trash2, Info, Share2 } from 'lucide-react'
 import { useAuth }         from '../../context/AuthContext'
 import { useAgents }       from '../../context/AgentContext'
 import { useCash }         from '../../context/CashContext'
 import { useReservations } from '../../context/ReservationContext'
 import { useClients }      from '../../context/ClientContext'
 import { promptInterpreter } from '../../agents/core/PromptInterpreter'
+import { assistantAgent }    from '../../agents/AssistantAgent'
 import styles from './AdminPromptPage.module.css'
 
 // ── Sugerencias de prompts por rol ────────────────────────────────────────────
@@ -59,6 +60,8 @@ const INTENT_COLORS = {
   'read.clients.summary':     '#a78bfa',
   'read.system.status':       '#10b981',
   'read.general.summary':     '#0f172a',
+  'assistant.llm':            '#e8622a',
+  'assistant.unavailable':    '#6b7280',
   'BLOCKED.destructive':      '#ef4444',
   'BLOCKED.unauthorized':     '#f59e0b',
   'unknown':                  '#6b7280',
@@ -134,6 +137,13 @@ function BarChartInline({ config }) {
   )
 }
 
+// Los valores de un pastel no siempre son dinero: el top de platos son unidades.
+function formatPieValue(value, unit) {
+  const v = value ?? 0
+  if (!unit || unit === 'S/.') return `S/. ${v.toFixed(2)}`
+  return `${v} ${unit}`
+}
+
 // ── Componente de gráfica de pastel (SVG inline) ──────────────────────────────
 function PieChartInline({ config }) {
   if (!config || !config.values?.length) return null
@@ -185,7 +195,7 @@ function PieChartInline({ config }) {
             <div key={i} className={styles.pieLegendItem}>
               <span className={styles.pieLegendDot} style={{ background: colors[i % colors.length] }} />
               <span className={styles.pieLegendLabel}>{label}</span>
-              <span className={styles.pieLegendVal}>S/. {config.values[i]?.toFixed(2) || '0.00'}</span>
+              <span className={styles.pieLegendVal}>{formatPieValue(config.values[i], config.unit)}</span>
             </div>
           ))}
         </div>
@@ -266,9 +276,27 @@ function ChatMessage({ msg }) {
               <Cpu size={10} /> {a}
             </span>
           ))}
-          <span className={styles.msgConfidence} title="Confianza de clasificación">
-            {result.confidence}% confianza
-          </span>
+          {/* Handoffs: control cedido de un agente de dominio a otro, sin pasar por el supervisor */}
+          {result.handoffs?.map(h => (
+            <span key={h} className={styles.msgAgentBadge} title="Handoff directo entre agentes (LangGraph)">
+              <Share2 size={10} /> {h}
+            </span>
+          ))}
+          {Number.isFinite(result.confidence) && (
+            <span className={styles.msgConfidence} title="Confianza de clasificación">
+              {result.confidence}% confianza
+            </span>
+          )}
+          {result.degraded && (
+            <span className={styles.msgConfidence} title={`Modo degradado: ${result.degradedReason}`}>
+              modo sin LLM
+            </span>
+          )}
+          {result.cached && (
+            <span className={styles.msgConfidence} title="Respuesta servida del caché de sesión (misma pregunta, mismos datos, mismo rol)">
+              caché
+            </span>
+          )}
         </div>
 
         {/* Gráfica de barras */}
@@ -341,6 +369,8 @@ export default function AdminPromptPage() {
   const [input,      setInput]      = useState('')
   const [isLoading,  setIsLoading]  = useState(false)
   const [showInfo,   setShowInfo]   = useState(true)
+  // Texto que llega token a token. El agente lo vacía si tiene que rehacer la respuesta.
+  const [streaming,  setStreaming]  = useState('')
 
   const bottomRef   = useRef(null)
   const inputRef    = useRef(null)
@@ -350,7 +380,7 @@ export default function AdminPromptPage() {
   // Scroll al último mensaje
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, streaming])
 
   const handleSubmit = useCallback(async (promptText) => {
     const text = (promptText || input).trim()
@@ -371,10 +401,22 @@ export default function AdminPromptPage() {
       systemStatus: systemStatus || null,
     }
 
-    // Interpretar prompt (el guardrail actúa aquí)
-    const result = await promptInterpreter.interpret(text, role, contextData)
+    // Historial conversacional: sin esto, "¿y el ticket promedio?" no tiene a qué referirse
+    const history = messages.map(m => ({
+      role:    m.role,
+      content: m.role === 'user' ? m.content : (m.result?.summary || ''),
+    }))
 
-    // Agregar respuesta del agente
+    // El guardrail y el filtro por rol actúan dentro de ask(); nunca lanza.
+    // onToken solo recibe fragmentos ya verificados: una cifra inventada no llega aquí.
+    setStreaming('')
+    const result = await assistantAgent.ask({
+      prompt: text, role, contextData, history,
+      onToken: (fragmento) => setStreaming(prev => prev + fragmento),
+      onReset: () => setStreaming(''),
+    })
+
+    setStreaming('')
     setMessages(prev => [...prev, {
       role:   'agent',
       result,
@@ -383,7 +425,7 @@ export default function AdminPromptPage() {
 
     setIsLoading(false)
     inputRef.current?.focus()
-  }, [input, isLoading, role, payments, reservations, clients, systemStatus])
+  }, [input, isLoading, role, messages, payments, reservations, clients, systemStatus])
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -472,9 +514,18 @@ export default function AdminPromptPage() {
             <div className={styles.msgAgentIcon} style={{ background: '#f0fdf4', color: '#16a34a' }}>
               <Loader2 size={16} className={styles.spin} />
             </div>
-            <div className={`${styles.msgAgentBubble} ${styles.loadingBubble}`}>
-              <span className={styles.dot} /><span className={styles.dot} /><span className={styles.dot} />
-            </div>
+            {/* Mientras no llega texto, los puntos. En cuanto llega, se ve escribir. */}
+            {streaming
+              ? (
+                <div className={styles.msgAgentBubble}>
+                  <MarkdownText text={streaming} />
+                </div>
+              )
+              : (
+                <div className={`${styles.msgAgentBubble} ${styles.loadingBubble}`}>
+                  <span className={styles.dot} /><span className={styles.dot} /><span className={styles.dot} />
+                </div>
+              )}
           </div>
         )}
 

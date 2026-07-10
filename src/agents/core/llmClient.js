@@ -22,17 +22,33 @@
 const ENV = (typeof import.meta !== 'undefined' && import.meta.env) || {}
 const useProxy = ENV.VITE_USE_PROXY === 'true'
 const API_KEY = ENV.VITE_GEMINI_API_KEY || ''
+const GROQ_KEY = ENV.VITE_GROQ_API_KEY || ''
+const PROVIDER = (ENV.VITE_LLM_PROVIDER || '').toLowerCase()
 
-const DEFAULT_MODEL = 'gemini-2.5-flash'
 const MAX_RETRIES = 3
 const MAX_TOOL_TURNS = 6
 
-export const llmMode = useProxy ? 'proxy' : (API_KEY ? 'gemini' : 'mock')
+export const llmMode =
+  useProxy                          ? 'proxy'
+  : (PROVIDER === 'groq' && GROQ_KEY) ? 'groq'
+  : API_KEY                           ? 'gemini'
+  : 'mock'
+
+// Cada proveedor tiene su modelo por defecto. Ningún agente fija el suyo.
+// VITE_LLM_MODEL permite sobreescribirlo (útil: los límites de tokens de Groq
+// son por modelo, así que se puede cambiar de modelo al agotar una bolsa).
+// El proxy (/api/llm) habla con Groq, así que comparte su default.
+const DEFAULT_MODEL =
+  ENV.VITE_LLM_MODEL ||
+  (llmMode === 'groq' || llmMode === 'proxy' ? 'llama-3.3-70b-versatile' : 'gemini-2.5-flash')
+
+/** Modelo realmente en uso. La UI lo muestra: nunca debe mentir sobre quién respondió. */
+export const llmModel = llmMode === 'mock' ? null : DEFAULT_MODEL
 
 if (llmMode === 'mock') {
   console.warn(
-    '[llmClient] Sin VITE_GEMINI_API_KEY → modo MOCK (heurística local). ' +
-    'Configura .env con tu key gratuita de https://aistudio.google.com/apikey para usar Gemini real.'
+    '[llmClient] Sin API key → modo MOCK (heurística local). ' +
+    'Configura .env con VITE_GEMINI_API_KEY o VITE_GROQ_API_KEY para usar un LLM real.'
   )
 }
 
@@ -40,24 +56,181 @@ if (llmMode === 'mock') {
 let _langchainPromise = null
 
 async function getLangChainModel(opts = {}) {
-  if (!API_KEY) return null
+  if (llmMode === 'mock') return null
+
+  // En modo proxy el "modelo" es un adaptador que llama a /api/llm: misma
+  // interfaz (bindTools/invoke/stream), pero la key vive solo en el servidor.
+  if (llmMode === 'proxy') {
+    return new ProxyChat({
+      model: opts.model || DEFAULT_MODEL,
+      temperature: opts.temperature ?? 0.3,
+    })
+  }
+
   if (!_langchainPromise) {
-    _langchainPromise = import('@langchain/google-genai')
-      .catch((e) => {
-        console.warn('[llmClient] No se pudo cargar @langchain/google-genai, usando MOCK:', e.message)
-        return null
-      })
+    // Los especificadores deben ser literales: Vite no resuelve import() con variable.
+    _langchainPromise = (llmMode === 'groq'
+      ? import('@langchain/groq')
+      : import('@langchain/google-genai')
+    ).catch((e) => {
+      console.warn('[llmClient] No se pudo cargar el conector LLM, usando MOCK:', e.message)
+      return null
+    })
   }
   const mod = await _langchainPromise
   if (!mod) return null
 
-  const { ChatGoogleGenerativeAI } = mod
-  return new ChatGoogleGenerativeAI({
+  const config = {
     model: opts.model || DEFAULT_MODEL,
-    apiKey: API_KEY,
     temperature: opts.temperature ?? 0.3,
     ...(opts.extra || {}),
+  }
+
+  if (llmMode === 'groq') {
+    // La key viaja al navegador (prefijo VITE_). Ver deuda del proxy en api/triage.js.
+    return new mod.ChatGroq({ ...config, apiKey: GROQ_KEY })
+  }
+  return new mod.ChatGoogleGenerativeAI({ ...config, apiKey: API_KEY })
+}
+
+/**
+ * normalizeTools — Traduce el formato de tools de Gemini al genérico de LangChain.
+ *
+ * Los agentes declaran sus tools como `[{ functionDeclarations: [...] }]` (formato
+ * nativo de Gemini). Groq es compatible con OpenAI y rechaza ese formato con
+ * "property 'type' is missing". La forma genérica `{ name, description, schema }`
+ * la entienden ambos, pero la conversión solo se aplica fuera de Gemini para no
+ * alterar el comportamiento ya verificado.
+ */
+function normalizeTools(tools) {
+  if (llmMode === 'gemini' || !Array.isArray(tools)) return tools
+
+  const declaraciones = tools.flatMap(t => t.functionDeclarations || [])
+  if (declaraciones.length === 0) return tools
+
+  return declaraciones.map(d => ({
+    name: d.name,
+    description: d.description,
+    schema: d.parameters || { type: 'object', properties: {} },
+  }))
+}
+
+/**
+ * getChatModel — Modelo LangChain crudo, ya ligado a las tools del rol.
+ *
+ * Lo usa assistantGraph.js, que necesita controlar el bucle ReAct nodo a nodo
+ * en vez de delegarlo en completeWithTools. Devuelve null en modo mock/proxy.
+ */
+export async function getChatModel({ tools, temperature, model } = {}) {
+  const llm = await getLangChainModel({ model, temperature })
+  if (!llm) return null
+  return tools ? llm.bindTools(normalizeTools(tools)) : llm
+}
+
+// ── Adaptador de chat para el modo proxy ─────────────────────────────────────
+
+/**
+ * toOpenAIMessages — Convierte mensajes LangChain al formato OpenAI que espera
+ * /api/llm. Cubre los cuatro tipos que produce el asistente: system, human,
+ * ai (con o sin tool_calls) y tool (con su tool_call_id).
+ */
+export function toOpenAIMessages(messages) {
+  return (messages || []).map((msg) => {
+    const tipo = msg.getType?.() ?? msg._getType?.() ?? msg.role
+    const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content ?? '')
+
+    if (tipo === 'system') return { role: 'system', content }
+    if (tipo === 'human' || tipo === 'user') return { role: 'user', content }
+
+    if (tipo === 'tool') {
+      return { role: 'tool', tool_call_id: msg.tool_call_id || msg.name || '', content }
+    }
+
+    // 'ai' / 'assistant'
+    const out = { role: 'assistant', content }
+    if (msg.tool_calls?.length) {
+      out.tool_calls = msg.tool_calls.map((tc) => ({
+        id: tc.id || tc.name,
+        type: 'function',
+        function: { name: tc.name, arguments: JSON.stringify(tc.args || {}) },
+      }))
+    }
+    return out
   })
+}
+
+/**
+ * ProxyChat — Chat-model mínimo que habla con /api/llm en vez de con Groq
+ * directo. Implementa la interfaz que usan el grafo y completeWithTools
+ * (bindTools / invoke / stream), así que ninguno se entera del cambio.
+ *
+ * `stream()` emite la respuesta completa en un solo fragmento: el proxy no
+ * retransmite tokens. Es un intercambio deliberado — granularidad de streaming
+ * a cambio de que la key no viaje al navegador — y está documentado, no oculto.
+ */
+export class ProxyChat {
+  constructor({ model, temperature, tools = null, url = '/api/llm' }) {
+    this.model = model
+    this.temperature = temperature
+    this.tools = tools
+    this.url = url
+  }
+
+  /** Recibe el formato genérico de normalizeTools y lo traduce a OpenAI. */
+  bindTools(tools) {
+    const openaiTools = (tools || []).map((t) => ({
+      type: 'function',
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: t.schema || { type: 'object', properties: {} },
+      },
+    }))
+    return new ProxyChat({ model: this.model, temperature: this.temperature, tools: openaiTools, url: this.url })
+  }
+
+  async invoke(messages) {
+    const { AIMessage } = await import('@langchain/core/messages')
+
+    const res = await fetch(this.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: this.model,
+        temperature: this.temperature,
+        messages: toOpenAIMessages(messages),
+        ...(this.tools?.length ? { tools: this.tools } : {}),
+      }),
+    })
+
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      // El status y el mensaje original de Groq deben sobrevivir: withRetry
+      // decide la espera leyendo "Please try again in Xs" del cuerpo.
+      throw Object.assign(new Error(JSON.stringify(body)), { status: res.status })
+    }
+
+    const mensaje = body.choices?.[0]?.message || {}
+    const toolCalls = (mensaje.tool_calls || []).map((tc) => {
+      let args = {}
+      try {
+        const parseado = JSON.parse(tc.function?.arguments || '{}')
+        if (parseado && typeof parseado === 'object') args = parseado
+      } catch { /* argumentos malformados: la tool corre con sus defaults */ }
+      return { id: tc.id || tc.function?.name, name: tc.function?.name, args, type: 'tool_call' }
+    })
+
+    return new AIMessage({ content: mensaje.content ?? '', tool_calls: toolCalls })
+  }
+
+  /** Una sola emisión con la respuesta completa (ver nota de la clase). */
+  async *_streamImpl(messages) {
+    yield await this.invoke(messages)
+  }
+
+  stream(messages) {
+    return Promise.resolve(this._streamImpl(messages))
+  }
 }
 
 // Limpia posibles cercos ```json que el modelo agrega
@@ -66,8 +239,28 @@ function safeParseJSON(text) {
   return JSON.parse(clean)
 }
 
-// Reintento con backoff exponencial ante 429/503
-async function withRetry(fn, { retries = MAX_RETRIES, label = 'gemini' } = {}) {
+const MAX_BACKOFF_MS = 8000
+
+/**
+ * Gemini y Groq indican en el propio error cuánto falta para que se libere la
+ * cuota ("Please try again in 6.6s"). Respetarlo evita reintentar demasiado
+ * pronto y agotar los intentos por unas décimas de segundo.
+ */
+function esperaSugerida(err) {
+  const texto = String(err?.message || '')
+  // "try again in 6.6s" · "try again in 26m41.856s" · Gemini: retryDelay:"48s"
+  const m = texto.match(/try again in (?:(\d+)m)?([\d.]+)\s*s/i) || texto.match(/retryDelay"\s*:\s*"(\d+)s/i)
+  if (!m) return null
+
+  const segundos = m.length === 3
+    ? (parseInt(m[1] || 0, 10) * 60) + parseFloat(m[2])
+    : parseFloat(m[1])
+
+  return Number.isFinite(segundos) ? Math.ceil(segundos * 1000) + 300 : null
+}
+
+// Reintento ante 429/503, respetando la espera que pide el proveedor
+async function withRetry(fn, { retries = MAX_RETRIES, label = 'llm' } = {}) {
   let lastErr
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -77,7 +270,16 @@ async function withRetry(fn, { retries = MAX_RETRIES, label = 'gemini' } = {}) {
       const status = err?.status ?? err?.response?.status
       const retryable = status === 429 || status === 503
       if (!retryable || attempt === retries) break
-      const waitMs = Math.min(2 ** attempt * 1000, 8000)
+
+      const sugerida = esperaSugerida(err)
+      const waitMs = Math.min(sugerida ?? 2 ** attempt * 1000, MAX_BACKOFF_MS)
+
+      // Si la cuota tarda más de lo que estamos dispuestos a esperar, degradamos ya.
+      if (sugerida && sugerida > MAX_BACKOFF_MS) {
+        console.warn(`[llmClient] ${label}: cuota agotada por ${Math.round(sugerida / 1000)}s. No reintento.`)
+        break
+      }
+
       console.warn(`[llmClient] ${label}: ${status}, reintento ${attempt + 1}/${retries} en ${waitMs}ms`)
       await new Promise((r) => setTimeout(r, waitMs))
     }
@@ -139,14 +341,16 @@ export async function complete({ system, prompt, temperature = 0.8, model = DEFA
 // ── M2: function calling / bucle ReAct (LangChain) ──────────────────────────
 export async function completeWithTools({ system, prompt, tools, handlers,
                                           temperature = 0.2, model = DEFAULT_MODEL }) {
-  const llm = useProxy ? null : await getLangChainModel({ model, temperature })
+  // En modo proxy getLangChainModel devuelve ProxyChat: el bucle ReAct corre
+  // igual, solo que cada llamada al modelo pasa por /api/llm.
+  const llm = await getLangChainModel({ model, temperature })
   if (!llm) return mockTools(prompt, handlers)
 
   return withRetry(async () => {
     const { HumanMessage, SystemMessage, AIMessage } = await import('@langchain/core/messages')
 
-    // Bind las tools de Gemini al modelo LangChain
-    const modelWithTools = llm.bind({ tools })
+    // En LangChain v1 el método es bindTools(); `bind({ tools })` ya no existe.
+    const modelWithTools = llm.bindTools(normalizeTools(tools))
     const messages = [new SystemMessage(system), new HumanMessage(prompt)]
 
     let resp = await modelWithTools.invoke(messages)

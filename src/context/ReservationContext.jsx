@@ -26,10 +26,15 @@ export function ReservationProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true)
   const seenApiIds = useRef(new Set())
 
-  // Cargar datos desde localStorage al montar
+  // Cargar datos desde localStorage al montar.
+  // Igual que en CashContext: si lo guardado no tiene ninguna reserva de hoy
+  // (visita de un día anterior), se refrescan los seeds para que la demo
+  // nunca muestre un día vacío.
   useEffect(() => {
     const saved = readJSON('pardos_reservations', null)
-    setReservations(saved || SAMPLE_RESERVATIONS)
+    const hoy = new Date().toISOString().split('T')[0]
+    const tieneDatosDeHoy = Array.isArray(saved) && saved.some(r => r.date === hoy)
+    setReservations(tieneDatosDeHoy ? saved : SAMPLE_RESERVATIONS)
     setIsLoading(false)
   }, [])
 

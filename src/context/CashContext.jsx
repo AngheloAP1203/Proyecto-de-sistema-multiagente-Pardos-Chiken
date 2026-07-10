@@ -27,12 +27,19 @@ export function CashProvider({ children }) {
   const [shift,      setShift]      = useState(null)
   const [isLoading,  setLoading]    = useState(true)
 
-  // Cargar desde localStorage
+  // Cargar desde localStorage.
+  // Semántica de demo: los seeds generan fechas relativas a "hoy" pero solo se
+  // cargan la primera vez. Si lo guardado no tiene NINGÚN pago de hoy (visita
+  // de un día anterior), se refrescan los seeds — si no, el dashboard y el
+  // asistente mostrarían un día en cero.
   useEffect(() => {
     const savedPay = readJSON('pardos_payments', null)
     const savedShift = readJSON('pardos_shift', null)
-    
-    setPayments(savedPay || SAMPLE_PAYMENTS)
+
+    const hoy = new Date().toISOString().split('T')[0]
+    const tieneDatosDeHoy = Array.isArray(savedPay) && savedPay.some(p => p.date === hoy)
+
+    setPayments(tieneDatosDeHoy ? savedPay : SAMPLE_PAYMENTS)
     setShift(savedShift || null)
     setLoading(false)
   }, [])
