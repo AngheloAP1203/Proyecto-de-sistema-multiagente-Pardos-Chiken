@@ -1,0 +1,34 @@
+# CI del Asistente IA (M5) — §8.2 del documento de diseño.
+#
+# Cada push/PR ejecuta el golden set completo (136 comprobaciones deterministas:
+# guardrails, permisos por rol, procedencia de cifras, handoffs, streaming,
+# caché) más lint y build. No necesita API keys: las suites deterministas
+# corren en modo mock y verifican la lógica, no al proveedor.
+name: golden-set
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  evaluar:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # En el repo de la organización la app vive en PARDOS/; en el personal, en la raíz.
+        working-directory: ${{ github.repository == 'PardosOrganization/PardosReservatios' && 'PARDOS' || '.' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Golden set (136 comprobaciones)
+        run: npm run test:agents
+      - name: Build de producción (bundle sin secretos)
+        run: |
+          npm run build
+          if grep -rlE "gsk_[A-Za-z0-9]{20}|AIza[A-Za-z0-9_-]{20}" dist/assets/; then
+            echo "::error::Hay una API key incrustada en el bundle"; exit 1
+          fi
+          echo "Bundle limpio: sin keys"
