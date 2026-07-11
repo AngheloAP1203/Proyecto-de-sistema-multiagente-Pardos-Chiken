@@ -287,47 +287,23 @@ async function withRetry(fn, { retries = MAX_RETRIES, label = 'llm' } = {}) {
   throw lastErr
 }
 
-// Proxy serverless (modo producción)
-async function callProxy(payload) {
-  const res = await fetch('/api/triage', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  if (!res.ok) throw Object.assign(new Error(`Proxy LLM error ${res.status}`), { status: res.status })
-  return res.json()
-}
-
-// ── M1: salida JSON estructurada (LangChain) ────────────────────────────────
-export async function completeJSON({ system, prompt, schema, temperature = 0.3, model = DEFAULT_MODEL }) {
-  if (useProxy) return callProxy({ mode: 'json', system, prompt, schema, temperature, model })
-
+// ── M1: salida JSON estructurada ─────────────────────────────────────────────
+// getLangChainModel resuelve el proveedor: ChatGroq (directo), ProxyChat (proxy
+// → /api/llm → Groq) o null (mock). Ya no hay ruta separada a Gemini: un solo
+// proveedor. safeParseJSON tolera los cercos ```json que algunos modelos añaden.
+export async function completeJSON({ system, prompt, temperature = 0.3, model = DEFAULT_MODEL }) {
   const llm = await getLangChainModel({ model, temperature })
   if (!llm) return mockTriage(prompt)
 
   return withRetry(async () => {
     const { HumanMessage, SystemMessage } = await import('@langchain/core/messages')
-    const messages = [new SystemMessage(system), new HumanMessage(prompt)]
-
-    // Intentar structured output con schema si está disponible
-    if (schema) {
-      try {
-        const structured = llm.bind({ response_format: { type: 'json_object' } })
-        const result = await structured.invoke(messages)
-        return safeParseJSON(result.content)
-      } catch {
-        // Fallback: sin structured output binding, solo parsear la respuesta
-      }
-    }
-
-    const result = await llm.invoke(messages)
+    const result = await llm.invoke([new SystemMessage(system), new HumanMessage(prompt)])
     return safeParseJSON(result.content)
   }, { label: 'completeJSON' })
 }
 
-// ── M3: texto plano (LangChain) ─────────────────────────────────────────────
+// ── M3: texto plano ──────────────────────────────────────────────────────────
 export async function complete({ system, prompt, temperature = 0.8, model = DEFAULT_MODEL }) {
-  if (useProxy) return (await callProxy({ mode: 'text', system, prompt, temperature, model })).text
-
   const llm = await getLangChainModel({ model, temperature })
   if (!llm) return mockAudit(prompt)
 
