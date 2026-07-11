@@ -15,6 +15,7 @@
 import { useMemo, useState } from 'react'
 import {
   Send, Sparkles, Shield, AlertTriangle, Filter, Trash2, Bot, MessageSquare,
+  ShieldAlert, ShieldCheck, CheckCircle2, Activity,
 } from 'lucide-react'
 import { useComplaints } from '../../context/ComplaintContext'
 import { useAgents } from '../../context/AgentContext'
@@ -30,6 +31,165 @@ const PRIORIDAD_CLASS = {
   'Alta':    styles.pAlta,
   'Media':   styles.pMedia,
   'Baja':    styles.pBaja,
+}
+
+// ── Auditoría (M3): parser del informe Markdown → estructura para tarjetas ─────
+
+/** Normaliza un nivel de riesgo/probabilidad a una de tres severidades. */
+function nivelSeveridad(texto = '') {
+  const t = texto.toLowerCase()
+  if (/(alt|cr[ií]tic|grave|sever)/.test(t)) return 'alto'
+  if (/(medi|moder)/.test(t)) return 'medio'
+  if (/(baj|leve|menor)/.test(t)) return 'bajo'
+  return 'medio'
+}
+
+const limpiar = (s = '') => s.replace(/\*+/g, '').replace(/^[-•]\s*/, '').replace(/\s+/g, ' ').trim()
+
+// Marcador de campo tolerante: acepta viñetas (-, *, •), negrita (**), y mayús/minús.
+const RE_CAMPO = /[-*•]?\s*\*{0,2}\s*(riesgo|impacto|descripci[oó]n|probabilidad)\s*\*{0,2}\s*:/gi
+
+/**
+ * extraerCampos — Del texto de UNA vulnerabilidad, saca riesgo/descripción/probabilidad
+ * sin importar si el modelo usó `**Riesgo**:`, `* Riesgo:` o `- Riesgo:`. Corta el
+ * valor de cada campo hasta el inicio del siguiente marcador.
+ */
+function extraerCampos(bloque) {
+  const marcas = [...bloque.matchAll(RE_CAMPO)]
+  const out = { riesgo: '', descripcion: '', probabilidad: '' }
+  if (marcas.length === 0) return { ...out, nombreExtra: '' }
+
+  // Todo lo anterior al primer marcador pertenece al nombre.
+  const nombreExtra = bloque.slice(0, marcas[0].index)
+
+  marcas.forEach((m, i) => {
+    const desde = m.index + m[0].length
+    const hasta = i + 1 < marcas.length ? marcas[i + 1].index : bloque.length
+    const clave = m[1].toLowerCase()
+    const valor = limpiar(bloque.slice(desde, hasta))
+    if (clave.startsWith('riesgo') || clave.startsWith('impacto')) out.riesgo = valor
+    else if (clave.startsWith('descrip')) out.descripcion = valor
+    else if (clave.startsWith('probab')) out.probabilidad = valor
+  })
+  return { ...out, nombreExtra }
+}
+
+/**
+ * parseInforme — Convierte el informe del auditor en
+ * { titulo, vulnerabilidades[], recomendaciones[] }. Agnóstico al formato exacto:
+ * separa por secciones (##), agrupa cada vulnerabilidad por su línea numerada y
+ * extrae los campos con marcadores tolerantes.
+ */
+function parseInforme(texto = '') {
+  const lineas = texto.split('\n')
+  let titulo = 'Informe de auditoría'
+  const recomendaciones = []
+  const bloques = []           // [{ nombre, cuerpo }]
+  let seccion = null           // 'vuln' | 'reco'
+  let actual = null
+
+  const cerrar = () => { if (actual) { bloques.push(actual); actual = null } }
+
+  for (const raw of lineas) {
+    const l = raw.trim()
+    if (!l) continue
+
+    if (/^#\s/.test(l)) {
+      titulo = l.replace(/^#+\s*/, '').replace(/INFORME DE AUDITOR[IÍ]A\s*(CONSOLIDADO)?\s*[—-]?\s*/i, '').trim() || titulo
+      continue
+    }
+    if (/^##\s/.test(l)) { cerrar(); seccion = /recomend|mitigac/i.test(l) ? 'reco' : 'vuln'; continue }
+
+    if (seccion === 'reco') {
+      if (/^[-*•]?\s*\d*[.)]?\s*\S/.test(l)) recomendaciones.push(limpiar(l.replace(/^[-*•]?\s*\d+[.)]\s*/, '')))
+      continue
+    }
+
+    // Nueva vulnerabilidad: línea numerada "1." o "2)"
+    const num = l.match(/^\d+[.)]\s*(.*)$/)
+    if (num) { cerrar(); actual = { nombre: limpiar(num[1].replace(/:\s*$/, '')), cuerpo: '' } }
+    else if (actual) { actual.cuerpo += ' ' + l }
+    else { actual = { nombre: '', cuerpo: l } }   // por si no viene numerado
+  }
+  cerrar()
+
+  const vulnerabilidades = bloques.map(b => {
+    const texto = `${b.nombre} ${b.cuerpo}`.trim()
+    const { riesgo, descripcion, probabilidad, nombreExtra } = extraerCampos(texto)
+    // El nombre es lo que queda antes del primer campo; si el bloque traía nombre en la
+    // línea numerada, ese gana.
+    const nombre = limpiar(b.nombre || nombreExtra).replace(/:\s*$/, '')
+    return {
+      nombre,
+      riesgo,
+      descripcion: descripcion || (riesgo || probabilidad ? '' : limpiar(b.cuerpo)),
+      probabilidad,
+    }
+  }).filter(v => v.nombre || v.descripcion)
+
+  return { titulo, vulnerabilidades, recomendaciones }
+}
+
+/** Tarjeta de reporte de auditoría — reemplaza el <pre> monoespaciado. */
+function AuditReport({ texto }) {
+  const { titulo, vulnerabilidades, recomendaciones } = useMemo(() => parseInforme(texto), [texto])
+
+  // Si el parser no reconoció estructura, degradamos a texto legible (no <pre> crudo).
+  if (vulnerabilidades.length === 0 && recomendaciones.length === 0) {
+    return <div className={styles.auditFallback}>{texto}</div>
+  }
+
+  const conteo = vulnerabilidades.reduce((a, v) => { a[nivelSeveridad(v.riesgo)]++; return a }, { alto: 0, medio: 0, bajo: 0 })
+
+  return (
+    <div className={styles.audit}>
+      <div className={styles.auditHead}>
+        <div className={styles.auditHeadIcon}><ShieldCheck size={16} /></div>
+        <div>
+          <p className={styles.auditTitle}>{titulo}</p>
+          <p className={styles.auditSub}>{vulnerabilidades.length} hallazgo(s) consistente(s) · Self-Consistency 5/5</p>
+        </div>
+      </div>
+
+      <div className={styles.auditStats}>
+        {conteo.alto  > 0 && <span className={`${styles.auditStat} ${styles.sevAlto}`}>{conteo.alto} alto</span>}
+        {conteo.medio > 0 && <span className={`${styles.auditStat} ${styles.sevMedio}`}>{conteo.medio} medio</span>}
+        {conteo.bajo  > 0 && <span className={`${styles.auditStat} ${styles.sevBajo}`}>{conteo.bajo} bajo</span>}
+      </div>
+
+      <div className={styles.auditList}>
+        {vulnerabilidades.map((v, i) => {
+          const sev = nivelSeveridad(v.riesgo)
+          return (
+            <div key={i} className={`${styles.vuln} ${styles['sevBorder_' + sev]}`}>
+              <div className={styles.vulnTop}>
+                <ShieldAlert size={14} className={styles['sevIcon_' + sev]} />
+                <span className={styles.vulnName}>{v.nombre || `Hallazgo ${i + 1}`}</span>
+                {v.riesgo && <span className={`${styles.vulnBadge} ${styles['sevBadge_' + sev]}`}>{v.riesgo}</span>}
+              </div>
+              {v.descripcion && <p className={styles.vulnDesc}>{v.descripcion}</p>}
+              {v.probabilidad && (
+                <p className={styles.vulnProb}><Activity size={11} /> Probabilidad: <strong>{v.probabilidad}</strong></p>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {recomendaciones.length > 0 && (
+        <div className={styles.auditReco}>
+          <p className={styles.auditRecoTitle}>Recomendaciones de mitigación</p>
+          <ul className={styles.recoList}>
+            {recomendaciones.map((r, i) => (
+              /^.{1,40}:$/.test(r)
+                ? <li key={i} className={styles.recoGroup}>{r.replace(/:$/, '')}</li>
+                : <li key={i} className={styles.recoItem}><CheckCircle2 size={13} /> <span>{r}</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
 }
 
 const PROCESO_TRIAJE_DEFAULT = `Proceso de triaje de quejas (ComplaintAgent.triage_complaint):
@@ -286,7 +446,7 @@ export default function ComplaintsPage() {
             <Button variant="secondary" icon={<AlertTriangle size={14} />} isLoading={auditing} onClick={handleAudit} fullWidth>
               {auditing ? 'Auditando…' : 'Auditar proceso de triaje'}
             </Button>
-            {informe && <pre className={styles.informe}>{informe}</pre>}
+            {informe && <AuditReport texto={informe} />}
           </div>
         </aside>
       </div>
