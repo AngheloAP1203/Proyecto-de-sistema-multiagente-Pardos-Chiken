@@ -15,7 +15,7 @@
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, EyeOff, Mail, Lock, UtensilsCrossed, CalendarPlus } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, UtensilsCrossed, CalendarPlus, MessageSquareWarning } from 'lucide-react'
 import { useAuth, MOCK_USERS, ROLE_PERMISSIONS } from '../../context/AuthContext'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
@@ -192,6 +192,9 @@ export default function LoginPage() {
             <p className={styles.bookingCtaText}>¿Eres cliente y quieres hacer una reserva?</p>
             <Link to="/reservar" className={styles.bookingCtaBtn}>
               <CalendarPlus size={14} /> Solicitar reserva online
+            </Link>
+            <Link to="/reclamo" className={styles.bookingCtaBtn} style={{ marginTop: 8 }}>
+              <MessageSquareWarning size={14} /> ¿Tuviste un problema? Reclama aquí
             </Link>
           </div>
         </div>

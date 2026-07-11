@@ -22,6 +22,7 @@ Topología estrella con `AgentOrchestrator` al centro. 9 agentes, 5 módulos de 
 | M3 | SecurityAuditorAgent | Self-Consistency (5 auditorías) |
 | M4 | ResolutionAgent | RAG + cruce de dominios controlado |
 | M5 | AssistantAgent | Supervisor + malla de handoffs (LangGraph) |
+| M6 | RewardAgent | Verificación anti-fraude determinista + recompensa |
 
 ### M5 — Asistente del líder
 
@@ -94,6 +95,19 @@ El LLM nunca recibe arrays crudos de otros dominios. Las funciones intermediaria
 ```
 - `status`: "pendiente" | "aceptada" | "rechazada" | "completada"
 - `accionElegida`: "encargo_directo" | "proponer_respuesta" | "cancelar"
+
+### M6 — Recompensas al cliente (anti-fraude)
+
+Página pública `/reclamo` (ClaimPage): el cliente indica teléfono + número de mesa y
+describe su problema. El flujo: triaje M1 (severidad) → `claimVerifier` (determinista) →
+`RewardAgent`.
+
+**La elegibilidad la decide JS, nunca el LLM.** `core/claimVerifier.js` cruza el reclamo
+contra la cadena Reserva(tableId, clientPhone) → Comanda → Pago. Identidad = teléfono **Y**
+mesa deben coincidir con quien consumió ahí ese día. Veredictos: VERIFICADO / RECHAZADO
+(teléfono no coincide) / SIN_COMANDA (mesa sin consumo) / SIN_MESA. Un reclamo no verificado
+se rechaza sin recompensa (decisión de negocio, estricta). El LLM solo redacta el mensaje
+de recompensa cuando JS ya confirmó identidad y eligió la promo (por política/severidad).
 
 ### Anti-alucinación (AssistantAgent)
 

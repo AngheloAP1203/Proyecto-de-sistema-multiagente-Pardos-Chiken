@@ -66,6 +66,7 @@ import AppLayout from './components/layout/AppLayout'
 // Páginas
 import LoginPage    from './features/auth/LoginPage'
 import BookingPage  from './features/booking/BookingPage'
+import ClaimPage    from './features/claim/ClaimPage'
 import DashboardPage    from './features/dashboard/DashboardPage'
 import AnalyticsPage    from './features/analytics/AnalyticsPage'
 import ReservationsPage from './features/reservations/ReservationsPage'
@@ -195,8 +196,9 @@ export default function App() {
                       {/* ── Ruta raíz → login ── */}
                       <Route path="/" element={<Navigate to="/login" replace />} />
 
-                      {/* ── Página pública de reservas (sin login) ── */}
+                      {/* ── Páginas públicas (sin login) ── */}
                       <Route path="/reservar" element={<BookingPage />} />
+                      <Route path="/reclamo"  element={<ClaimPage />} />
 
                       {/* ── Rutas públicas (solo accesibles sin sesión) ── */}
                       <Route element={<PublicOnlyRoute />}>
