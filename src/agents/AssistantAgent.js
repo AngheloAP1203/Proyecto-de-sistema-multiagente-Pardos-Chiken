@@ -49,8 +49,9 @@ const TEMP_ESTRICTA = 0.1
 
 // Fallback de modelo (§3.8 robustez): si el modelo principal agota su cuota
 // diaria de tokens, se reintenta con uno más ligero —bolsa de tokens separada—
-// antes de degradar al modo sin LLM. Solo aplica en Groq.
-const MODELO_FALLBACK = llmMode === 'groq' ? 'llama-3.1-8b-instant' : null
+// antes de degradar al modo sin LLM. Aplica en Groq directo y vía proxy
+// (ambos hablan con Groq; en producción llmMode === 'proxy').
+const MODELO_FALLBACK = (llmMode === 'groq' || llmMode === 'proxy') ? 'llama-3.1-8b-instant' : null
 
 /** Etiqueta del modelo realmente usado, para que la UI no mienta sobre quién respondió. */
 const etiquetaModelo = (modelo) => {
