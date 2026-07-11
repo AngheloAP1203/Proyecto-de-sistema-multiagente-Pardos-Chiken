@@ -137,7 +137,7 @@ export function normalizarToolCalls(mensaje) {
  * createAssistantGraph — Compila el grafo para un rol y un contexto concretos.
  * Devuelve `{ invoke }` o null si LangGraph no está disponible.
  */
-export async function createAssistantGraph({ role, contextData, systemPrompt, onToken, onReset }) {
+export async function createAssistantGraph({ role, contextData, systemPrompt, onToken, onReset, model }) {
   const mod = await langGraph()
   if (!mod) return null
 
@@ -145,10 +145,10 @@ export async function createAssistantGraph({ role, contextData, systemPrompt, on
   const { tools, handlers, emitted, results, agentsUsed, isEmpty } = buildToolsForRole(role, contextData)
   if (isEmpty) return null
 
-  const modelo = await getChatModel({ tools, temperature: TEMP_NORMAL })
+  const modelo = await getChatModel({ tools, temperature: TEMP_NORMAL, model })
   if (!modelo) return null
 
-  const modeloEstricto = await getChatModel({ tools, temperature: TEMP_ESTRICTA })
+  const modeloEstricto = await getChatModel({ tools, temperature: TEMP_ESTRICTA, model })
 
   const reemplazar = (_, v) => v
   const concatenar = (a, b) => [...(a || []), ...(b || [])]

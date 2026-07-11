@@ -47,8 +47,22 @@ const MAX_USER_CHARS  = 500
 const TEMP_NORMAL = 0.3
 const TEMP_ESTRICTA = 0.1
 
-/** Etiqueta del modelo activo, para que la UI no mienta sobre quién respondió. */
-const etiquetaModelo = () => (llmModel ? `Asistente IA · ${llmModel}` : 'Asistente IA')
+// Fallback de modelo (§3.8 robustez): si el modelo principal agota su cuota
+// diaria de tokens, se reintenta con uno más ligero —bolsa de tokens separada—
+// antes de degradar al modo sin LLM. Solo aplica en Groq.
+const MODELO_FALLBACK = llmMode === 'groq' ? 'llama-3.1-8b-instant' : null
+
+/** Etiqueta del modelo realmente usado, para que la UI no mienta sobre quién respondió. */
+const etiquetaModelo = (modelo) => {
+  const m = modelo || llmModel
+  return m ? `Asistente IA · ${m}` : 'Asistente IA'
+}
+
+/** ¿El error es un límite de cuota/tokens del proveedor (no un fallo de red)? */
+function esCuotaAgotada(err) {
+  const s = String(err?.message || err || '')
+  return /rate.?limit|rate_limit_exceeded|tokens per day|TPD|quota|429/i.test(s)
+}
 
 const BLOCKED_MSG =
   '🚫 Acción no permitida: el asistente de consulta no puede modificar, eliminar ni ' +
@@ -141,9 +155,30 @@ class AssistantAgentClass {
         `Si el líder pregunta por "hoy" o no menciona fecha, NO pases el parámetro fecha a las herramientas.`
       const userPrompt = buildPrompt(prompt, history)
 
-      const intento = USAR_GRAFO
-        ? await this._porGrafo(system, userPrompt, prompt, role, contextData, { onToken, onReset })
-        : await this._porCaminoDirecto(system, userPrompt, role, contextData)
+      // Fallback de modelo: primero el default (70B); si agota su cuota diaria,
+      // el 8B —bolsa separada— antes de degradar al modo sin LLM.
+      const modelos = MODELO_FALLBACK ? [undefined, MODELO_FALLBACK] : [undefined]
+      let intento, modeloUsado, ultimoErr
+      for (const model of modelos) {
+        try {
+          onReset?.()   // descarta streaming del intento anterior si lo hubo
+          intento = USAR_GRAFO
+            ? await this._porGrafo(system, userPrompt, prompt, role, contextData, { onToken, onReset, model })
+            : await this._porCaminoDirecto(system, userPrompt, role, contextData, { model })
+          modeloUsado = model || llmModel
+          ultimoErr = null
+          break
+        } catch (err) {
+          ultimoErr = err
+          const quedanModelos = model !== modelos[modelos.length - 1]
+          if (esCuotaAgotada(err) && quedanModelos) {
+            console.warn(`[AssistantAgent] Cuota agotada en ${llmModel}; reintentando con ${MODELO_FALLBACK}.`)
+            continue
+          }
+          throw err
+        }
+      }
+      if (ultimoErr) throw ultimoErr
 
       // El modelo insistió en inventar cifras: mejor una respuesta limitada pero cierta.
       if (intento.degraded) {
@@ -161,7 +196,7 @@ class AssistantAgentClass {
         blocked:     false,
         rawPrompt:   prompt,
         intent:      'assistant.llm',
-        description: etiquetaModelo(),
+        description: etiquetaModelo(modeloUsado),
         role,
         type:        visual?.type || 'summary',
         chartConfig: visual?.chartConfig || null,
@@ -192,14 +227,14 @@ class AssistantAgentClass {
    * NIVEL 0 — Grafo de LangGraph: supervisor + handoffs entre agentes de dominio.
    * El verificador de cifras y el reintento estricto viven dentro del grafo.
    */
-  async _porGrafo(system, userPrompt, promptCrudo, role, contextData, { onToken, onReset } = {}) {
+  async _porGrafo(system, userPrompt, promptCrudo, role, contextData, { onToken, onReset, model } = {}) {
     const { SystemMessage, HumanMessage } = await import('@langchain/core/messages')
-    const grafo = await createAssistantGraph({ role, contextData, systemPrompt: system, onToken, onReset })
+    const grafo = await createAssistantGraph({ role, contextData, systemPrompt: system, onToken, onReset, model })
 
     // LangGraph no cargó: caemos al camino directo, que está igual de verificado.
     if (!grafo) {
       console.warn('[AssistantAgent] Grafo no disponible, usando camino directo.')
-      return this._porCaminoDirecto(system, userPrompt, role, contextData)
+      return this._porCaminoDirecto(system, userPrompt, role, contextData, { model })
     }
 
     const salida = await withTimeout(
@@ -218,25 +253,25 @@ class AssistantAgentClass {
    * NIVEL 1 — Camino directo, sin grafo. Conserva el bucle ReAct de
    * completeWithTools. Se usa si el grafo se desactiva o no carga.
    */
-  async _porCaminoDirecto(system, userPrompt, role, contextData) {
-    let intento = await this._unaPasada(system, userPrompt, TEMP_NORMAL, role, contextData)
+  async _porCaminoDirecto(system, userPrompt, role, contextData, { model } = {}) {
+    let intento = await this._unaPasada(system, userPrompt, TEMP_NORMAL, role, contextData, model)
 
     if (this._inventoCifras(intento)) {
       console.warn('[AssistantAgent] Cifras sin respaldo. Reintento estricto.')
       intento = await this._unaPasada(
         `${system}\n\nOBLIGATORIO: no escribas ninguna cifra que no te haya devuelto una herramienta.`,
-        userPrompt, TEMP_ESTRICTA, role, contextData,
+        userPrompt, TEMP_ESTRICTA, role, contextData, model,
       )
       if (this._inventoCifras(intento)) return { ...intento, degraded: true }
     }
     return intento
   }
 
-  async _unaPasada(system, userPrompt, temperature, role, contextData) {
+  async _unaPasada(system, userPrompt, temperature, role, contextData, model) {
     const { tools, handlers, emitted, results, agentsUsed } = buildToolsForRole(role, contextData)
 
     const texto = await withTimeout(
-      completeWithTools({ system, prompt: userPrompt, tools, handlers, temperature }),
+      completeWithTools({ system, prompt: userPrompt, tools, handlers, temperature, ...(model ? { model } : {}) }),
       TIMEOUT_MS,
     )
 
