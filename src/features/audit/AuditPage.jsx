@@ -140,6 +140,7 @@ export default function AuditPage() {
             <tbody>
               {visibles.map((e, i) => {
                 const meta = NIVEL_META[e.nivel] || NIVEL_META.info
+                const NivelIcon = meta.icon
                 const metaInfo = TIPO_ACTOR_META[e.tipoActor] || TIPO_ACTOR_META.agente
                 const ActorIcon = metaInfo.icon
                 return (
