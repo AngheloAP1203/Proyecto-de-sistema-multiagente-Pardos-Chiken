@@ -149,11 +149,11 @@ const PREDEFINED_PROCESSES = [
     processName: 'Triaje de quejas con IA',
     definition: `Proceso de triaje de quejas (ComplaintAgent.triage_complaint):
 1. Se recibe el mensaje de texto del cliente (WhatsApp/web) sin sanitizar.
-2. El mensaje se concatena al system prompt PROMPT_RECEPCION y se envía a Gemini con responseMimeType JSON.
+2. El mensaje se concatena al system prompt PROMPT_RECEPCION y se envía a Groq (Llama 3.3) con responseFormat JSON.
 3. La respuesta JSON (razonamiento, sentimiento, prioridad, sede, puntos_criticos, respuesta_cliente) se
    guarda en ComplaintContext + SharedMemory y se publica complaint:created.
 4. Si prioridad === "Crítica" se publica complaint:escalated y el NotificationAgent alerta al líder.
-La API key de Gemini se lee de import.meta.env.VITE_GEMINI_API_KEY (expuesta en el bundle en modo directo).`
+La API key de Groq se lee desde las variables de entorno para procesar la petición de la IA.`
   },
   {
     id: 'asistente',
