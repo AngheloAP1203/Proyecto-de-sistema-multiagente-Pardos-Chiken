@@ -44,7 +44,7 @@ function ActorDropdown({ value, onChange, optionsPorTipo }) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const filterGroup = (group) => group.filter(a => a.toLowerCase().includes(search.toLowerCase()))
+  const filterGroup = (group) => group.filter(a => (a || 'Desconocido').toLowerCase().includes(search.toLowerCase()))
   
   const gAgentes = filterGroup(optionsPorTipo.agente)
   const gUsuarios = filterGroup(optionsPorTipo.usuario)
@@ -135,8 +135,9 @@ export default function AuditPage() {
   const actoresPorTipo = useMemo(() => {
     const agrupados = { agente: new Set(), usuario: new Set(), cliente: new Set(), otro: new Set() }
     entries.forEach(e => {
-      if (e.tipoActor && agrupados[e.tipoActor]) agrupados[e.tipoActor].add(e.actor)
-      else agrupados.otro.add(e.actor)
+      const actorName = e.actor || 'Sistema'
+      if (e.tipoActor && agrupados[e.tipoActor]) agrupados[e.tipoActor].add(actorName)
+      else agrupados.otro.add(actorName)
     })
     return {
       agente: [...agrupados.agente].sort(),
