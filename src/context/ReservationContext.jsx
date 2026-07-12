@@ -14,6 +14,8 @@ import { generateReservationId, isHistorical, isToday } from '../domain/reservat
 import { SAMPLE_RESERVATIONS, INITIAL_TABLES } from '../data/seeds/reservationsSeed'
 import { fetchRequested, patchReservation } from '../data/api/reservationsApi'
 import { readJSON, writeJSON } from '../data/storage/localStorage'
+import { auditLogger } from '../agents/core/auditLogger'
+import { useAuth } from './AuthContext'
 import toast from 'react-hot-toast'
 
 export { RESERVATION_STATUS, STATUS_LABELS, STATUS_COLORS }
@@ -25,6 +27,8 @@ export function ReservationProvider({ children }) {
   const [tables, setTables] = useState(INITIAL_TABLES)
   const [isLoading, setIsLoading] = useState(true)
   const seenApiIds = useRef(new Set())
+  const { user } = useAuth()
+  const actorName = user ? `${user.name} (${user.role})` : 'Sistema'
 
   // Cargar datos desde localStorage al montar.
   // Igual que en CashContext: si lo guardado no tiene ninguna reserva de hoy
@@ -80,16 +84,26 @@ export function ReservationProvider({ children }) {
       createdAt: new Date().toISOString(),
     }
     setReservations(prev => [newReservation, ...prev])
+    
+    auditLogger.record({
+      actor: actorName,
+      tipoActor: 'usuario',
+      accion: 'reservation.create',
+      nivel: 'info',
+      detalle: { id: newReservation.id, client: data.clientName }
+    })
+
     toast.success('Reserva creada exitosamente')
     return newReservation
-  }, [])
+  }, [actorName])
 
   const updateReservation = useCallback((id, updates) => {
     setReservations(prev =>
       prev.map(r => r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r)
     )
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.update', nivel: 'info', detalle: { id, updates } })
     toast.success('Reserva actualizada')
-  }, [])
+  }, [actorName])
 
   const cancelReservation = useCallback((id, reason = '') => {
     setReservations(prev =>
@@ -99,8 +113,9 @@ export function ReservationProvider({ children }) {
           : r
       )
     )
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.cancel', nivel: 'warn', detalle: { id, reason } })
     toast.success('Reserva cancelada')
-  }, [])
+  }, [actorName])
 
   const completeReservation = useCallback((id) => {
     setReservations(prev =>
@@ -110,8 +125,9 @@ export function ReservationProvider({ children }) {
           : r
       )
     )
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.complete', nivel: 'info', detalle: { id } })
     toast.success('Reserva completada')
-  }, [])
+  }, [actorName])
 
   const seatReservation = useCallback((id) => {
     setReservations(prev =>
@@ -121,8 +137,9 @@ export function ReservationProvider({ children }) {
           : r
       )
     )
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.seat', nivel: 'info', detalle: { id } })
     toast.success('Cliente en mesa')
-  }, [])
+  }, [actorName])
 
   const requestReservation = useCallback((data) => {
     const newReservation = {
@@ -133,6 +150,15 @@ export function ReservationProvider({ children }) {
       source:    'public',
     }
     setReservations(prev => [newReservation, ...prev])
+    
+    auditLogger.record({
+      actor: `${data.clientName} (Web)`,
+      tipoActor: 'cliente',
+      accion: 'reservation.request',
+      nivel: 'info',
+      detalle: { id: newReservation.id, pax: data.pax }
+    })
+
     toast.success('Solicitud enviada')
     return newReservation
   }, [])
@@ -147,8 +173,9 @@ export function ReservationProvider({ children }) {
       )
     )
     patchReservation(id, { status: 'pending', tableId, approvedBy, approvedAt })
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.approve', nivel: 'info', detalle: { id, tableId } })
     toast.success('Solicitud aprobada')
-  }, [])
+  }, [actorName])
 
   const rejectReservation = useCallback((id, reason = '') => {
     const updatedAt = new Date().toISOString()
@@ -160,8 +187,9 @@ export function ReservationProvider({ children }) {
       )
     )
     patchReservation(id, { status: 'rejected', rejectReason: reason, updatedAt })
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.reject', nivel: 'warn', detalle: { id, reason } })
     toast.success('Solicitud rechazada')
-  }, [])
+  }, [actorName])
 
   const deleteReservationFromDB = useCallback((id) => {
     setReservations(prev => prev.filter(r => r.id !== id))

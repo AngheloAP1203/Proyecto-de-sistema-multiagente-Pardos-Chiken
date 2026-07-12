@@ -11,6 +11,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { MOCK_USERS } from '../data/seeds/usersSeed'
 import { ROLE_PERMISSIONS } from '../domain/auth/permissions'
 import { readJSON, writeJSON, remove } from '../data/storage/localStorage'
+import { auditLogger } from '../agents/core/auditLogger'
 import toast from 'react-hot-toast'
 export { MOCK_USERS, ROLE_PERMISSIONS }
 
@@ -45,13 +46,32 @@ export function AuthProvider({ children }) {
     const { password: _pw, ...safeUser } = found
     setUser(safeUser)
     writeJSON('pardos_user', safeUser)
+    
+    auditLogger.record({
+      actor: `${safeUser.name} (${safeUser.role})`,
+      tipoActor: 'usuario',
+      accion: 'auth.login',
+      nivel: 'info',
+      detalle: { email: safeUser.email }
+    })
+
     toast.success(`Bienvenido, ${safeUser.name}`)
     return { success: true, message: `Bienvenido, ${safeUser.name}` }
   }, [])
 
   /** logout — Cierra la sesión y limpia el storage. */
   const logout = useCallback(() => {
-    setUser(null)
+    setUser(prev => {
+      if (prev) {
+        auditLogger.record({
+          actor: `${prev.name} (${prev.role})`,
+          tipoActor: 'usuario',
+          accion: 'auth.logout',
+          nivel: 'info'
+        })
+      }
+      return null
+    })
     remove('pardos_user')
     toast.success('Sesión cerrada correctamente')
   }, [])

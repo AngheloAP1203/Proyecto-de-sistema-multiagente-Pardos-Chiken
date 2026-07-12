@@ -11,6 +11,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { SAMPLE_COMPLAINTS } from '../data/seeds/complaintsSeed'
 import { readJSON, writeJSON } from '../data/storage/localStorage'
+import { auditLogger } from '../agents/core/auditLogger'
+import { useAuth } from './AuthContext'
 import toast from 'react-hot-toast'
 
 const ComplaintContext = createContext(null)
@@ -18,6 +20,8 @@ const ComplaintContext = createContext(null)
 export function ComplaintProvider({ children }) {
   const [complaints, setComplaints] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const { user } = useAuth()
+  const actorName = user ? `${user.name} (${user.role})` : 'Sistema'
 
   // Ref siempre actualizado → los agentes leen la lista más reciente
   const complaintsRef = useRef([])
@@ -47,19 +51,32 @@ export function ComplaintProvider({ children }) {
       ...complaint,
     }
     setComplaints(prev => [record, ...prev])
+    
+    // Log as client if it comes from the agent/web, else as system/user
+    const isClientAction = !user
+    auditLogger.record({
+      actor: isClientAction ? `${complaint.cliente || 'Cliente'} (${complaint.canal || 'Web'})` : actorName,
+      tipoActor: isClientAction ? 'cliente' : 'usuario',
+      accion: 'complaint.create',
+      nivel: 'warn',
+      detalle: { id: record.id, sede: record.sede }
+    })
+
     return record
-  }, [])
+  }, [user, actorName])
 
   const updateComplaint = useCallback((id, updates) => {
     setComplaints(prev =>
       prev.map(c => c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c)
     )
-  }, [])
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'complaint.update', nivel: 'info', detalle: { id, updates } })
+  }, [actorName])
 
   const deleteComplaint = useCallback((id) => {
     setComplaints(prev => prev.filter(c => c.id !== id))
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'complaint.delete', nivel: 'warn', detalle: { id } })
     toast.success('Queja eliminada')
-  }, [])
+  }, [actorName])
 
   /** Lectura síncrona del estado más reciente (para los agentes). */
   const getComplaints = useCallback(() => complaintsRef.current, [])

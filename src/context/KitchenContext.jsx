@@ -11,6 +11,8 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { TICKET_STATUS, TICKET_STATUS_LABELS, TICKET_STATUS_COLORS } from '../domain/kitchen/ticketStatus'
 import { MENU_ITEMS } from '../domain/kitchen/menu'
 import { readJSON, writeJSON } from '../data/storage/localStorage'
+import { auditLogger } from '../agents/core/auditLogger'
+import { useAuth } from './AuthContext'
 import toast from 'react-hot-toast'
 
 export { TICKET_STATUS, TICKET_STATUS_LABELS, TICKET_STATUS_COLORS, MENU_ITEMS }
@@ -20,6 +22,8 @@ const KitchenContext = createContext(null)
 export function KitchenProvider({ children }) {
   const [tickets,  setTickets]  = useState([])
   const [isLoading, setLoading] = useState(true)
+  const { user } = useAuth()
+  const actorName = user ? `${user.name} (${user.role})` : 'Sistema'
 
   useEffect(() => {
     const saved = readJSON('pardos_kitchen', null)
@@ -43,9 +47,10 @@ export function KitchenProvider({ children }) {
       createdAt: new Date().toISOString(),
     }
     setTickets(prev => [ticket, ...prev])
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'kitchen.add_ticket', nivel: 'info', detalle: { id: ticket.id, tableId: data.tableId } })
     toast.success('Ticket enviado a cocina')
     return ticket
-  }, [])
+  }, [actorName])
 
   const updateTicketStatus = useCallback((id, newStatus) => {
     setTickets(prev =>
@@ -53,8 +58,9 @@ export function KitchenProvider({ children }) {
         t.id === id ? { ...t, status: newStatus, updatedAt: new Date().toISOString() } : t
       )
     )
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'kitchen.update_status', nivel: 'info', detalle: { id, newStatus } })
     toast.success('Estado del pedido actualizado')
-  }, [])
+  }, [actorName])
 
   const updateTicket = useCallback((id, updates) => {
     setTickets(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
@@ -86,7 +92,8 @@ export function KitchenProvider({ children }) {
         return { ...t, items: newItems, status: newStatus }
       })
     )
-  }, [])
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'kitchen.advance_item', nivel: 'info', detalle: { ticketId, itemIndex } })
+  }, [actorName])
 
   const toggleItemReady = useCallback((id, itemIndex) => {
     setTickets(prev =>

@@ -14,9 +14,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Navigate } from 'react-router-dom'
-import {
-  ScrollText, Download, Trash2, Filter, AlertTriangle, Info, XCircle, Radio,
-} from 'lucide-react'
+  ScrollText, Download, Trash2, Filter, AlertTriangle, Info, XCircle, Radio, Bot, User, Globe,
 import { useAuth } from '../../context/AuthContext'
 import { auditLogger } from '../../agents/core/auditLogger'
 import styles from './AuditPage.module.css'
@@ -27,11 +25,18 @@ const NIVEL_META = {
   error: { icon: XCircle,       cls: 'nError', label: 'Error' },
 }
 
+const TIPO_ACTOR_META = {
+  agente:  { icon: Bot,   cls: 'tAgente',  label: 'Agente IA' },
+  usuario: { icon: User,  cls: 'tUsuario', label: 'Usuario (Sistema)' },
+  cliente: { icon: Globe, cls: 'tCliente', label: 'Cliente (Público)' },
+}
+
 export default function AuditPage() {
   const { user } = useAuth()
   const [entries, setEntries] = useState(() => auditLogger.getEntries({ limit: 200 }))
   const [fNivel,  setFNivel]  = useState('')
-  const [fAgente, setFAgente] = useState('')
+  const [fTipo,   setFTipo]   = useState('')
+  const [fActor,  setFActor]  = useState('')
 
   // Suscripción en vivo: cada nueva entrada refresca la tabla.
   useEffect(() => {
@@ -39,13 +44,16 @@ export default function AuditPage() {
     return unsub
   }, [])
 
-  const agentes = useMemo(
-    () => [...new Set(entries.map(e => e.agente))].sort(),
+  const actores = useMemo(
+    () => [...new Set(entries.map(e => e.actor))].sort(),
     [entries],
   )
 
   const visibles = entries.filter(e =>
-    (!fNivel || e.nivel === fNivel) && (!fAgente || e.agente === fAgente))
+    (!fNivel || e.nivel === fNivel) &&
+    (!fTipo  || e.tipoActor === fTipo) &&
+    (!fActor || e.actor === fActor)
+  )
 
   const stats = auditLogger.stats()
 
@@ -68,10 +76,10 @@ export default function AuditPage() {
         <div className={styles.headLeft}>
           <div className={styles.icon}><ScrollText size={20} /></div>
           <div>
-            <h1 className={styles.title}>Auditoría del sistema</h1>
+            <h1 className={styles.title}>Centro de Trazabilidad Total</h1>
             <p className={styles.subtitle}>
-              <Radio size={11} className={styles.live} /> Registro en vivo de las decisiones de los agentes ·
-              LangSmith traza las llamadas al LLM en el servidor
+              <Radio size={11} className={styles.live} /> Registro en vivo de acciones (Agentes, Usuarios y Clientes) ·
+              LangSmith traza exclusivamente llamadas al LLM
             </p>
           </div>
         </div>
@@ -102,9 +110,15 @@ export default function AuditPage() {
           <option value="warn">Alertas</option>
           <option value="error">Errores</option>
         </select>
-        <select value={fAgente} onChange={e => setFAgente(e.target.value)}>
-          <option value="">Todos los agentes</option>
-          {agentes.map(a => <option key={a} value={a}>{a}</option>)}
+        <select value={fTipo} onChange={e => setFTipo(e.target.value)}>
+          <option value="">Cualquier origen</option>
+          <option value="agente">Agentes IA</option>
+          <option value="usuario">Usuarios (Personal)</option>
+          <option value="cliente">Clientes Públicos</option>
+        </select>
+        <select value={fActor} onChange={e => setFActor(e.target.value)}>
+          <option value="">Todos los actores</option>
+          {actores.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
         <span className={styles.count}>{visibles.length} visibles</span>
       </div>
@@ -119,17 +133,23 @@ export default function AuditPage() {
         ) : (
           <table className={styles.table}>
             <thead>
-              <tr><th>Hora</th><th>Nivel</th><th>Agente</th><th>Acción</th><th>Resultado</th><th>Latencia</th><th>Detalle</th></tr>
+              <tr><th>Hora</th><th>Nivel</th><th>Actor</th><th>Acción</th><th>Resultado</th><th>Latencia</th><th>Detalle</th></tr>
             </thead>
             <tbody>
               {visibles.map((e, i) => {
                 const meta = NIVEL_META[e.nivel] || NIVEL_META.info
-                const NivelIcon = meta.icon
+                const metaInfo = TIPO_ACTOR_META[e.tipoActor] || TIPO_ACTOR_META.agente
+                const ActorIcon = metaInfo.icon
                 return (
                   <tr key={i}>
                     <td className={styles.tsCell}>{new Date(e.ts).toLocaleTimeString('es-PE')}</td>
                     <td><span className={`${styles.nivel} ${styles[meta.cls]}`}><NivelIcon size={11} /> {meta.label}</span></td>
-                    <td className={styles.agenteCell}>{e.agente}</td>
+                    <td>
+                      <div className={styles.actorCell} title={metaInfo.label}>
+                        <ActorIcon size={14} className={`${styles.actorIcon} ${styles[metaInfo.cls]}`} />
+                        {e.actor}
+                      </div>
+                    </td>
                     <td><code className={styles.accion}>{e.accion}</code></td>
                     <td className={styles.resCell}>{e.resultado ?? '—'}</td>
                     <td className={styles.latCell}>{e.latencia != null ? `${e.latencia}ms` : '—'}</td>

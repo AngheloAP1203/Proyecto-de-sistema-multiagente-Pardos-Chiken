@@ -16,6 +16,8 @@ import { SAMPLE_PAYMENTS } from '../data/seeds/paymentsSeed'
 import { PAYMENT_METHODS } from '../domain/cash/paymentMethods'
 import { summarizeShift, calculateTotalByMethod } from '../domain/cash/cashCalculations'
 import { readJSON, writeJSON, remove } from '../data/storage/localStorage'
+import { auditLogger } from '../agents/core/auditLogger'
+import { useAuth } from './AuthContext'
 import toast from 'react-hot-toast'
 
 export { PAYMENT_METHODS }
@@ -26,6 +28,8 @@ export function CashProvider({ children }) {
   const [payments,   setPayments]   = useState([])
   const [shift,      setShift]      = useState(null)
   const [isLoading,  setLoading]    = useState(true)
+  const { user } = useAuth()
+  const actorName = user ? `${user.name} (${user.role})` : 'Sistema'
 
   // Cargar desde localStorage.
   // Semántica de demo: los seeds generan fechas relativas a "hoy" pero solo se
@@ -68,17 +72,19 @@ export function CashProvider({ children }) {
       status:      'open',
     }
     setShift(newShift)
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'cash.open_shift', nivel: 'info', detalle: { initialCash } })
     toast.success('Turno de caja abierto')
     return newShift
-  }, [])
+  }, [actorName])
 
   const closeShift = useCallback(() => {
     if (!shift) return null
     const summary = summarizeShift(shift, payments)
     setShift(null)
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'cash.close_shift', nivel: 'info', detalle: { summary } })
     toast.success('Turno cerrado correctamente')
     return summary
-  }, [shift, payments])
+  }, [shift, payments, actorName])
 
   const addPayment = useCallback((data) => {
     const newPayment = {
@@ -89,9 +95,10 @@ export function CashProvider({ children }) {
       status: 'paid',
     }
     setPayments(prev => [newPayment, ...prev])
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'cash.add_payment', nivel: 'info', detalle: { id: newPayment.id, amount: data.amount, method: data.method } })
     toast.success('Pago registrado correctamente')
     return newPayment
-  }, [])
+  }, [actorName])
 
   // Pagos de hoy
   const todayStr = format(new Date(), 'yyyy-MM-dd')

@@ -60,8 +60,9 @@ class AuditLoggerClass {
    * record — Registra una decisión/evento de agente.
    *
    * @param {Object} e
-   * @param {string} e.agente   - Quién decide (AssistantAgent, RewardAgent, …)
-   * @param {string} e.accion   - Qué pasó (assistant.query, reward.evaluate, …)
+   * @param {string} e.actor    - Quién decide/hace la acción (Nombre o ID)
+   * @param {string} [e.tipoActor] - 'agente', 'usuario', 'cliente'
+   * @param {string} e.accion   - Qué pasó (assistant.query, login, etc)
    * @param {string} [e.nivel]  - info | warn | error
    * @param {string} [e.resultado] - veredicto/estado (VERIFICADO, BLOCKED, degraded…)
    * @param {number} [e.latencia]
@@ -71,7 +72,8 @@ class AuditLoggerClass {
     this._load()
     const entry = {
       ts:        new Date().toISOString(),
-      agente:    e.agente || 'desconocido',
+      actor:     e.actor || e.agente || 'desconocido',
+      tipoActor: e.tipoActor || 'agente',
       accion:    e.accion || 'evento',
       nivel:     e.nivel || 'info',
       resultado: e.resultado ?? null,
@@ -93,7 +95,8 @@ class AuditLoggerClass {
       eventBus.subscribe(tipo, (msg) => {
         const esError = tipo === EVENT_TYPES.AGENT_ERROR
         this.record({
-          agente:  msg?.source || 'EventBus',
+          actor:   msg?.source || 'EventBus',
+          tipoActor: 'agente',
           accion:  tipo,
           nivel:   esError ? 'error' : 'info',
           detalle: msg?.payload,
@@ -102,22 +105,24 @@ class AuditLoggerClass {
     }
   }
 
-  getEntries({ agente, nivel, limit = 100 } = {}) {
+  getEntries({ actor, tipoActor, nivel, limit = 100 } = {}) {
     this._load()
     let e = this._entries
-    if (agente) e = e.filter(x => x.agente === agente)
+    if (actor) e = e.filter(x => x.actor === actor)
+    if (tipoActor) e = e.filter(x => x.tipoActor === tipoActor)
     if (nivel)  e = e.filter(x => x.nivel === nivel)
     return e.slice(-limit).reverse()   // más recientes primero
   }
 
   stats() {
     this._load()
-    const porAgente = {}, porNivel = { info: 0, warn: 0, error: 0 }
+    const porActor = {}, porTipo = { agente: 0, usuario: 0, cliente: 0 }, porNivel = { info: 0, warn: 0, error: 0 }
     for (const e of this._entries) {
-      porAgente[e.agente] = (porAgente[e.agente] || 0) + 1
+      porActor[e.actor] = (porActor[e.actor] || 0) + 1
+      porTipo[e.tipoActor] = (porTipo[e.tipoActor] || 0) + 1
       porNivel[e.nivel] = (porNivel[e.nivel] || 0) + 1
     }
-    return { total: this._entries.length, porAgente, porNivel }
+    return { total: this._entries.length, porActor, porTipo, porNivel }
   }
 
   subscribe(fn) { this._subs.add(fn); return () => this._subs.delete(fn) }

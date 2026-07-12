@@ -67,7 +67,11 @@
 .table tbody tr:hover { background: var(--color-bg); }
 
 .tsCell { color: var(--color-text-light); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.agenteCell { font-weight: 600; color: var(--color-text-dark); white-space: nowrap; }
+.actorCell { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--color-text-dark); white-space: nowrap; }
+.actorIcon { color: var(--color-text-light); }
+.tAgente { color: #8b5cf6; }
+.tUsuario { color: #3b82f6; }
+.tCliente { color: #10b981; }
 .accion { font-size: 11.5px; color: var(--color-primary-deep); background: var(--color-primary-soft); padding: 1px 6px; border-radius: 5px; }
 .resCell { color: var(--color-text-mid); white-space: nowrap; }
 .latCell { color: var(--color-text-light); font-variant-numeric: tabular-nums; white-space: nowrap; }
