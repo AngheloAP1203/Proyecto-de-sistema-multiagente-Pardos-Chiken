@@ -148,13 +148,19 @@ export default async function handler(req, res) {
         start_time: now, end_time: now, session_name: project,
         inputs: { diag: true }, outputs: { ok: true },
       }
-      const r = await fetch(`${endpoint}/runs`, {
-        method: 'POST',
-        headers: { 'x-api-key': key, 'Content-Type': 'application/json' },
-        body: JSON.stringify(run),
-      })
-      const txt = await r.text().catch(() => '')
-      res.setHeader('x-langsmith-ping', `ingest=${r.status} keylen=${key.length} proj=${project} msg=${txt.slice(0, 60).replace(/[\r\n]+/g, ' ')}`)
+      const enviar = async (k) => {
+        const r = await fetch(`${endpoint}/runs`, {
+          method: 'POST',
+          headers: { 'x-api-key': k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...run, id: crypto.randomUUID(), trace_id: crypto.randomUUID() }),
+        })
+        return r.status
+      }
+      const raw = await enviar(key)
+      const trimmed = key.trim() !== key ? await enviar(key.trim()) : raw
+      const prefix = key.trim().slice(0, 8)   // "lsv2_pt_" o "lsv2_sk_" — no es secreto
+      res.setHeader('x-langsmith-ping',
+        `ingest=${raw} trimmed=${trimmed} keylen=${key.length} trimlen=${key.trim().length} prefix=${prefix} proj=${project}`)
     } catch (e) {
       res.setHeader('x-langsmith-ping', `neterr:${String(e.message).slice(0, 60)}`)
     }
