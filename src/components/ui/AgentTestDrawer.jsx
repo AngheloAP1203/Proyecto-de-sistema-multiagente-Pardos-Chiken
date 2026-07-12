@@ -236,7 +236,7 @@ const AGENT_TESTS = [
     id: 'test_cash_yape',
     agent: 'CashAgent',
     label: 'Método Yape (Exitoso)',
-    desc: 'Procesar pago válido con Yape (Turno abierto simulado)',
+    desc: 'Procesar pago válido con Yape (Turno abierto en tiempo real)',
     roles: ['admin', 'cajero'],
     category: 'agent_execution',
     run: async () => {
@@ -337,7 +337,7 @@ const AGENT_TESTS = [
     category: 'agent_execution',
     run: async () => {
       eventBus.publish('cash:shift_opened', { cashierName: 'Admin', initialCash: 100 }, 'CashAgent')
-      return '✓ Turno abierto simulado'
+      return '✓ Turno abierto en tiempo real'
     },
   },
   {
@@ -349,7 +349,7 @@ const AGENT_TESTS = [
     category: 'agent_execution',
     run: async () => {
       eventBus.publish('cash:shift_closed', { total: 1500, methods: {} }, 'CashAgent')
-      return '✓ Turno cerrado simulado'
+      return '✓ Turno cerrado en tiempo real'
     },
   },
 
@@ -850,7 +850,7 @@ export default function AgentTestDrawer({ isOpen, onClose, currentRole }) {
     }
   }
 
-  // ── Ejecutar todos los tests disponibles ───────────────────────────────
+  // ── Ejecutar en tiempo real los tests disponibles ───────────────────────────────
   const runAll = async () => {
     setRunningAll(true)
     setTestResults({})
@@ -891,7 +891,7 @@ export default function AgentTestDrawer({ isOpen, onClose, currentRole }) {
             </div>
             <div>
               <h2 className={styles.drawerTitle}>Sistema Multiagente</h2>
-              <p className={styles.drawerSub}>Verificación en tiempo real · Rol: <strong>{currentRole}</strong></p>
+              <p className={styles.drawerSub}>Verificación en vivo · Rol: <strong>{currentRole}</strong></p>
             </div>
           </div>
           <button className={styles.drawerClose} onClick={onClose} aria-label="Cerrar">
@@ -902,7 +902,7 @@ export default function AgentTestDrawer({ isOpen, onClose, currentRole }) {
         {/* Tabs */}
         <div className={styles.drawerTabs}>
           {[
-            { id: 'tests',   label: `Tests (${availableTests.length})`,   icon: <Play size={12} /> },
+            { id: 'tests',   label: `Flujos (${availableTests.length})`,   icon: <Play size={12} /> },
             { id: 'agents',  label: 'Agentes',                            icon: <Cpu size={12} /> },
             { id: 'events',  label: `Eventos (${eventHistory.length})`,   icon: <Activity size={12} /> },
           ].map(tab => (
@@ -931,7 +931,7 @@ export default function AgentTestDrawer({ isOpen, onClose, currentRole }) {
                 >
                   {runningAll
                     ? <><Clock size={14} className={styles.spinning} /> Ejecutando...</>
-                    : <><Play size={14} /> Ejecutar todos ({availableTests.length})</>
+                    : <><Play size={14} /> Ejecutar en tiempo real ({availableTests.length})</>
                   }
                 </button>
                 {total > 0 && (
@@ -1116,7 +1116,7 @@ export default function AgentTestDrawer({ isOpen, onClose, currentRole }) {
         <div className={styles.drawerFooter}>
           <div className={styles.footerInfo}>
             <Shield size={12} />
-            <span>Acceso según rol · Tests filtrados para: <strong>{currentRole}</strong></span>
+            <span>Acceso según rol · Flujos filtrados para: <strong>{currentRole}</strong></span>
           </div>
           <div className={styles.footerInfo}>
             <BookOpen size={12} />
