@@ -12,10 +12,10 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Navigate } from 'react-router-dom'
 import {
-  ScrollText, Download, Trash2, Filter, AlertTriangle, Info, XCircle, Radio, Bot, User, Globe,
+  ScrollText, Download, Trash2, Filter, AlertTriangle, Info, XCircle, Radio, Bot, User, Globe, ChevronDown, Search
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { auditLogger } from '../../agents/core/auditLogger'
@@ -31,6 +31,92 @@ const TIPO_ACTOR_META = {
   agente:  { icon: Bot,   cls: 'tAgente',  label: 'Agente IA' },
   usuario: { icon: User,  cls: 'tUsuario', label: 'Usuario (Sistema)' },
   cliente: { icon: Globe, cls: 'tCliente', label: 'Cliente (Público)' },
+}
+
+function ActorDropdown({ value, onChange, optionsPorTipo }) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const filterGroup = (group) => group.filter(a => a.toLowerCase().includes(search.toLowerCase()))
+  
+  const gAgentes = filterGroup(optionsPorTipo.agente)
+  const gUsuarios = filterGroup(optionsPorTipo.usuario)
+  const gClientes = filterGroup(optionsPorTipo.cliente)
+  const gOtros = filterGroup(optionsPorTipo.otro)
+
+  const hasResults = gAgentes.length || gUsuarios.length || gClientes.length || gOtros.length
+
+  return (
+    <div className={styles.actorDropdown} ref={ref}>
+      <button className={styles.dropdownBtn} onClick={() => setOpen(!open)} type="button">
+        <span className={styles.dropdownVal}>{value || 'Todos los actores'}</span>
+        <ChevronDown size={14} className={styles.dropdownIcon} />
+      </button>
+      
+      {open && (
+        <div className={styles.dropdownMenu}>
+          <div className={styles.dropdownSearch}>
+            <Search size={12} className={styles.searchIcon} />
+            <input 
+              type="text" 
+              placeholder="Buscar actor..." 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              autoFocus
+            />
+          </div>
+          
+          <div className={styles.dropdownList}>
+            <button className={`${styles.dropdownItem} ${!value ? styles.activeItem : ''}`} onClick={() => { onChange(''); setOpen(false); setSearch('') }}>
+              Todos los actores
+            </button>
+
+            {gAgentes.length > 0 && (
+              <div className={styles.dropdownGroup}>
+                <div className={styles.groupLabel}>🤖 Agentes IA</div>
+                {gAgentes.map(a => (
+                  <button key={a} className={`${styles.dropdownItem} ${value === a ? styles.activeItem : ''}`} onClick={() => { onChange(a); setOpen(false); setSearch('') }}>{a}</button>
+                ))}
+              </div>
+            )}
+            {gUsuarios.length > 0 && (
+              <div className={styles.dropdownGroup}>
+                <div className={styles.groupLabel}>👤 Usuarios (Personal)</div>
+                {gUsuarios.map(a => (
+                  <button key={a} className={`${styles.dropdownItem} ${value === a ? styles.activeItem : ''}`} onClick={() => { onChange(a); setOpen(false); setSearch('') }}>{a}</button>
+                ))}
+              </div>
+            )}
+            {gClientes.length > 0 && (
+              <div className={styles.dropdownGroup}>
+                <div className={styles.groupLabel}>🌐 Clientes Públicos</div>
+                {gClientes.map(a => (
+                  <button key={a} className={`${styles.dropdownItem} ${value === a ? styles.activeItem : ''}`} onClick={() => { onChange(a); setOpen(false); setSearch('') }}>{a}</button>
+                ))}
+              </div>
+            )}
+            {gOtros.length > 0 && (
+              <div className={styles.dropdownGroup}>
+                <div className={styles.groupLabel}>❓ Otros</div>
+                {gOtros.map(a => (
+                  <button key={a} className={`${styles.dropdownItem} ${value === a ? styles.activeItem : ''}`} onClick={() => { onChange(a); setOpen(false); setSearch('') }}>{a}</button>
+                ))}
+              </div>
+            )}
+
+            {!hasResults && <div className={styles.noResults}>No se encontraron actores</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function AuditPage() {
@@ -127,29 +213,7 @@ export default function AuditPage() {
           <option value="usuario">Usuarios (Personal)</option>
           <option value="cliente">Clientes Públicos</option>
         </select>
-        <select value={fActor} onChange={e => setFActor(e.target.value)}>
-          <option value="">Todos los actores</option>
-          {actoresPorTipo.agente.length > 0 && (
-            <optgroup label="Agentes IA">
-              {actoresPorTipo.agente.map(a => <option key={a} value={a}>{a}</option>)}
-            </optgroup>
-          )}
-          {actoresPorTipo.usuario.length > 0 && (
-            <optgroup label="Usuarios (Personal)">
-              {actoresPorTipo.usuario.map(a => <option key={a} value={a}>{a}</option>)}
-            </optgroup>
-          )}
-          {actoresPorTipo.cliente.length > 0 && (
-            <optgroup label="Clientes Públicos">
-              {actoresPorTipo.cliente.map(a => <option key={a} value={a}>{a}</option>)}
-            </optgroup>
-          )}
-          {actoresPorTipo.otro.length > 0 && (
-            <optgroup label="Otros">
-              {actoresPorTipo.otro.map(a => <option key={a} value={a}>{a}</option>)}
-            </optgroup>
-          )}
-        </select>
+        <ActorDropdown value={fActor} onChange={setFActor} optionsPorTipo={actoresPorTipo} />
         <span className={styles.count}>{visibles.length} visibles</span>
       </div>
 

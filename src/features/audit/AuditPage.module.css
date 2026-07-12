@@ -95,3 +95,49 @@
 }
 .empty svg { opacity: .4; }
 .empty p { font-size: 13px; max-width: 380px; line-height: 1.5; }
+
+/* Custom Actor Dropdown */
+.actorDropdown { position: relative; }
+.dropdownBtn {
+  display: flex; align-items: center; justify-content: space-between;
+  min-width: 180px; gap: 8px;
+  font-size: 12.5px; padding: 7px 11px; border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--color-border); background: var(--color-bg-card); color: var(--color-text-dark);
+  cursor: pointer;
+}
+.dropdownBtn:hover { border-color: var(--color-primary); }
+.dropdownVal { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.dropdownIcon { color: var(--color-text-light); }
+
+.dropdownMenu {
+  position: absolute; top: calc(100% + 4px); right: 0; width: 260px;
+  background: var(--color-bg-card); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 12px); box-shadow: var(--shadow-lg);
+  z-index: 50; overflow: hidden; display: flex; flex-direction: column;
+}
+.dropdownSearch {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-bottom: 1px solid var(--color-border-light);
+  background: var(--color-bg);
+}
+.searchIcon { color: var(--color-text-light); }
+.dropdownSearch input {
+  border: none; background: transparent; outline: none;
+  font-size: 12.5px; width: 100%; color: var(--color-text-dark);
+}
+.dropdownList { max-height: 300px; overflow-y: auto; padding: 6px; }
+.dropdownItem {
+  display: block; width: 100%; text-align: left;
+  padding: 8px 10px; font-size: 12.5px; color: var(--color-text-mid);
+  border: none; background: transparent; border-radius: 6px; cursor: pointer;
+}
+.dropdownItem:hover { background: var(--color-bg); color: var(--color-text-dark); }
+.activeItem { background: var(--color-primary-soft); color: var(--color-primary-deep); font-weight: 600; }
+.activeItem:hover { background: var(--color-primary-soft); }
+
+.dropdownGroup { margin-top: 8px; }
+.groupLabel {
+  font-size: 11px; font-weight: 700; color: var(--color-text-light);
+  padding: 4px 10px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.noResults { padding: 16px; text-align: center; font-size: 12px; color: var(--color-text-light); }
