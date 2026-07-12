@@ -891,7 +891,7 @@ export default function AgentTestDrawer({ isOpen, onClose, currentRole }) {
             </div>
             <div>
               <h2 className={styles.drawerTitle}>Sistema Multiagente</h2>
-              <p className={styles.drawerSub}>Verificación en vivo · Rol: <strong>{currentRole}</strong></p>
+              <p className={styles.drawerSub}>Verificación en tiempo real · Rol: <strong>{currentRole}</strong></p>
             </div>
           </div>
           <button className={styles.drawerClose} onClick={onClose} aria-label="Cerrar">
