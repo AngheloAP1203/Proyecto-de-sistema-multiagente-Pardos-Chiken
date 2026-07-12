@@ -215,7 +215,7 @@ export default function SecurityPage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <h1 className={styles.title}>Seguridad IA</h1>
+        <h1 className={styles.title}>Evaluación y Seguridad</h1>
         <p className={styles.subtitle}>
           Auditoría de vulnerabilidades y seguridad de los modelos del sistema multiagente.
         </p>

@@ -126,7 +126,7 @@ const NAV_ITEMS = [
   {
     id: 'security',
     path: '/seguridad',
-    label: 'Seguridad IA',
+    label: 'Evaluación y Seguridad',
     icon: <ShieldCheck size={20} />,
     roles: ['admin'],
   },

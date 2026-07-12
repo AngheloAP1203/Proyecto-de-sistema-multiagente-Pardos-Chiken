@@ -260,7 +260,7 @@ export default function App() {
                           {/* Auditoría / logs — solo admin (guard dentro de la página) */}
                           <Route path="/auditoria" element={<AuditPage />} />
 
-                          {/* Seguridad IA — solo admin */}
+                          {/* Evaluación y Seguridad — solo admin */}
                           <Route element={<ProtectedRoute requiredPermission="canConfigureSystem" />}>
                             <Route path="/seguridad" element={<SecurityPage />} />
                           </Route>
