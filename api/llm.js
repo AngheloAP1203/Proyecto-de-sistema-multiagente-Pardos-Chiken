@@ -136,11 +136,18 @@ export default async function handler(req, res) {
     // Un ping directo al endpoint con la key revela el problema REAL: 200 = ok,
     // 403 = key/workspace inválido, otro = región u otra causa.
     try {
-      const endpoint = process.env.LANGSMITH_ENDPOINT || process.env.LANGCHAIN_ENDPOINT || 'https://api.smith.langchain.com'
       const key = process.env.LANGSMITH_API_KEY || process.env.LANGCHAIN_API_KEY || ''
-      // /sessions requiere autenticación (a diferencia de /info): valida key+workspace.
-      const ping = await fetch(`${endpoint}/sessions?limit=1`, { headers: { 'x-api-key': key } })
-      res.setHeader('x-langsmith-ping', `${ping.status}@${endpoint.replace(/^https?:\/\//, '')}`)
+      // Ping a US y EU con la misma key: distingue key inválida (403 en ambos)
+      // de cuenta en otra región (200 en la que corresponde). /sessions autentica.
+      const probar = async (ep) => {
+        try { const r = await fetch(`${ep}/sessions?limit=1`, { headers: { 'x-api-key': key } }); return r.status }
+        catch (e) { return `neterr:${String(e.message).slice(0, 30)}` }
+      }
+      const [us, eu] = await Promise.all([
+        probar('https://api.smith.langchain.com'),
+        probar('https://eu.api.smith.langchain.com'),
+      ])
+      res.setHeader('x-langsmith-ping', `us=${us} eu=${eu} keylen=${key.length}`)
     } catch (e) {
       res.setHeader('x-langsmith-ping', `neterr:${String(e.message).slice(0, 60)}`)
     }
