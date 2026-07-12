@@ -29,6 +29,7 @@ import { promptInterpreter, isDestructivePrompt, roleHasAssistantAccess } from '
 import { createAssistantGraph } from './core/assistantGraph.js'
 import { verificarCifras } from './core/numberGuard.js'
 import { claveDeConsulta, obtener, guardar } from './core/responseCache.js'
+import { auditLogger } from './core/auditLogger.js'
 import { buildToolsForRole } from './tools/assistantTools.js'
 import { PROMPT_ASISTENTE_LIDER } from './prompts.js'
 
@@ -211,6 +212,11 @@ class AssistantAgentClass {
 
       this._history.push(result)
       guardar(claveCache, result)   // solo guarda éxitos; ignora degradados/bloqueados
+      auditLogger.record({
+        agente: 'AssistantAgent', accion: 'assistant.query', resultado: 'ok',
+        latencia: result.latency,
+        detalle: { rol: role, modelo: modeloUsado, handoffs, agentes: result.agentsUsed },
+      })
       return result
 
     } catch (err) {
@@ -288,6 +294,10 @@ class AssistantAgentClass {
 
   // ── Nivel 2: clasificación por regex, sin LLM ─────────────────────────────
   async _fallback(prompt, role, contextData, startTime, motivo) {
+    auditLogger.record({
+      agente: 'AssistantAgent', accion: 'assistant.degraded', nivel: 'warn',
+      resultado: 'degraded', detalle: { rol: role, motivo },
+    })
     try {
       const result = await promptInterpreter.interpret(prompt, role, contextData)
       return { ...result, degraded: true, degradedReason: motivo, latency: Date.now() - startTime }
@@ -326,6 +336,11 @@ class AssistantAgentClass {
       timestamp: new Date().toISOString(),
     }
     this._history.push(result)
+    auditLogger.record({
+      agente: 'AssistantAgent', accion: 'guardrail.block', nivel: 'warn',
+      resultado: intent, latencia: result.latency,
+      detalle: { rol: role, prompt: String(rawPrompt).slice(0, 80) },
+    })
     return result
   }
 

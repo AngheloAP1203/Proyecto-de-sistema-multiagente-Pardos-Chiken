@@ -19,6 +19,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { orchestrator } from '../agents/core/AgentOrchestrator.js'
 import { notificationAgent } from '../agents/NotificationAgent.js'
 import { eventBus } from '../agents/core/EventBus.js'
+import { auditLogger } from '../agents/core/auditLogger.js'
 import toast from 'react-hot-toast'
 
 // Importar el tipo de prioridad para los toasts
@@ -78,6 +79,9 @@ export function AgentProvider({ children, reservationActions, kitchenActions, ca
       window.__pardosEventBus     = eventBus
       console.log('[AgentContext] 🔧 Orquestador expuesto en window.__pardosOrchestrator')
     }
+
+    // Auditor: engancha el EventBus para registrar toda actividad inter-agente.
+    auditLogger.conectarEventBus()
   }, [reservationActions, kitchenActions, cashActions, clientActions, complaintActions, resolutionActions])
 
   // ── Polling del estado del sistema (cada 2 segundos) ─────────────────────

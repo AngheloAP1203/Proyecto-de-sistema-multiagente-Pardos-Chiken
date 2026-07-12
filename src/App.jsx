@@ -78,6 +78,7 @@ import HistoryPage      from './features/history/HistoryPage'
 import ReportsPage      from './features/reports/ReportsPage'
 import SettingsPage     from './features/settings/SettingsPage'
 import AdminPromptPage  from './features/admin/AdminPromptPage'
+import AuditPage       from './features/audit/AuditPage'
 import ComplaintsPage   from './features/complaints/ComplaintsPage'
 import NotFoundPage     from './pages/NotFoundPage'
 
@@ -254,6 +255,9 @@ export default function App() {
 
                           {/* Quejas con IA — admin, cajero, hostess */}
                           <Route path="/quejas" element={<ComplaintsPage />} />
+
+                          {/* Auditoría / logs — solo admin (guard dentro de la página) */}
+                          <Route path="/auditoria" element={<AuditPage />} />
                         </Route>
                       </Route>
 

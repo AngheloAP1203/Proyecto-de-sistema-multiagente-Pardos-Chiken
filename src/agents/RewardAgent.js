@@ -18,6 +18,7 @@
 
 import { complete, llmMode } from './core/llmClient.js'
 import { verificarReclamo, VEREDICTO } from './core/claimVerifier.js'
+import { auditLogger } from './core/auditLogger.js'
 import { PROMPT_RECOMPENSA } from './prompts.js'
 
 // Recompensa por defecto según severidad, cuando ninguna política matchea el problema.
@@ -80,6 +81,13 @@ class RewardAgentClass {
         timestamp:  new Date().toISOString(),
       }
       this._history.push(res)
+      // Auditamos el rechazo: es el registro anti-fraude. El teléfono se redacta.
+      auditLogger.record({
+        agente: 'RewardAgent', accion: 'claim.verify',
+        nivel: verif.veredicto === VEREDICTO.RECHAZADO ? 'warn' : 'info',
+        resultado: verif.veredicto, latencia: res.latency,
+        detalle: { mesa: reclamo.tableId, telefono: reclamo.telefono, elegible: false },
+      })
       return res
     }
 
@@ -112,6 +120,12 @@ class RewardAgentClass {
       timestamp:  new Date().toISOString(),
     }
     this._history.push(res)
+    auditLogger.record({
+      agente: 'RewardAgent', accion: 'claim.reward', resultado: verif.veredicto,
+      latencia: res.latency,
+      detalle: { mesa: reclamo.tableId, telefono: reclamo.telefono, elegible: true,
+                 recompensa: promo?.nombre || null, reservationId: verif.reservationId },
+    })
     return res
   }
 

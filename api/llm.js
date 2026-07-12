@@ -17,7 +17,40 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+import { traceable } from 'langsmith/traceable'
+
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
+
+/**
+ * Llamada a Groq envuelta para LangSmith (§5.3 del diseño).
+ *
+ * `traceable` traza inputs, outputs, latencia y tokens a LangSmith cuando el
+ * servidor tiene LANGSMITH_TRACING=true + LANGSMITH_API_KEY. Sin esas variables
+ * es un passthrough puro (no añade latencia ni rompe nada). La key de LangSmith,
+ * igual que la de Groq, vive solo en el servidor: nunca en el bundle.
+ */
+const llamarGroqTrazado = traceable(
+  async ({ url, apiKey, payload }) => {
+    const upstream = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const body = await upstream.json()
+    return { status: upstream.status, body }
+  },
+  {
+    name: 'pardos.llm',
+    run_type: 'llm',
+    // No metas la key en la traza: solo lo útil para observar.
+    processInputs: ({ payload }) => ({ model: payload?.model, messages: payload?.messages, tools: payload?.tools }),
+    processOutputs: ({ body }) => ({
+      content: body?.choices?.[0]?.message?.content,
+      tool_calls: body?.choices?.[0]?.message?.tool_calls,
+      usage: body?.usage,
+    }),
+  },
+)
 
 // Solo modelos que este proyecto usa. Un proxy abierto a cualquier modelo es
 // una invitación a que terceros consuman la cuota con modelos caros.
@@ -54,21 +87,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const upstream = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature,
-        ...(Array.isArray(tools) && tools.length > 0 ? { tools } : {}),
-      }),
-    })
-
-    const body = await upstream.json()
+    const payload = {
+      model, messages, temperature,
+      ...(Array.isArray(tools) && tools.length > 0 ? { tools } : {}),
+    }
+    const { status, body } = await llamarGroqTrazado({ url: GROQ_URL, apiKey, payload })
     // Passthrough del status: un 429 de Groq debe llegar como 429 al cliente,
     // con su mensaje intacto ("Please try again in Xs") para el backoff.
-    res.status(upstream.status).json(body)
+    res.status(status).json(body)
   } catch (err) {
     console.error('[api/llm] Error:', err)
     res.status(502).json({ error: `No se pudo contactar a Groq: ${err.message}` })
