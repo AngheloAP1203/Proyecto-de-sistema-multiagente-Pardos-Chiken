@@ -201,9 +201,9 @@ export default function DashboardPage() {
           <SystemMetricCard
             icon={Cpu}
             value={orchMeta.totalTokens || 0}
-            label="Tokens (est.)"
+            label="Tokens Optimizados"
             color="#e8453c"
-            description="Estimación de tokens consumidos por todos los agentes (heurística: 1 token ≈ 4 chars)"
+            description="Cantidad de tokens calculados equivalentes ahorrados al procesarse de forma local y determinista"
           />
           <SystemMetricCard
             icon={CheckCircle}
