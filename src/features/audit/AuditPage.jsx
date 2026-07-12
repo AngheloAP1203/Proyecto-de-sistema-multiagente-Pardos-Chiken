@@ -49,9 +49,8 @@ function ActorDropdown({ value, onChange, optionsPorTipo }) {
   const gAgentes = filterGroup(optionsPorTipo.agente)
   const gUsuarios = filterGroup(optionsPorTipo.usuario)
   const gClientes = filterGroup(optionsPorTipo.cliente)
-  const gOtros = filterGroup(optionsPorTipo.otro)
 
-  const hasResults = gAgentes.length || gUsuarios.length || gClientes.length || gOtros.length
+  const hasResults = gAgentes.length || gUsuarios.length || gClientes.length
 
   return (
     <div className={styles.actorDropdown} ref={ref}>
@@ -102,14 +101,6 @@ function ActorDropdown({ value, onChange, optionsPorTipo }) {
                 ))}
               </div>
             )}
-            {gOtros.length > 0 && (
-              <div className={styles.dropdownGroup}>
-                <div className={styles.groupLabel}>❓ Otros</div>
-                {gOtros.map(a => (
-                  <button key={a} className={`${styles.dropdownItem} ${value === a ? styles.activeItem : ''}`} onClick={() => { onChange(a); setOpen(false); setSearch('') }}>{a}</button>
-                ))}
-              </div>
-            )}
 
             {!hasResults && <div className={styles.noResults}>No se encontraron actores</div>}
           </div>
@@ -133,17 +124,17 @@ export default function AuditPage() {
   }, [])
 
   const actoresPorTipo = useMemo(() => {
-    const agrupados = { agente: new Set(), usuario: new Set(), cliente: new Set(), otro: new Set() }
+    const agrupados = { agente: new Set(), usuario: new Set(), cliente: new Set() }
     entries.forEach(e => {
       const actorName = e.actor || 'Sistema'
-      if (e.tipoActor && agrupados[e.tipoActor]) agrupados[e.tipoActor].add(actorName)
-      else agrupados.otro.add(actorName)
+      if (e.tipoActor === 'usuario') agrupados.usuario.add(actorName)
+      else if (e.tipoActor === 'cliente') agrupados.cliente.add(actorName)
+      else agrupados.agente.add(actorName) // Agentes y logs de sistema
     })
     return {
       agente: [...agrupados.agente].sort(),
       usuario: [...agrupados.usuario].sort(),
       cliente: [...agrupados.cliente].sort(),
-      otro: [...agrupados.otro].sort(),
     }
   }, [entries])
 
