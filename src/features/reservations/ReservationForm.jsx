@@ -34,6 +34,7 @@ const EMPTY_FORM = {
   clientId:    '',
   clientName:  '',
   clientDni:   '',
+  clientPhone: '',
   clientEmail: '',
   date:        today,
   time:        '13:00',
@@ -77,6 +78,7 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
           clientId:    client.id,
           clientName:  client.name,
           clientDni:   client.dni,
+          clientPhone: client.phone || '',
           clientEmail: client.email || '',
         }))
         setFound(true)
@@ -99,6 +101,7 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
     if (!form.clientName.trim()) e.clientName = 'Nombre del cliente requerido'
     if (!form.clientDni.trim()) e.clientDni = 'DNI requerido'
     else if (!/^\d{8}$/.test(form.clientDni.trim())) e.clientDni = 'DNI inválido (8 dígitos)'
+    if (!form.clientPhone.trim()) e.clientPhone = 'Teléfono requerido'
     if (!form.date) e.date = 'Fecha requerida'
     if (!form.time) e.time = 'Hora requerida'
     else {
@@ -156,6 +159,7 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
       const newClient = addClient({
         name:  form.clientName,
         dni:   form.clientDni,
+        phone: form.clientPhone,
         email: form.clientEmail,
       })
       finalClientId = newClient.id
@@ -200,6 +204,16 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
             </span>
           )}
         </div>
+        <Input
+          label="Teléfono del cliente"
+          name="clientPhone"
+          type="tel"
+          placeholder="Ej: 987654321"
+          value={form.clientPhone}
+          onChange={handleChange}
+          required
+          error={errors.clientPhone}
+        />
 
         <div className={styles.row2}>
           <Input

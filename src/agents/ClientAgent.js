@@ -122,12 +122,12 @@ export class ClientAgent extends AgentBase {
     return { success: false, client: null, found: false }
   }
 
-  async _createClient({ name, dni, email, notes = '', preferences = '', allergies = '' }, correlationId) {
-    if (!name || !dni) return { success: false, error: 'Nombre y DNI son requeridos' }
+  async _createClient({ name, dni, phone, email, notes = '', preferences = '', allergies = '' }, correlationId) {
+    if (!name || !dni || !phone) return { success: false, error: 'Nombre, DNI y teléfono son requeridos' }
 
     if (this._contextActions?.addClient) {
       const client = this._contextActions.addClient({
-        name, dni, email: email || '',
+        name, dni, phone, email: email || '',
         notes, preferences, allergies,
         totalReservations: 1,
         vip: false,
@@ -138,8 +138,8 @@ export class ClientAgent extends AgentBase {
         clientId: client?.id,
         name,
         dni,
+        phone,
       }, this.name, correlationId)
-
       return { success: true, client, message: `Cliente ${name} registrado` }
     }
     return { success: false }
@@ -194,8 +194,9 @@ export class ClientAgent extends AgentBase {
     } else {
       // Cliente nuevo → crear automáticamente
       const result = await this._createClient({
-        name:  reservation.clientName,
-        dni:   reservation.clientDni,
+        name: reservation.clientName,
+        dni: reservation.clientDni,
+        phone: reservation.clientPhone || 'No proporcionado',
         email: reservation.clientEmail || '',
         notes: reservation.notes
           ? `Registrado vía aprobación de reserva. Nota: ${reservation.notes}`

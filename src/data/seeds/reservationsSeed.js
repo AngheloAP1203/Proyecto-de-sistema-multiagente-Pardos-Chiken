@@ -16,7 +16,8 @@ export const SAMPLE_RESERVATIONS = [
   // ── HOY — activas ──────────────────────────────────
   {
     id: 'R001', clientId: 'C001',
-    clientName: 'María García', clientDni: '78765432', clientEmail: 'maria@email.com',
+    clientName: 'María García', clientPhone: '98765432',
+    clientDni: '78765432', clientEmail: 'maria@email.com',
     date: today, time: '13:00', guests: 4, tableId: 'T03',
     status: RESERVATION_STATUS.PENDING,
     notes: 'Cumpleaños, pedir torta de chocolate', createdAt: new Date().toISOString(),
@@ -24,7 +25,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R002', clientId: 'C002',
-    clientName: 'Roberto Silva', clientDni: '71234567', clientEmail: 'roberto@email.com',
+    clientName: 'Roberto Silva', clientPhone: '91234567',
+    clientDni: '71234567', clientEmail: 'roberto@email.com',
     date: today, time: '14:30', guests: 2, tableId: 'T01',
     status: RESERVATION_STATUS.SEATED,
     notes: '', createdAt: new Date().toISOString(),
@@ -32,7 +34,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R003', clientId: 'C004',
-    clientName: 'Patricia Flores', clientDni: '74321123', clientEmail: 'patricia@email.com',
+    clientName: 'Patricia Flores', clientPhone: '94321123',
+    clientDni: '74321123', clientEmail: 'patricia@email.com',
     date: today, time: '19:00', guests: 6, tableId: 'T06',
     status: RESERVATION_STATUS.PENDING,
     notes: 'Cena de aniversario', createdAt: new Date().toISOString(),
@@ -40,7 +43,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R004', clientId: 'C005',
-    clientName: 'Carlos Quispe', clientDni: '75678123', clientEmail: 'carlos_q@email.com',
+    clientName: 'Carlos Quispe', clientPhone: '95678123',
+    clientDni: '75678123', clientEmail: 'carlos_q@email.com',
     date: today, time: '20:30', guests: 8, tableId: 'T14',
     status: RESERVATION_STATUS.PENDING,
     notes: 'Reunión de empresa', createdAt: new Date().toISOString(),
@@ -48,7 +52,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R005', clientId: 'C006',
-    clientName: 'Lucia Mendoza', clientDni: '79988877', clientEmail: 'lucia_m@email.com',
+    clientName: 'Lucia Mendoza', clientPhone: '99988877',
+    clientDni: '79988877', clientEmail: 'lucia_m@email.com',
     date: today, time: '21:00', guests: 4, tableId: 'T15',
     status: RESERVATION_STATUS.PENDING,
     notes: 'Mesa VIP solicitada', createdAt: new Date().toISOString(),
@@ -58,7 +63,8 @@ export const SAMPLE_RESERVATIONS = [
   // ── AYER ──────────────────────────────────────────
   {
     id: 'R006', clientId: 'C003',
-    clientName: 'Ana López', clientDni: '79887766', clientEmail: 'ana@email.com',
+    clientName: 'Ana López', clientPhone: '99887766',
+    clientDni: '79887766', clientEmail: 'ana@email.com',
     date: d(1), time: '13:30', guests: 3, tableId: 'T05',
     status: RESERVATION_STATUS.COMPLETED,
     notes: '', createdAt: subDays(new Date(), 1).toISOString(),
@@ -66,7 +72,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R007', clientId: 'C007',
-    clientName: 'Jorge Castillo', clientDni: '78811223', clientEmail: 'jorge_c@email.com',
+    clientName: 'Jorge Castillo', clientPhone: '98811223',
+    clientDni: '78811223', clientEmail: 'jorge_c@email.com',
     date: d(1), time: '14:00', guests: 2, tableId: 'T02',
     status: RESERVATION_STATUS.COMPLETED,
     notes: '', createdAt: subDays(new Date(), 1).toISOString(),
@@ -74,7 +81,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R008', clientId: 'C008',
-    clientName: 'Isabel Torres', clientDni: '71223344', clientEmail: 'isabel@email.com',
+    clientName: 'Isabel Torres', clientPhone: '91223344',
+    clientDni: '71223344', clientEmail: 'isabel@email.com',
     date: d(1), time: '20:00', guests: 5, tableId: 'T11',
     status: RESERVATION_STATUS.COMPLETED,
     notes: 'Solicitar mesa tranquila', createdAt: subDays(new Date(), 1).toISOString(),
@@ -82,7 +90,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R009', clientId: 'C009',
-    clientName: 'Pedro Vásquez', clientDni: '77766554', clientEmail: 'pedro@email.com',
+    clientName: 'Pedro Vásquez', clientPhone: '97766554',
+    clientDni: '77766554', clientEmail: 'pedro@email.com',
     date: d(1), time: '19:30', guests: 4, tableId: 'T10',
     status: RESERVATION_STATUS.CANCELLED,
     cancelReason: 'Cliente llamó para cancelar',
@@ -93,7 +102,8 @@ export const SAMPLE_RESERVATIONS = [
   // ── HACE 2 DÍAS ───────────────────────────────────
   {
     id: 'R010', clientId: 'C001',
-    clientName: 'María García', clientDni: '78765432', clientEmail: 'maria@email.com',
+    clientName: 'María García', clientPhone: '98765432',
+    clientDni: '78765432', clientEmail: 'maria@email.com',
     date: d(2), time: '13:00', guests: 4, tableId: 'T04',
     status: RESERVATION_STATUS.COMPLETED,
     notes: '', createdAt: subDays(new Date(), 2).toISOString(),
@@ -101,7 +111,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R011', clientId: 'C010',
-    clientName: 'Sandra Reyes', clientDni: '74433221', clientEmail: 'sandra@email.com',
+    clientName: 'Sandra Reyes', clientPhone: '94433221',
+    clientDni: '74433221', clientEmail: 'sandra@email.com',
     date: d(2), time: '20:00', guests: 2, tableId: 'T01',
     status: RESERVATION_STATUS.NO_SHOW,
     notes: '', createdAt: subDays(new Date(), 2).toISOString(),
@@ -109,7 +120,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R012', clientId: 'C004',
-    clientName: 'Patricia Flores', clientDni: '74321123', clientEmail: 'patricia@email.com',
+    clientName: 'Patricia Flores', clientPhone: '94321123',
+    clientDni: '74321123', clientEmail: 'patricia@email.com',
     date: d(2), time: '14:30', guests: 3, tableId: 'T07',
     status: RESERVATION_STATUS.COMPLETED,
     notes: '', createdAt: subDays(new Date(), 2).toISOString(),
@@ -119,7 +131,8 @@ export const SAMPLE_RESERVATIONS = [
   // ── HACE 3 DÍAS ───────────────────────────────────
   {
     id: 'R013', clientId: 'C003',
-    clientName: 'Ana López', clientDni: '79887766', clientEmail: 'ana@email.com',
+    clientName: 'Ana López', clientPhone: '99887766',
+    clientDni: '79887766', clientEmail: 'ana@email.com',
     date: d(3), time: '12:30', guests: 5, tableId: 'T06',
     status: RESERVATION_STATUS.COMPLETED,
     notes: '', createdAt: subDays(new Date(), 3).toISOString(),
@@ -127,7 +140,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R014', clientId: 'C011',
-    clientName: 'Enrique Huamán', clientDni: '75544332', clientEmail: 'enrique@email.com',
+    clientName: 'Enrique Huamán', clientPhone: '95544332',
+    clientDni: '75544332', clientEmail: 'enrique@email.com',
     date: d(3), time: '19:00', guests: 6, tableId: 'T12',
     status: RESERVATION_STATUS.COMPLETED,
     notes: 'Corporativo', createdAt: subDays(new Date(), 3).toISOString(),
@@ -135,7 +149,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R015', clientId: 'C002',
-    clientName: 'Roberto Silva', clientDni: '71234567', clientEmail: 'roberto@email.com',
+    clientName: 'Roberto Silva', clientPhone: '91234567',
+    clientDni: '71234567', clientEmail: 'roberto@email.com',
     date: d(3), time: '20:30', guests: 2, tableId: 'T08',
     status: RESERVATION_STATUS.CANCELLED,
     cancelReason: 'Cambio de planes',
@@ -146,7 +161,8 @@ export const SAMPLE_RESERVATIONS = [
   // ── HACE 5 DÍAS ───────────────────────────────────
   {
     id: 'R016', clientId: 'C005',
-    clientName: 'Carlos Quispe', clientDni: '75678123', clientEmail: 'carlos_q@email.com',
+    clientName: 'Carlos Quispe', clientPhone: '95678123',
+    clientDni: '75678123', clientEmail: 'carlos_q@email.com',
     date: d(5), time: '13:00', guests: 8, tableId: 'T14',
     status: RESERVATION_STATUS.COMPLETED,
     notes: 'Aniversario empresa', createdAt: subDays(new Date(), 5).toISOString(),
@@ -154,7 +170,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R017', clientId: 'C007',
-    clientName: 'Jorge Castillo', clientDni: '78811223', clientEmail: 'jorge_c@email.com',
+    clientName: 'Jorge Castillo', clientPhone: '98811223',
+    clientDni: '78811223', clientEmail: 'jorge_c@email.com',
     date: d(5), time: '20:00', guests: 4, tableId: 'T10',
     status: RESERVATION_STATUS.COMPLETED,
     notes: '', createdAt: subDays(new Date(), 5).toISOString(),
@@ -162,7 +179,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R018', clientId: 'C012',
-    clientName: 'Valeria Cruz', clientDni: '76655443', clientEmail: 'valeria@email.com',
+    clientName: 'Valeria Cruz', clientPhone: '96655443',
+    clientDni: '76655443', clientEmail: 'valeria@email.com',
     date: d(5), time: '14:00', guests: 3, tableId: 'T05',
     status: RESERVATION_STATUS.COMPLETED,
     notes: '', createdAt: subDays(new Date(), 5).toISOString(),
@@ -172,7 +190,8 @@ export const SAMPLE_RESERVATIONS = [
   // ── HACE 7 DÍAS ───────────────────────────────────
   {
     id: 'R019', clientId: 'C001',
-    clientName: 'María García', clientDni: '78765432', clientEmail: 'maria@email.com',
+    clientName: 'María García', clientPhone: '98765432',
+    clientDni: '78765432', clientEmail: 'maria@email.com',
     date: d(7), time: '13:00', guests: 4, tableId: 'T03',
     status: RESERVATION_STATUS.COMPLETED,
     notes: '', createdAt: subDays(new Date(), 7).toISOString(),
@@ -180,7 +199,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R020', clientId: 'C008',
-    clientName: 'Isabel Torres', clientDni: '71223344', clientEmail: 'isabel@email.com',
+    clientName: 'Isabel Torres', clientPhone: '91223344',
+    clientDni: '71223344', clientEmail: 'isabel@email.com',
     date: d(7), time: '20:30', guests: 6, tableId: 'T11',
     status: RESERVATION_STATUS.COMPLETED,
     notes: 'Cena especial', createdAt: subDays(new Date(), 7).toISOString(),
@@ -190,7 +210,8 @@ export const SAMPLE_RESERVATIONS = [
   // ── HACE 10 DÍAS ──────────────────────────────────
   {
     id: 'R021', clientId: 'C003',
-    clientName: 'Ana López', clientDni: '79887766', clientEmail: 'ana@email.com',
+    clientName: 'Ana López', clientPhone: '99887766',
+    clientDni: '79887766', clientEmail: 'ana@email.com',
     date: d(10), time: '14:00', guests: 2, tableId: 'T09',
     status: RESERVATION_STATUS.COMPLETED,
     notes: '', createdAt: subDays(new Date(), 10).toISOString(),
@@ -198,7 +219,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R022', clientId: 'C006',
-    clientName: 'Lucia Mendoza', clientDni: '79988877', clientEmail: 'lucia_m@email.com',
+    clientName: 'Lucia Mendoza', clientPhone: '99988877',
+    clientDni: '79988877', clientEmail: 'lucia_m@email.com',
     date: d(10), time: '19:30', guests: 4, tableId: 'T15',
     status: RESERVATION_STATUS.COMPLETED,
     notes: 'Mesa VIP', createdAt: subDays(new Date(), 10).toISOString(),
@@ -206,7 +228,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R023', clientId: 'C011',
-    clientName: 'Enrique Huamán', clientDni: '75544332', clientEmail: 'enrique@email.com',
+    clientName: 'Enrique Huamán', clientPhone: '95544332',
+    clientDni: '75544332', clientEmail: 'enrique@email.com',
     date: d(10), time: '13:00', guests: 5, tableId: 'T06',
     status: RESERVATION_STATUS.COMPLETED,
     notes: '', createdAt: subDays(new Date(), 10).toISOString(),
@@ -216,7 +239,8 @@ export const SAMPLE_RESERVATIONS = [
   // ── HACE 14 DÍAS ──────────────────────────────────
   {
     id: 'R024', clientId: 'C004',
-    clientName: 'Patricia Flores', clientDni: '74321123', clientEmail: 'patricia@email.com',
+    clientName: 'Patricia Flores', clientPhone: '94321123',
+    clientDni: '74321123', clientEmail: 'patricia@email.com',
     date: d(14), time: '20:00', guests: 4, tableId: 'T10',
     status: RESERVATION_STATUS.COMPLETED,
     notes: '', createdAt: subDays(new Date(), 14).toISOString(),
@@ -224,7 +248,8 @@ export const SAMPLE_RESERVATIONS = [
   },
   {
     id: 'R025', clientId: 'C012',
-    clientName: 'Valeria Cruz', clientDni: '76655443', clientEmail: 'valeria@email.com',
+    clientName: 'Valeria Cruz', clientPhone: '96655443',
+    clientDni: '76655443', clientEmail: 'valeria@email.com',
     date: d(14), time: '14:30', guests: 6, tableId: 'T12',
     status: RESERVATION_STATUS.COMPLETED,
     notes: '', createdAt: subDays(new Date(), 14).toISOString(),

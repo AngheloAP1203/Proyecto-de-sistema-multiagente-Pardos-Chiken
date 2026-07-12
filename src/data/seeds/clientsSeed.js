@@ -2,7 +2,7 @@ export const SAMPLE_CLIENTS = [
   {
     id: 'C001',
     name: 'María García',
-    dni: '78765432',
+    phone: '98765432',
     email: 'maria@email.com',
     dni: '45678901',
     birthday: '1990-03-15',
@@ -18,7 +18,7 @@ export const SAMPLE_CLIENTS = [
   {
     id: 'C002',
     name: 'Roberto Silva',
-    dni: '71234567',
+    phone: '91234567',
     email: 'roberto@email.com',
     dni: '32145678',
     birthday: '1985-07-22',
@@ -34,7 +34,7 @@ export const SAMPLE_CLIENTS = [
   {
     id: 'C003',
     name: 'Ana López',
-    dni: '79887766',
+    phone: '99887766',
     email: 'ana@email.com',
     dni: '56789012',
     birthday: '1995-11-08',
@@ -50,7 +50,7 @@ export const SAMPLE_CLIENTS = [
   {
     id: 'C004',
     name: 'Patricia Flores',
-    dni: '74321123',
+    phone: '94321123',
     email: 'patricia@email.com',
     dni: '67890123',
     birthday: '1988-05-20',
@@ -66,7 +66,7 @@ export const SAMPLE_CLIENTS = [
   {
     id: 'C005',
     name: 'Carlos Quispe',
-    dni: '75678123',
+    phone: '95678123',
     email: 'carlos_q@email.com',
     dni: '78901234',
     birthday: '1980-09-12',
@@ -82,7 +82,7 @@ export const SAMPLE_CLIENTS = [
   {
     id: 'C006',
     name: 'Lucia Mendoza',
-    dni: '79988877',
+    phone: '99988877',
     email: 'lucia_m@email.com',
     dni: '89012345',
     birthday: '1992-02-14',
@@ -98,7 +98,7 @@ export const SAMPLE_CLIENTS = [
   {
     id: 'C007',
     name: 'Jorge Castillo',
-    dni: '78811223',
+    phone: '98811223',
     email: 'jorge_c@email.com',
     dni: '90123456',
     birthday: '1978-12-30',
@@ -114,7 +114,7 @@ export const SAMPLE_CLIENTS = [
   {
     id: 'C008',
     name: 'Isabel Torres',
-    dni: '71223344',
+    phone: '91223344',
     email: 'isabel@email.com',
     dni: '01234567',
     birthday: '1993-06-18',
@@ -130,7 +130,7 @@ export const SAMPLE_CLIENTS = [
   {
     id: 'C009',
     name: 'Pedro Vásquez',
-    dni: '77766554',
+    phone: '97766554',
     email: 'pedro@email.com',
     dni: '12309876',
     birthday: '1975-03-05',
@@ -146,7 +146,7 @@ export const SAMPLE_CLIENTS = [
   {
     id: 'C010',
     name: 'Sandra Reyes',
-    dni: '74433221',
+    phone: '94433221',
     email: 'sandra@email.com',
     dni: '23410987',
     birthday: '1998-08-25',
@@ -162,7 +162,7 @@ export const SAMPLE_CLIENTS = [
   {
     id: 'C011',
     name: 'Enrique Huamán',
-    dni: '75544332',
+    phone: '95544332',
     email: 'enrique@email.com',
     dni: '34521098',
     birthday: '1970-11-15',
@@ -178,7 +178,7 @@ export const SAMPLE_CLIENTS = [
   {
     id: 'C012',
     name: 'Valeria Cruz',
-    dni: '76655443',
+    phone: '96655443',
     email: 'valeria@email.com',
     dni: '45632109',
     birthday: '1997-04-10',

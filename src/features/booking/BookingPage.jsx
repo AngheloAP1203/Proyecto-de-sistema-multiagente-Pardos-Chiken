@@ -50,6 +50,7 @@ const TIME_SLOTS = [
 const INITIAL_FORM = {
   clientName:  '',
   clientDni: '',
+  clientPhone: '',
   clientEmail: '',
   date:        '',
   time:        '',
@@ -98,6 +99,10 @@ export default function BookingPage() {
     if (!form.clientDni.trim()) e.clientDni = 'Tu DNI es requerido'
     else if (!/^\d{8}$/.test(form.clientDni.trim()))
       e.clientDni = 'Ingresa un DNI válido (8 dígitos)'
+      
+    if (!form.clientPhone.trim()) e.clientPhone = 'Tu teléfono es requerido'
+    else if (!/^\d{9,12}$/.test(form.clientPhone.replace(/\s/g,'')))
+      e.clientPhone = 'Teléfono inválido'
     if (!form.date)   e.date   = 'Selecciona una fecha'
     if (!form.time)   e.time   = 'Selecciona un horario'
     if (Number(form.guests) < 1 || Number(form.guests) > 30)
@@ -113,6 +118,7 @@ export default function BookingPage() {
     const reservation = requestReservation({
       clientName:  form.clientName.trim(),
       clientDni: form.clientDni.trim(),
+      clientPhone: form.clientPhone.trim(),
       clientEmail: form.clientEmail.trim(),
       date:        form.date,
       time:        form.time,
@@ -166,7 +172,7 @@ export default function BookingPage() {
               )}
             </div>
             <p className={styles.confirmedNote}>
-              💳 Registrado con DNI <strong>{booking?.clientDni}</strong>. Te contactaremos pronto para confirmar tu reserva.
+              💳 Registrado con DNI <strong>{booking?.clientDni}</strong>. Te contactaremos al <strong>{booking?.clientPhone}</strong> para confirmar tu reserva.
               El tiempo de respuesta es de máximo <strong>2 horas</strong>.
             </p>
             <div className={styles.confirmedActions}>
@@ -258,6 +264,14 @@ export default function BookingPage() {
                       type="text" name="clientDni" id="booking-dni" maxLength={8}
                       placeholder="Ej. 76543210"
                       value={form.clientDni} onChange={handleChange} />
+                  </div>
+                </Field>
+                <Field label="Teléfono" error={errors.clientPhone} required>
+                  <div className={styles.inputWrapper}>
+                    <input className={`${styles.input} ${errors.clientPhone ? styles.inputError : ''}`}
+                      type="tel" name="clientPhone" id="booking-phone"
+                      placeholder="Ej. 987654321"
+                      value={form.clientPhone} onChange={handleChange} />
                   </div>
                 </Field>
               </div>
