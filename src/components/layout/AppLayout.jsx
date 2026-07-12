@@ -21,7 +21,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard, CalendarCheck, Users, Clock, ChartBar,
   Settings, LogOut, Menu, X, UtensilsCrossed, ChevronRight,
-  TableProperties, CreditCard, ChefHat, TrendingUp, Cpu, Bot, MessageSquare, ScrollText,
+  TableProperties, CreditCard, ChefHat, TrendingUp, Cpu, Bot, MessageSquare, ScrollText, ShieldCheck,
 } from 'lucide-react'
 import { useAuth, ROLE_PERMISSIONS } from '../../context/AuthContext'
 import { useAgents } from '../../context/AgentContext'
@@ -121,6 +121,13 @@ const NAV_ITEMS = [
     path: '/auditoria',
     label: 'Auditoría',
     icon: <ScrollText size={20} />,
+    roles: ['admin'],
+  },
+  {
+    id: 'security',
+    path: '/seguridad',
+    label: 'Seguridad IA',
+    icon: <ShieldCheck size={20} />,
     roles: ['admin'],
   },
 ]

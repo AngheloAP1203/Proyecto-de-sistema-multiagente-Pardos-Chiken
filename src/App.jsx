@@ -79,6 +79,7 @@ import ReportsPage      from './features/reports/ReportsPage'
 import SettingsPage     from './features/settings/SettingsPage'
 import AdminPromptPage  from './features/admin/AdminPromptPage'
 import AuditPage       from './features/audit/AuditPage'
+import SecurityPage    from './features/security/SecurityPage'
 import ComplaintsPage   from './features/complaints/ComplaintsPage'
 import NotFoundPage     from './pages/NotFoundPage'
 
@@ -258,6 +259,11 @@ export default function App() {
 
                           {/* Auditoría / logs — solo admin (guard dentro de la página) */}
                           <Route path="/auditoria" element={<AuditPage />} />
+
+                          {/* Seguridad IA — solo admin */}
+                          <Route element={<ProtectedRoute requiredPermission="canConfigureSystem" />}>
+                            <Route path="/seguridad" element={<SecurityPage />} />
+                          </Route>
                         </Route>
                       </Route>
 
