@@ -105,7 +105,6 @@ export default async function handler(req, res) {
   }
 
   let respuesta   // { status, body }
-  let llmDiag = isTracingEnabled() ? 'enabled' : 'off'
 
   try {
     const payload = {
@@ -118,58 +117,15 @@ export default async function handler(req, res) {
     respuesta = { status: 502, body: { error: `No se pudo contactar a Groq: ${err.message}` } }
   }
 
-  // FLUSH: espera a que la traza salga por la red ANTES de responder (si no,
-  // Vercel congela la función y la traza se pierde). Tope de 3s de salvaguarda.
-  if (llmDiag === 'enabled') {
-    try {
-      await Promise.race([
-        langsmithClient.awaitPendingTraceBatches(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('flush-timeout-3s')), 3000)),
-      ])
-      llmDiag = 'flushed'
-    } catch (e) {
-      llmDiag = `flush-error:${String(e.message).slice(0, 80)}`
-      console.warn('[api/llm] LangSmith flush falló:', e.message)
-    }
-
-    // `awaitPendingTraceBatches` se traga el error de red (un 403 no propaga).
-    // Un ping directo al endpoint con la key revela el problema REAL: 200 = ok,
-    // 403 = key/workspace inválido, otro = región u otra causa.
-    try {
-      const key = process.env.LANGSMITH_API_KEY || process.env.LANGCHAIN_API_KEY || ''
-      const project = process.env.LANGSMITH_PROJECT || 'default'
-      const endpoint = process.env.LANGSMITH_ENDPOINT || 'https://api.smith.langchain.com'
-      // Ingesta real de una traza mínima (lo mismo que hace el SDK). Un 20x =
-      // key válida y traza aceptada; 401/403 = key/workspace inválido.
-      // Run raíz VÁLIDO: trace_id === id y dotted_order en el formato que exige
-      // la API (lo que el SDK genera solo). Un 20x confirma ingesta end-to-end.
-      const now = new Date()
-      const iso = now.toISOString()
-      const compact = iso.replace(/[-:]/g, '').replace(/\.(\d{3})Z$/, '$1000Z')
-      const enviar = async (k) => {
-        const id = crypto.randomUUID()
-        const run = {
-          id, trace_id: id, dotted_order: `${compact}${id}`,
-          name: 'pardos.diag', run_type: 'chain',
-          start_time: iso, end_time: iso, session_name: project,
-          inputs: { diag: true }, outputs: { ok: true },
-        }
-        const r = await fetch(`${endpoint}/runs`, {
-          method: 'POST',
-          headers: { 'x-api-key': k, 'Content-Type': 'application/json' },
-          body: JSON.stringify(run),
-        })
-        return r.status
-      }
-      const raw = await enviar(key)
-      const prefix = key.trim().slice(0, 8)   // "lsv2_pt_" o "lsv2_sk_" — no es secreto
-      res.setHeader('x-langsmith-ping', `ingest=${raw} keylen=${key.length} prefix=${prefix} proj=${project}`)
-    } catch (e) {
-      res.setHeader('x-langsmith-ping', `neterr:${String(e.message).slice(0, 60)}`)
-    }
+  // FLUSH: espera a que la traza salga por la red ANTES de responder. Sin esto,
+  // Vercel congela la función serverless y la traza se pierde. Tope de 3s.
+  if (isTracingEnabled()) {
+    await Promise.race([
+      langsmithClient.awaitPendingTraceBatches().catch((e) => console.warn('[api/llm] LangSmith flush:', e.message)),
+      new Promise((resolve) => setTimeout(resolve, 3000)),
+    ])
   }
 
-  // Cabecera de diagnóstico: estado real del tracing, visible desde el navegador.
-  res.setHeader('x-langsmith', llmDiag)
+  // Passthrough del status de Groq (un 429 llega intacto para el backoff del cliente).
   res.status(respuesta.status).json(respuesta.body)
 }
