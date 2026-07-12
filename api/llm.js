@@ -19,6 +19,7 @@
 
 import { traceable } from 'langsmith/traceable'
 import { Client } from 'langsmith'
+import { isTracingEnabled } from 'langsmith'
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
@@ -103,25 +104,49 @@ export default async function handler(req, res) {
     return
   }
 
+  let respuesta   // { status, body }
+  let llmDiag = isTracingEnabled() ? 'enabled' : 'off'
+
   try {
     const payload = {
       model, messages, temperature,
       ...(Array.isArray(tools) && tools.length > 0 ? { tools } : {}),
     }
-    const { status, body } = await llamarGroqTrazado({ url: GROQ_URL, apiKey, payload })
-    // Passthrough del status: un 429 de Groq debe llegar como 429 al cliente,
-    // con su mensaje intacto ("Please try again in Xs") para el backoff.
-    res.status(status).json(body)
+    respuesta = await llamarGroqTrazado({ url: GROQ_URL, apiKey, payload })
   } catch (err) {
     console.error('[api/llm] Error:', err)
-    res.status(502).json({ error: `No se pudo contactar a Groq: ${err.message}` })
-  } finally {
-    // FLUSH: espera a que la traza salga por la red antes de que Vercel congele
-    // la función. Sin esto, LangSmith no recibe nada (ver nota arriba). Con un
-    // tope de 3s para no alargar la respuesta si LangSmith está lento o caído.
-    await Promise.race([
-      langsmithClient.awaitPendingTraceBatches().catch((e) => console.warn('[api/llm] LangSmith flush falló:', e.message)),
-      new Promise((resolve) => setTimeout(resolve, 3000)),
-    ])
+    respuesta = { status: 502, body: { error: `No se pudo contactar a Groq: ${err.message}` } }
   }
+
+  // FLUSH: espera a que la traza salga por la red ANTES de responder (si no,
+  // Vercel congela la función y la traza se pierde). Tope de 3s de salvaguarda.
+  if (llmDiag === 'enabled') {
+    try {
+      await Promise.race([
+        langsmithClient.awaitPendingTraceBatches(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('flush-timeout-3s')), 3000)),
+      ])
+      llmDiag = 'flushed'
+    } catch (e) {
+      llmDiag = `flush-error:${String(e.message).slice(0, 80)}`
+      console.warn('[api/llm] LangSmith flush falló:', e.message)
+    }
+
+    // `awaitPendingTraceBatches` se traga el error de red (un 403 no propaga).
+    // Un ping directo al endpoint con la key revela el problema REAL: 200 = ok,
+    // 403 = key/workspace inválido, otro = región u otra causa.
+    try {
+      const endpoint = process.env.LANGSMITH_ENDPOINT || process.env.LANGCHAIN_ENDPOINT || 'https://api.smith.langchain.com'
+      const key = process.env.LANGSMITH_API_KEY || process.env.LANGCHAIN_API_KEY || ''
+      // /sessions requiere autenticación (a diferencia de /info): valida key+workspace.
+      const ping = await fetch(`${endpoint}/sessions?limit=1`, { headers: { 'x-api-key': key } })
+      res.setHeader('x-langsmith-ping', `${ping.status}@${endpoint.replace(/^https?:\/\//, '')}`)
+    } catch (e) {
+      res.setHeader('x-langsmith-ping', `neterr:${String(e.message).slice(0, 60)}`)
+    }
+  }
+
+  // Cabecera de diagnóstico: estado real del tracing, visible desde el navegador.
+  res.setHeader('x-langsmith', llmDiag)
+  res.status(respuesta.status).json(respuesta.body)
 }
