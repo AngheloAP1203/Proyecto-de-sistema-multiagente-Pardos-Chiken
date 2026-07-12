@@ -154,8 +154,7 @@ export default async function handler(req, res) {
           headers: { 'x-api-key': k, 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...run, id: crypto.randomUUID(), trace_id: crypto.randomUUID() }),
         })
-        const text = await r.text()
-        return `${r.status}_${text.replace(/\s+/g, ' ').slice(0, 30)}`
+        return r.status
       }
       const raw = await enviar(key)
       const trimmed = key.trim() !== key ? await enviar(key.trim()) : raw
