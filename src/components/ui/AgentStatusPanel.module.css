@@ -4,37 +4,47 @@
    Usa variables CSS globales de index.css para coherencia de diseño.
    ───────────────────────────────────────────────────────────────────────────── */
 
-/* ── Contenedor principal del panel ─────────────────────────────────────────── */
+/* ── AURORA UI + LIQUID GLASS — contenedor principal ──────────────────────────
+   Mismo lenguaje visual que la sección de métricas del Dashboard: cristal
+   oscuro esmerilado, aurora líquida en movimiento, borde luminoso con relieve. */
 .panel {
   position: relative;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+  isolation: isolate;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(135deg, rgba(23, 18, 43, 0.60), rgba(12, 14, 32, 0.70));
+  backdrop-filter: blur(24px) saturate(185%);
+  -webkit-backdrop-filter: blur(24px) saturate(185%);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 40px rgba(59, 130, 246, 0.05);
   overflow: hidden;
   margin-bottom: 24px;
-  transition: all var(--transition-mid);
+  transition: box-shadow var(--transition-mid), transform var(--transition-mid);
 }
+/* Aurora líquida: gradientes que derivan lentamente */
 .panel::before {
   content: '';
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at 30% 30%, rgba(139, 92, 246, 0.08), transparent 40%),
-              radial-gradient(circle at 70% 70%, rgba(16, 185, 129, 0.08), transparent 40%);
+  inset: -60%;
   z-index: -1;
-  animation: panelAurora 25s linear infinite;
+  background:
+    radial-gradient(closest-side at 25% 30%, rgba(139, 92, 246, 0.26), transparent 70%),
+    radial-gradient(closest-side at 78% 22%, rgba(16, 185, 129, 0.20), transparent 70%),
+    radial-gradient(closest-side at 60% 82%, rgba(59, 130, 246, 0.24), transparent 70%);
+  filter: blur(30px);
+  animation: auroraDrift 26s ease-in-out infinite alternate;
 }
-@keyframes panelAurora {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+@keyframes auroraDrift {
+  0%   { transform: translate3d(-4%, -3%, 0) rotate(0deg)  scale(1.05); }
+  50%  { transform: translate3d(5%, 4%, 0)   rotate(8deg)  scale(1.16); }
+  100% { transform: translate3d(-2%, 6%, 0)  rotate(-6deg) scale(1.08); }
 }
 .panel:hover {
-  box-shadow: var(--shadow-lg);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 /* ── Header colapsable ───────────────────────────────────────────────────────── */
@@ -189,10 +199,10 @@
   align-items: center;
   gap: 0;
   padding: 0 20px;
-  background: rgba(248, 250, 252, 0.4);
+  background: rgba(10, 12, 26, 0.35);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   overflow-x: auto;
 }
 
@@ -203,7 +213,7 @@
   padding: 10px 14px;
   font-size: 11.5px;
   font-weight: 600;
-  color: var(--color-text-light);
+  color: #94a3b8;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -213,12 +223,12 @@
   position: relative;
 }
 .tab:hover {
-  color: var(--color-primary);
-  background: var(--color-primary-soft);
+  color: #e9d5ff;
+  background: rgba(255, 255, 255, 0.05);
 }
 .tabActive {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
+  color: #c4b5fd;
+  border-bottom-color: #a78bfa;
   background: transparent;
 }
 
@@ -242,6 +252,10 @@
   max-height: 540px;
   overflow-y: auto;
   background: transparent;
+  /* Color base claro: cualquier texto sin color propio es legible sobre el
+     cristal oscuro. Las tarjetas con fondo claro (notificaciones) fijan su
+     propio color oscuro y no se ven afectadas. */
+  color: #cbd5e1;
 }
 
 /* ── Sección del orquestador ─────────────────────────────────────────────────── */
@@ -289,19 +303,23 @@
 
 /* ── Tarjeta individual de agente ────────────────────────────────────────────── */
 .agentCard {
-  border: 1.5px solid;
-  border-radius: 12px;
+  border: 1px solid;
+  border-radius: 14px;
   padding: 12px;
   position: relative;
-  transition: all var(--transition-fast);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
   overflow: hidden;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .agentCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 /* Brillo sutil cuando el agente está activo */
 .agentCardActive {
@@ -351,17 +369,17 @@
 .agentName {
   font-size: 12px;
   font-weight: 700;
-  color: var(--color-text-dark);
+  color: #f1f5f9;
   line-height: 1.2;
 }
 .agentRole {
   font-size: 10px;
-  color: var(--color-text-light);
+  color: #a5b4cf;
   margin-top: 1px;
 }
 .agentMeta {
   font-size: 9px;
-  color: var(--color-text-muted);
+  color: #7c8aa5;
   margin-top: 2px;
 }
 
@@ -381,21 +399,21 @@
 .metricLabel {
   font-size: 9px;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: #8595b0;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
 .metricValue {
   font-size: 13px;
   font-weight: 800;
-  color: var(--color-text-dark);
+  color: #e8edf6;
   font-family: 'SF Mono', 'Roboto Mono', monospace;
 }
 
 /* Barra de éxito semafórica */
 .successBar {
   height: 5px;
-  background: #e5e7eb;
+  background: rgba(255, 255, 255, 0.10);
   border-radius: 999px;
   overflow: hidden;
   margin-bottom: 4px;
@@ -409,7 +427,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 9px;
-  color: var(--color-text-muted);
+  color: #8595b0;
 }
 
 /* ── Historial de eventos MCP ────────────────────────────────────────────────── */
@@ -421,19 +439,19 @@
 
 .eventListHint {
   font-size: 10px;
-  color: var(--color-text-muted);
+  color: #93c5fd;
   padding: 6px 10px;
-  background: #f0f9ff;
+  background: rgba(59, 130, 246, 0.10);
   border-radius: 6px;
   margin-bottom: 8px;
-  border: 1px solid #bae6fd;
+  border: 1px solid rgba(59, 130, 246, 0.25);
 }
 .eventListHint code {
   font-family: monospace;
-  background: #e0f2fe;
+  background: rgba(59, 130, 246, 0.18);
   padding: 0 3px;
   border-radius: 3px;
-  color: #0369a1;
+  color: #bfdbfe;
 }
 
 .eventRow {
@@ -445,9 +463,9 @@
   cursor: pointer;
   transition: background var(--transition-fast);
   flex-wrap: wrap;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
-.eventRow:hover { background: #f8fafc; }
+.eventRow:hover { background: rgba(255, 255, 255, 0.05); }
 .eventRow:last-child { border-bottom: none; }
 
 .eventDot {
@@ -472,20 +490,20 @@
 }
 .eventSource {
   font-size: 10px;
-  color: var(--color-text-muted);
+  color: #94a3b8;
 }
 .eventCorrelation {
   font-size: 9px;
   font-family: monospace;
-  background: #f1f5f9;
+  background: rgba(255, 255, 255, 0.06);
   padding: 1px 5px;
   border-radius: 3px;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.10);
 }
 .eventTime {
   font-size: 10px;
-  color: var(--color-text-muted);
+  color: #64748b;
   font-family: monospace;
   flex-shrink: 0;
 }
@@ -575,7 +593,7 @@
 
 .topologyLabel {
   font-size: 11px;
-  color: var(--color-text-light);
+  color: #94a3b8;
   text-align: center;
   margin-bottom: 16px;
   line-height: 1.5;
@@ -687,7 +705,7 @@
   justify-content: center;
   gap: 8px;
   padding: 32px 16px;
-  color: var(--color-text-muted);
+  color: #94a3b8;
   text-align: center;
 }
 .empty p {
@@ -696,7 +714,7 @@
 }
 .emptyHint {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: #64748b;
   max-width: 320px;
   line-height: 1.5;
 }

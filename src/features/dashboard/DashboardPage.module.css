@@ -183,36 +183,58 @@
  * Esta sección muestra evidencia cuantitativa del funcionamiento del sistema.
  * Diseñada para ser visible y llamativa durante la demo en vivo (criterio 5 rúbrica).
  */
+/* ── AURORA UI + LIQUID GLASS — superficie del sistema multiagente ─────────────
+   Fondo oscuro con gradientes líquidos (púrpura/azul/esmeralda) en movimiento
+   lento, cristal esmerilado (blur+saturate), borde luminoso con relieve interno
+   y sombra difusa profunda. Representa la actividad del flujo de datos en vivo. */
 .sysMetricsSection {
   position: relative;
-  background: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-radius: 16px;
+  isolation: isolate;
+  background:
+    linear-gradient(135deg, rgba(23, 18, 43, 0.62), rgba(12, 14, 32, 0.72));
+  backdrop-filter: blur(22px) saturate(185%);
+  -webkit-backdrop-filter: blur(22px) saturate(185%);
+  border-radius: 18px;
   padding: 18px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  /* Borde luminoso + relieve interno = efecto "liquid" (volumen de cristal) */
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 40px rgba(124, 58, 237, 0.06);
   animation: fadeIn 0.5s ease 0.1s both;
   overflow: hidden;
 }
 
+/* Capa Aurora: dos blobs de gradiente que derivan lentamente (movimiento líquido) */
 .sysMetricsSection::before {
   content: '';
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at 50% 50%, rgba(124, 58, 237, 0.15), transparent 40%),
-              radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.12), transparent 40%),
-              radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.15), transparent 40%);
+  inset: -60%;
   z-index: -1;
-  animation: aurora 20s linear infinite;
+  background:
+    radial-gradient(closest-side at 30% 35%, rgba(124, 58, 237, 0.30), transparent 70%),
+    radial-gradient(closest-side at 75% 25%, rgba(16, 185, 129, 0.22), transparent 70%),
+    radial-gradient(closest-side at 55% 80%, rgba(59, 130, 246, 0.28), transparent 70%),
+    radial-gradient(closest-side at 15% 75%, rgba(236, 72, 153, 0.16), transparent 70%);
+  filter: blur(28px);
+  animation: auroraDrift 24s ease-in-out infinite alternate;
 }
 
-@keyframes aurora {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* Brillo tenue superior que refuerza la sensación de cristal */
+.sysMetricsSection::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 30%);
+  pointer-events: none;
+}
+
+@keyframes auroraDrift {
+  0%   { transform: translate3d(-4%, -3%, 0) rotate(0deg)  scale(1.05); }
+  50%  { transform: translate3d(5%, 4%, 0)   rotate(8deg)  scale(1.15); }
+  100% { transform: translate3d(-2%, 6%, 0)  rotate(-6deg) scale(1.08); }
 }
 
 .sysMetricsHeader {
@@ -257,25 +279,28 @@
   gap: 12px;
 }
 
-/* Tarjeta individual de métrica cuantitativa */
+/* Tarjeta individual de métrica — cristal líquido flotante */
 .sysMetric {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+  padding: 11px 13px;
   cursor: help;
-  transition: all var(--transition-fast);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
 }
 .sysMetric:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.15);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-3px);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 .sysMetricIcon {
@@ -304,7 +329,7 @@
 .sysMetricLabel {
   font-size: 9.5px;
   font-weight: 600;
-  color: #64748b;
+  color: #93a1bd;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   white-space: nowrap;
