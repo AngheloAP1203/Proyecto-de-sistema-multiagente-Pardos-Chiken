@@ -163,6 +163,32 @@ la espera que indica el proveedor y degrada de inmediato si la cuota tarda demas
 Groq es compatible con OpenAI y **rechaza** el formato `functionDeclarations` de Gemini.
 `normalizeTools()` traduce entre ambos.
 
+## Endurecimiento de seguridad (post-auditoría)
+
+Controles añadidos tras la evaluación. Cada uno se fija con tests en
+`tests/seguridad-endurecimiento.test.mjs` (parte del golden set).
+
+- **F-01 · Proxies con guard** (`api/_guard.js`): `/api/llm` y `/api/triage` aplican
+  allowlist de origen (mismo host + `ALLOWED_ORIGINS`) y rate-limit por IP (40/min).
+  Corta el abuso de cuota desde otras webs. El rate-limit es en memoria → por
+  instancia serverless; límite global duro requeriría Upstash/Redis (mejora futura).
+- **F-03 · Contraseñas hasheadas** (`domain/auth/passwordHash.js`): el almacén de
+  usuarios guarda `passwordHash` = SHA-256(`id:pepper:password`), nunca texto plano.
+  La sal por-usuario rompe rainbow tables. `DEMO_LOGINS` mantiene las credenciales
+  de demo (públicas a propósito) separadas del material de auth. **Sigue siendo
+  auth de cliente**: producción necesita backend con bcrypt/argon2 y sesión firmada.
+- **F-04 · Anti-fraude sin fugas**: el mensaje de rechazo de `/reclamo` NO distingue
+  "sin consumo" de "identidad no coincide" (evita enumerar quién comió), y el
+  veredicto crudo no se muestra al cliente. Throttle de intentos por navegador
+  (`domain/security/rateGuard.js`, 6/5 min).
+- **Cabeceras** (`vercel.json`): `X-Frame-Options: DENY`, `X-Content-Type-Options:
+  nosniff`, HSTS, `Referrer-Policy` y `Permissions-Policy`; `no-store` en `/api`.
+- **F-05 · Persistencia**: los datos viven en localStorage (sin backend). Es una
+  decisión de alcance de la demo, no seguridad de producción.
+
+**Las API keys nunca van al repo.** Viven solo como variables de entorno en Vercel
+(`GROQ_API_KEY`, `GEMINI_API_KEY`) y opcionalmente `ALLOWED_ORIGINS`.
+
 ## Convenciones
 
 - Agentes son singletons exportados como `export const agentName = new Agent()`

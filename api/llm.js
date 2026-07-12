@@ -20,6 +20,7 @@
 import { traceable } from 'langsmith/traceable'
 import { Client } from 'langsmith'
 import { isTracingEnabled } from 'langsmith'
+import { aplicarGuard } from './_guard.js'
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
@@ -82,6 +83,10 @@ export default async function handler(req, res) {
     res.status(405).json({ error: 'Método no permitido' })
     return
   }
+
+  // Control de acceso (F-01): origen permitido + rate-limit por IP.
+  // El asistente usa ~6 vueltas por consulta; 40/min deja holgura y frena el abuso.
+  if (!aplicarGuard(req, res, { max: 40, windowMs: 60_000 })) return
 
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) {

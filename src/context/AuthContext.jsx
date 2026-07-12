@@ -9,6 +9,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { MOCK_USERS } from '../data/seeds/usersSeed'
+import { hashPassword } from '../domain/auth/passwordHash'
 import { ROLE_PERMISSIONS } from '../domain/auth/permissions'
 import { readJSON, writeJSON, remove } from '../data/storage/localStorage'
 import { auditLogger } from '../agents/core/auditLogger'
@@ -34,16 +35,20 @@ export function AuthProvider({ children }) {
 
   /**
    * login — Autentica un usuario con email + contraseña.
+   * Compara el hash de la contraseña ingresada contra el `passwordHash`
+   * almacenado; nunca se maneja la contraseña en claro más allá de este cálculo.
    */
-  const login = useCallback((email, password) => {
-    const found = MOCK_USERS.find(
-      u => u.email === email.trim().toLowerCase() && u.password === password
-    )
+  const login = useCallback(async (email, password) => {
+    const candidato = MOCK_USERS.find(u => u.email === email.trim().toLowerCase())
+    // Se calcula el hash aunque el email no exista, para no filtrar por tiempo
+    // qué correos están registrados.
+    const hash = await hashPassword(candidato?.id || 'u000', password)
+    const found = candidato && hash === candidato.passwordHash ? candidato : null
     if (!found) {
       toast.error('Correo o contraseña incorrectos.')
       return { success: false, message: 'Correo o contraseña incorrectos.' }
     }
-    const { password: _pw, ...safeUser } = found
+    const { passwordHash: _ph, ...safeUser } = found
     setUser(safeUser)
     writeJSON('pardos_user', safeUser)
     

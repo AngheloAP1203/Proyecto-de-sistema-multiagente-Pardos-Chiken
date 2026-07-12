@@ -161,20 +161,17 @@ class RewardAgentClass {
   }
 
   _mensajeRechazo(verif) {
-    switch (verif.veredicto) {
-      case VEREDICTO.SIN_MESA:
-        return 'Para atender tu reclamo necesitamos el número de mesa donde consumiste. ' +
-          'Sin ese dato no podemos verificar tu pedido ni asignarte una compensación.'
-      case VEREDICTO.SIN_COMANDA:
-        return 'No encontramos un pedido registrado en esa mesa para la fecha indicada. ' +
-          'Si crees que es un error, acércate a caja con tu boleta y lo revisamos juntos.'
-      case VEREDICTO.RECHAZADO:
-        return 'No pudimos verificar que el reclamo corresponda a quien consumió en esa mesa. ' +
-          'Por seguridad, las compensaciones solo aplican al cliente registrado del pedido. ' +
-          'Si es un error, acércate a caja con tu boleta.'
-      default:
-        return 'No pudimos verificar tu reclamo en este momento.'
+    // ANTI-ENUMERACIÓN (F-04): SIN_COMANDA y RECHAZADO comparten un ÚNICO mensaje.
+    // Distinguirlos le diría a un atacante si esa mesa tuvo consumo ese día (fuga
+    // de PII) o si solo falló la identidad. El veredicto exacto sí queda en la
+    // auditoría interna, pero nunca en la respuesta al cliente.
+    if (verif.veredicto === VEREDICTO.SIN_MESA) {
+      return 'Para atender tu reclamo necesitamos el número de mesa donde consumiste. ' +
+        'Sin ese dato no podemos verificar tu pedido ni asignarte una compensación.'
     }
+    return 'No pudimos verificar tu reclamo con los datos indicados. ' +
+      'Por seguridad, las compensaciones solo aplican al cliente registrado del pedido. ' +
+      'Si crees que es un error, acércate a caja con tu boleta y lo revisamos juntos.'
   }
 
   getHistory(limit = 20) { return this._history.slice(-limit) }

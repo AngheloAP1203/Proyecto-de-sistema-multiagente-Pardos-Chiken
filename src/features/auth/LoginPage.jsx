@@ -17,6 +17,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, UtensilsCrossed, CalendarPlus, MessageSquareWarning } from 'lucide-react'
 import { useAuth, MOCK_USERS, ROLE_PERMISSIONS } from '../../context/AuthContext'
+import { DEMO_LOGINS } from '../../data/seeds/usersSeed'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import toast from 'react-hot-toast'
@@ -51,7 +52,7 @@ export default function LoginPage() {
     setIsLoading(true)
     // Simular latencia de red
     await new Promise(r => setTimeout(r, 800))
-    const result = login(form.email, form.password)
+    const result = await login(form.email, form.password)
     setIsLoading(false)
 
     if (result.success) {
@@ -64,7 +65,9 @@ export default function LoginPage() {
 
   // Acceso rápido para demos
   const quickLogin = (user) => {
-    setForm({ email: user.email, password: user.password })
+    // La contraseña de demo vive en DEMO_LOGINS (el seed de usuarios ya no la guarda).
+    const demo = DEMO_LOGINS.find(d => d.email === user.email)
+    setForm({ email: user.email, password: demo?.password || '' })
   }
 
   return (

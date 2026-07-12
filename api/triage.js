@@ -16,6 +16,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { aplicarGuard } from './_guard.js'
 
 const DEFAULT_MODEL = 'gemini-2.5-flash'
 
@@ -29,6 +30,9 @@ export default async function handler(req, res) {
     res.status(405).json({ error: 'Método no permitido' })
     return
   }
+
+  // Control de acceso (F-01): origen permitido + rate-limit por IP.
+  if (!aplicarGuard(req, res, { max: 40, windowMs: 60_000 })) return
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {

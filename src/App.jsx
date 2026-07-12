@@ -34,6 +34,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom'
 
 // Providers de estado global
@@ -63,25 +64,26 @@ import { ProtectedRoute, PublicOnlyRoute } from './components/auth/ProtectedRout
 // Layout principal
 import AppLayout from './components/layout/AppLayout'
 
-// Páginas
-import LoginPage    from './features/auth/LoginPage'
-import BookingPage  from './features/booking/BookingPage'
-import ClaimPage    from './features/claim/ClaimPage'
-import DashboardPage    from './features/dashboard/DashboardPage'
-import AnalyticsPage    from './features/analytics/AnalyticsPage'
-import ReservationsPage from './features/reservations/ReservationsPage'
-import TablesPage       from './features/tables/TablesPage'
-import ClientsPage      from './features/clients/ClientsPage'
-import CashPage         from './features/cash/CashPage'
-import KitchenPage      from './features/kitchen/KitchenPage'
-import HistoryPage      from './features/history/HistoryPage'
-import ReportsPage      from './features/reports/ReportsPage'
-import SettingsPage     from './features/settings/SettingsPage'
-import AdminPromptPage  from './features/admin/AdminPromptPage'
-import AuditPage       from './features/audit/AuditPage'
-import SecurityPage    from './features/security/SecurityPage'
-import ComplaintsPage   from './features/complaints/ComplaintsPage'
-import NotFoundPage     from './pages/NotFoundPage'
+// Páginas — carga diferida (code-splitting, F-06): cada ruta es su propio chunk,
+// así la página pública /reclamo no descarga todo el panel administrativo.
+const LoginPage        = lazy(() => import('./features/auth/LoginPage'))
+const BookingPage      = lazy(() => import('./features/booking/BookingPage'))
+const ClaimPage        = lazy(() => import('./features/claim/ClaimPage'))
+const DashboardPage    = lazy(() => import('./features/dashboard/DashboardPage'))
+const AnalyticsPage    = lazy(() => import('./features/analytics/AnalyticsPage'))
+const ReservationsPage = lazy(() => import('./features/reservations/ReservationsPage'))
+const TablesPage       = lazy(() => import('./features/tables/TablesPage'))
+const ClientsPage      = lazy(() => import('./features/clients/ClientsPage'))
+const CashPage         = lazy(() => import('./features/cash/CashPage'))
+const KitchenPage      = lazy(() => import('./features/kitchen/KitchenPage'))
+const HistoryPage      = lazy(() => import('./features/history/HistoryPage'))
+const ReportsPage      = lazy(() => import('./features/reports/ReportsPage'))
+const SettingsPage     = lazy(() => import('./features/settings/SettingsPage'))
+const AdminPromptPage  = lazy(() => import('./features/admin/AdminPromptPage'))
+const AuditPage        = lazy(() => import('./features/audit/AuditPage'))
+const SecurityPage     = lazy(() => import('./features/security/SecurityPage'))
+const ComplaintsPage   = lazy(() => import('./features/complaints/ComplaintsPage'))
+const NotFoundPage     = lazy(() => import('./pages/NotFoundPage'))
 
 // ── Página de acceso denegado ─────────────────────────────────────────────────
 function UnauthorizedPage() {
@@ -194,6 +196,7 @@ export default function App() {
                   <ComplaintProvider>
                   <ResolutionProvider>
                   <AgentBridge>
+                   <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-cream)', color: '#9b6b6b', fontSize: '14px' }}>Cargando…</div>}>
                     <Routes>
                       {/* ── Ruta raíz → login ── */}
                       <Route path="/" element={<Navigate to="/login" replace />} />
@@ -271,6 +274,7 @@ export default function App() {
                       <Route path="/no-autorizado" element={<UnauthorizedPage />} />
                       <Route path="*"              element={<NotFoundPage />} />
                     </Routes>
+                   </Suspense>
                   </AgentBridge>
                   </ResolutionProvider>
                   </ComplaintProvider>

@@ -16,6 +16,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { intentoPermitido } from '../../domain/security/rateGuard'
 import {
   UtensilsCrossed, ArrowLeft, Fingerprint, Hash, Send, Gift, ShieldCheck,
   ShieldAlert, Bot, Loader2, Ticket,
@@ -59,6 +60,14 @@ export default function ClaimPage() {
     if (!soloDigitos(dni) || !mesa.trim()) {
       setChat(prev => [...prev, { de: 'agente', tipo: 'aviso',
         texto: 'Para poder verificar tu reclamo necesito tu DNI y el número de mesa. Complétalos arriba, por favor.' }])
+      return
+    }
+
+    // Throttle anti fuerza-bruta (F-04): frena probar muchos pares DNI+mesa.
+    const limite = intentoPermitido('reclamo.verify', { max: 6, windowMs: 300_000 })
+    if (!limite.ok) {
+      setChat(prev => [...prev, { de: 'agente', tipo: 'aviso',
+        texto: `Recibimos varios intentos seguidos. Por seguridad, espera ${limite.esperaSeg} segundos antes de volver a intentar.` }])
       return
     }
 
@@ -200,7 +209,9 @@ function AgentBubble({ m }) {
 
         {esRechazo && (
           <span className={styles.rejectTag}>
-            <ShieldAlert size={11} /> No verificado — {m.veredicto}
+            {/* No mostramos el veredicto exacto: distinguir "sin consumo" de
+                "identidad no coincide" permitiría enumerar quién comió (F-04). */}
+            <ShieldAlert size={11} /> Reclamo no verificado
           </span>
         )}
       </div>
