@@ -24,8 +24,8 @@ export const VEREDICTO = {
   SIN_MESA:    'SIN_MESA',     // el reclamo no indica mesa → no se puede verificar
 }
 
-/** Deja solo dígitos: "987 654 321" y "987654321" se comparan igual. */
-const normTel = (t) => String(t || '').replace(/\D/g, '')
+/** Deja solo dígitos: "78 765 432" y "78-765-432" se comparan igual que "78765432". */
+const normDoc = (d) => String(d || '').replace(/\D/g, '')
 
 /** Normaliza el id de mesa: "T03", "t3", "mesa 3" → "3" para comparar (sin cero inicial). */
 const normMesa = (m) => String(m || '')
@@ -88,9 +88,10 @@ export function verificarReclamo(reclamo = {}, datos = {}) {
   }
 
   // 4. Identidad: el DNI del reclamo debe coincidir con quien ocupó la mesa.
-  const docId = dni?.trim()
+  //    Se comparan solo los dígitos, así "78 765 432" y "78-765-432" valen igual.
+  const docId = normDoc(dni)
   const reservaCoincide = docId
-    ? reservasMesa.find(r => r.clientDni?.trim() === docId)
+    ? reservasMesa.find(r => normDoc(r.clientDni) === docId)
     : null
 
   if (!reservaCoincide) {

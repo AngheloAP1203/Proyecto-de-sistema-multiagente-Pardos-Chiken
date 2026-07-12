@@ -15,16 +15,16 @@ ok(typeof e[0].ts==='string' && e[0].nivel==='warn', 'timestamp y nivel presente
 
 console.log('\n2) REDACCIÓN — el teléfono nunca queda en claro')
 auditLogger.record({ agente:'RewardAgent', accion:'claim.verify', nivel:'warn', resultado:'RECHAZADO', detalle:{ mesa:'T03', telefono:'987654321', elegible:false } })
-e = auditLogger.getEntries({ agente:'RewardAgent' })
+e = auditLogger.getEntries({ actor:'RewardAgent' })
 const tel = e[0].detalle.telefono
 ok(!/987654321/.test(tel) && /\*\*\*\*/.test(tel), `teléfono redactado: "${tel}"`)
 ok(e[0].detalle.mesa==='T03', 'la mesa (no sensible) sí se guarda')
 
 console.log('\n3) Filtros y estadísticas')
 ok(auditLogger.getEntries({ nivel:'warn' }).length===2, 'filtra por nivel warn')
-ok(auditLogger.getEntries({ agente:'AssistantAgent' }).length===2, 'filtra por agente')
+ok(auditLogger.getEntries({ actor:'AssistantAgent' }).length===2, 'filtra por agente')
 const st = auditLogger.stats()
-ok(st.total===3 && st.porNivel.warn===2 && st.porAgente.RewardAgent===1, 'stats correctas')
+ok(st.total===3 && st.porNivel.warn===2 && st.porActor.RewardAgent===1, 'stats correctas')
 
 console.log('\n4) Export y suscripción en vivo')
 const json = JSON.parse(auditLogger.exportarJSON())

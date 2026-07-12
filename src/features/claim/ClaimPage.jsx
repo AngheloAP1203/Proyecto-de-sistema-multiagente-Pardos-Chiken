@@ -3,10 +3,10 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Página PÚBLICA de Reclamos con Recompensa (M6). Sin login.
  *
- * El cliente indica su teléfono y el número de mesa, describe su problema, y el
+ * El cliente indica su DNI y el número de mesa, describe su problema, y el
  * Agente de Recompensas:
  *   1. Triaje del mensaje (M1) → severidad y puntos críticos.
- *   2. Verificación anti-fraude (determinista): el teléfono + la mesa deben
+ *   2. Verificación anti-fraude (determinista): el DNI + la mesa deben
  *      coincidir con quien realmente consumió ahí. Si no, se rechaza.
  *   3. Si es legítimo, asigna una recompensa y redacta un mensaje empático.
  *
@@ -17,7 +17,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  UtensilsCrossed, ArrowLeft, Phone, Hash, Send, Gift, ShieldCheck,
+  UtensilsCrossed, ArrowLeft, Fingerprint, Hash, Send, Gift, ShieldCheck,
   ShieldAlert, Bot, Loader2, Ticket,
 } from 'lucide-react'
 import { useReservations } from '../../context/ReservationContext'
@@ -37,7 +37,7 @@ export default function ClaimPage() {
   const { tickets }      = useKitchen()
   const { triageComplaint } = useAgents()
 
-  const [telefono, setTelefono] = useState('')
+  const [dni,      setDni]      = useState('')
   const [mesa,     setMesa]     = useState('')
   const [mensaje,  setMensaje]  = useState('')
   const [chat,     setChat]     = useState([])   // { de:'cliente'|'agente', ... }
@@ -56,9 +56,9 @@ export default function ClaimPage() {
     const texto = mensaje.trim()
     if (!texto || enviando) return
 
-    if (!soloDigitos(telefono) || !mesa.trim()) {
+    if (!soloDigitos(dni) || !mesa.trim()) {
       setChat(prev => [...prev, { de: 'agente', tipo: 'aviso',
-        texto: 'Para poder verificar tu reclamo necesito tu teléfono y el número de mesa. Complétalos arriba, por favor.' }])
+        texto: 'Para poder verificar tu reclamo necesito tu DNI y el número de mesa. Complétalos arriba, por favor.' }])
       return
     }
 
@@ -70,13 +70,13 @@ export default function ClaimPage() {
       // 1. Triaje (M1) — clasifica severidad y puntos críticos. Registra la queja.
       let triage = null
       try {
-        const t = await triageComplaint({ mensaje: texto, canal: 'Web', telefono, cliente: '' })
+        const t = await triageComplaint({ mensaje: texto, canal: 'Web', cliente: '' })
         if (t?.success) triage = t.result
       } catch { /* si el LLM del triaje falla, seguimos con heurística mínima */ }
 
       const reclamo = {
         tableId:  mesa.trim(),
-        telefono,
+        dni,
         cliente:  triage?.cliente || '',
         mensaje:  texto,
         puntos_criticos: triage?.puntos_criticos || [],
@@ -116,9 +116,9 @@ export default function ClaimPage() {
         {/* Datos de verificación */}
         <div className={styles.verifRow}>
           <div className={styles.field}>
-            <label><Phone size={13} /> Tu teléfono</label>
-            <input value={telefono} onChange={e => setTelefono(e.target.value)}
-              inputMode="numeric" placeholder="987 654 321" />
+            <label><Fingerprint size={13} /> Tu DNI</label>
+            <input value={dni} onChange={e => setDni(e.target.value)}
+              inputMode="numeric" placeholder="78765432" maxLength={12} />
           </div>
           <div className={styles.field}>
             <label><Hash size={13} /> N° de mesa</label>

@@ -98,14 +98,15 @@ El LLM nunca recibe arrays crudos de otros dominios. Las funciones intermediaria
 
 ### M6 — Recompensas al cliente (anti-fraude)
 
-Página pública `/reclamo` (ClaimPage): el cliente indica teléfono + número de mesa y
+Página pública `/reclamo` (ClaimPage): el cliente indica DNI + número de mesa y
 describe su problema. El flujo: triaje M1 (severidad) → `claimVerifier` (determinista) →
 `RewardAgent`.
 
 **La elegibilidad la decide JS, nunca el LLM.** `core/claimVerifier.js` cruza el reclamo
-contra la cadena Reserva(tableId, clientPhone) → Comanda → Pago. Identidad = teléfono **Y**
-mesa deben coincidir con quien consumió ahí ese día. Veredictos: VERIFICADO / RECHAZADO
-(teléfono no coincide) / SIN_COMANDA (mesa sin consumo) / SIN_MESA. Un reclamo no verificado
+contra la cadena Reserva(tableId, clientDni) → Comanda → Pago. Identidad = DNI **Y**
+mesa deben coincidir con quien consumió ahí ese día (el DNI se compara solo por sus dígitos,
+así "78 765 432" y "78-765-432" valen igual). Veredictos: VERIFICADO / RECHAZADO
+(DNI no coincide) / SIN_COMANDA (mesa sin consumo) / SIN_MESA. Un reclamo no verificado
 se rechaza sin recompensa (decisión de negocio, estricta). El LLM solo redacta el mensaje
 de recompensa cuando JS ya confirmó identidad y eligió la promo (por política/severidad).
 
