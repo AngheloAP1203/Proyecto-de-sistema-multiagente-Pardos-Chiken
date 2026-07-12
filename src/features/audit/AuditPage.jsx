@@ -46,10 +46,19 @@ export default function AuditPage() {
     return unsub
   }, [])
 
-  const actores = useMemo(
-    () => [...new Set(entries.map(e => e.actor))].sort(),
-    [entries],
-  )
+  const actoresPorTipo = useMemo(() => {
+    const agrupados = { agente: new Set(), usuario: new Set(), cliente: new Set(), otro: new Set() }
+    entries.forEach(e => {
+      if (e.tipoActor && agrupados[e.tipoActor]) agrupados[e.tipoActor].add(e.actor)
+      else agrupados.otro.add(e.actor)
+    })
+    return {
+      agente: [...agrupados.agente].sort(),
+      usuario: [...agrupados.usuario].sort(),
+      cliente: [...agrupados.cliente].sort(),
+      otro: [...agrupados.otro].sort(),
+    }
+  }, [entries])
 
   const visibles = entries.filter(e =>
     (!fNivel || e.nivel === fNivel) &&
@@ -120,7 +129,26 @@ export default function AuditPage() {
         </select>
         <select value={fActor} onChange={e => setFActor(e.target.value)}>
           <option value="">Todos los actores</option>
-          {actores.map(a => <option key={a} value={a}>{a}</option>)}
+          {actoresPorTipo.agente.length > 0 && (
+            <optgroup label="Agentes IA">
+              {actoresPorTipo.agente.map(a => <option key={a} value={a}>{a}</option>)}
+            </optgroup>
+          )}
+          {actoresPorTipo.usuario.length > 0 && (
+            <optgroup label="Usuarios (Personal)">
+              {actoresPorTipo.usuario.map(a => <option key={a} value={a}>{a}</option>)}
+            </optgroup>
+          )}
+          {actoresPorTipo.cliente.length > 0 && (
+            <optgroup label="Clientes Públicos">
+              {actoresPorTipo.cliente.map(a => <option key={a} value={a}>{a}</option>)}
+            </optgroup>
+          )}
+          {actoresPorTipo.otro.length > 0 && (
+            <optgroup label="Otros">
+              {actoresPorTipo.otro.map(a => <option key={a} value={a}>{a}</option>)}
+            </optgroup>
+          )}
         </select>
         <span className={styles.count}>{visibles.length} visibles</span>
       </div>
