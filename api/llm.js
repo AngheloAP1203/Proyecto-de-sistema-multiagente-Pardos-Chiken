@@ -18,8 +18,16 @@
  */
 
 import { traceable } from 'langsmith/traceable'
+import { Client } from 'langsmith'
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
+
+/**
+ * Client explícito de LangSmith, para poder esperar el envío de la traza antes
+ * de responder (ver nota de FLUSH más abajo). Si no hay LANGSMITH_TRACING, el
+ * SDK simplemente no encola nada y este cliente no hace ninguna llamada.
+ */
+const langsmithClient = new Client()
 
 /**
  * Llamada a Groq envuelta para LangSmith (§5.3 del diseño).
@@ -28,6 +36,14 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
  * servidor tiene LANGSMITH_TRACING=true + LANGSMITH_API_KEY. Sin esas variables
  * es un passthrough puro (no añade latencia ni rompe nada). La key de LangSmith,
  * igual que la de Groq, vive solo en el servidor: nunca en el bundle.
+ *
+ * FLUSH EXPLÍCITO (serverless): `traceable` encola el envío de la traza y lo
+ * despacha en segundo plano. En una función serverless eso es un problema real
+ * — Vercel congela el proceso en cuanto se responde, y si la traza no salió
+ * por la red todavía, se pierde en silencio (sin error visible). Verificado
+ * localmente: la función se resuelve en ~50ms pero el POST a LangSmith tarda
+ * ~900ms. Por eso el handler espera `awaitPendingTraceBatches()` ANTES de
+ * responder al cliente — ver el final de la función.
  */
 const llamarGroqTrazado = traceable(
   async ({ url, apiKey, payload }) => {
@@ -42,6 +58,7 @@ const llamarGroqTrazado = traceable(
   {
     name: 'pardos.llm',
     run_type: 'llm',
+    client: langsmithClient,   // mismo cliente que se flushea antes de responder
     // No metas la key en la traza: solo lo útil para observar.
     processInputs: ({ payload }) => ({ model: payload?.model, messages: payload?.messages, tools: payload?.tools }),
     processOutputs: ({ body }) => ({
@@ -98,5 +115,13 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error('[api/llm] Error:', err)
     res.status(502).json({ error: `No se pudo contactar a Groq: ${err.message}` })
+  } finally {
+    // FLUSH: espera a que la traza salga por la red antes de que Vercel congele
+    // la función. Sin esto, LangSmith no recibe nada (ver nota arriba). Con un
+    // tope de 3s para no alargar la respuesta si LangSmith está lento o caído.
+    await Promise.race([
+      langsmithClient.awaitPendingTraceBatches().catch((e) => console.warn('[api/llm] LangSmith flush falló:', e.message)),
+      new Promise((resolve) => setTimeout(resolve, 3000)),
+    ])
   }
 }
