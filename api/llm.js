@@ -137,17 +137,24 @@ export default async function handler(req, res) {
     // 403 = key/workspace inválido, otro = región u otra causa.
     try {
       const key = process.env.LANGSMITH_API_KEY || process.env.LANGCHAIN_API_KEY || ''
-      // Ping a US y EU con la misma key: distingue key inválida (403 en ambos)
-      // de cuenta en otra región (200 en la que corresponde). /sessions autentica.
-      const probar = async (ep) => {
-        try { const r = await fetch(`${ep}/sessions?limit=1`, { headers: { 'x-api-key': key } }); return r.status }
-        catch (e) { return `neterr:${String(e.message).slice(0, 30)}` }
+      const project = process.env.LANGSMITH_PROJECT || 'default'
+      const endpoint = process.env.LANGSMITH_ENDPOINT || 'https://api.smith.langchain.com'
+      // Ingesta real de una traza mínima (lo mismo que hace el SDK). Un 20x =
+      // key válida y traza aceptada; 401/403 = key/workspace inválido.
+      const now = new Date().toISOString()
+      const run = {
+        id: crypto.randomUUID(), trace_id: crypto.randomUUID(),
+        name: 'pardos.diag', run_type: 'chain',
+        start_time: now, end_time: now, session_name: project,
+        inputs: { diag: true }, outputs: { ok: true },
       }
-      const [us, eu] = await Promise.all([
-        probar('https://api.smith.langchain.com'),
-        probar('https://eu.api.smith.langchain.com'),
-      ])
-      res.setHeader('x-langsmith-ping', `us=${us} eu=${eu} keylen=${key.length}`)
+      const r = await fetch(`${endpoint}/runs`, {
+        method: 'POST',
+        headers: { 'x-api-key': key, 'Content-Type': 'application/json' },
+        body: JSON.stringify(run),
+      })
+      const txt = await r.text().catch(() => '')
+      res.setHeader('x-langsmith-ping', `ingest=${r.status} keylen=${key.length} proj=${project} msg=${txt.slice(0, 60).replace(/[\r\n]+/g, ' ')}`)
     } catch (e) {
       res.setHeader('x-langsmith-ping', `neterr:${String(e.message).slice(0, 60)}`)
     }
