@@ -14,7 +14,9 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Navigate } from 'react-router-dom'
+import {
   ScrollText, Download, Trash2, Filter, AlertTriangle, Info, XCircle, Radio, Bot, User, Globe,
+} from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { auditLogger } from '../../agents/core/auditLogger'
 import styles from './AuditPage.module.css'
