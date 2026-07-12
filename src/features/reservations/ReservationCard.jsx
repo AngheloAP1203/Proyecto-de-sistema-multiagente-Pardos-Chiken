@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Edit2, UserCheck, XCircle, Clock, Users, MapPin, Phone, Utensils, Trash2, Plus, Search, MessageSquare, ChevronRight } from 'lucide-react'
+import { Edit2, UserCheck, XCircle, Clock, Users, MapPin, IdCard, Utensils, Trash2, Plus, Search, MessageSquare, ChevronRight } from 'lucide-react'
 import { RESERVATION_STATUS, STATUS_LABELS, STATUS_COLORS } from '../../context/ReservationContext'
 import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Input'
@@ -95,10 +95,10 @@ export default function ReservationCard({ reservation: r, onEdit, onSeat, onCanc
             <MapPin size={14} />
             <span>Mesa {r.tableId}</span>
           </div>
-          {r.clientPhone && (
+          {r.clientDni && (
             <div className={styles.infoItem}>
-              <Phone size={14} />
-              <span>{r.clientPhone}</span>
+              <IdCard size={14} />
+              <span>{r.clientDni}</span>
             </div>
           )}
         </div>

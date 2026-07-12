@@ -31,7 +31,7 @@ function createGraphState() {
     mensaje:        Annotation({ reducer: (_, v) => v, default: () => '' }),
     canal:          Annotation({ reducer: (_, v) => v, default: () => 'WhatsApp' }),
     cliente:        Annotation({ reducer: (_, v) => v, default: () => '' }),
-    telefono:       Annotation({ reducer: (_, v) => v, default: () => '' }),
+    dni:            Annotation({ reducer: (_, v) => v, default: () => '' }),
     tableId:        Annotation({ reducer: (_, v) => v, default: () => null }),
     triageResult:   Annotation({ reducer: (_, v) => v, default: () => null }),
     complaint:      Annotation({ reducer: (_, v) => v, default: () => null }),
@@ -52,7 +52,7 @@ function createNodes(orchestrator) {
           mensaje: state.mensaje,
           canal: state.canal,
           cliente: state.cliente,
-          telefono: state.telefono,
+          dni: state.dni,
         })
         if (!result.success) return { error: result.error }
         return {
@@ -148,7 +148,7 @@ export async function runComplaintFlow(orchestrator, data) {
         mensaje: data.mensaje,
         canal: data.canal || 'WhatsApp',
         cliente: data.cliente || '',
-        telefono: data.telefono || '',
+        dni: data.dni || '',
         tableId: data.tableId || null,
       })
       return {

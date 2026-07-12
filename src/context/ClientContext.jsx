@@ -69,7 +69,6 @@ export function ClientProvider({ children }) {
     const q = query.toLowerCase()
     return clients.filter(c =>
       c.name.toLowerCase().includes(q) ||
-      c.phone?.includes(q) ||
       c.email?.toLowerCase().includes(q) ||
       c.dni?.includes(q)
     )
@@ -93,8 +92,8 @@ export function ClientProvider({ children }) {
     )
   }, [])
 
-  const findByPhone = useCallback((phone) => {
-    return clients.find(c => c.phone === phone.trim()) || null
+  const findByDni = useCallback((dni) => {
+    return clients.find(c => c.dni === dni.trim()) || null
   }, [clients])
 
   const value = {
@@ -108,7 +107,7 @@ export function ClientProvider({ children }) {
     searchClients,
     getClientById,
     incrementVisits,
-    findByPhone,
+    findByDni,
   }
 
   return <ClientContext.Provider value={value}>{children}</ClientContext.Provider>

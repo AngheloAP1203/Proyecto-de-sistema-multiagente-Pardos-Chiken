@@ -15,7 +15,7 @@
  */
 
 import { useState } from 'react'
-import { Plus, Search, CalendarCheck, Bell, CheckCircle2, XCircle, Clock, Users, Phone } from 'lucide-react'
+import { Plus, Search, CalendarCheck, Bell, CheckCircle2, XCircle, Clock, Users, IdCard } from 'lucide-react'
 import { useReservations, RESERVATION_STATUS, STATUS_LABELS, STATUS_COLORS } from '../../context/ReservationContext'
 import { useAuth } from '../../context/AuthContext'
 import { useClients } from '../../context/ClientContext'
@@ -85,7 +85,7 @@ function RequestsPanel({ requests, onApprove, onReject }) {
                 </div>
                 <h4 className={styles.requestName}>{r.clientName}</h4>
                 <div className={styles.requestMeta}>
-                  <span><Phone size={11} /> {r.clientPhone}</span>
+                  <span><IdCard size={11} /> {r.clientDni}</span>
                   <span><CalendarCheck size={11} /> {r.date} · {r.time}</span>
                   <span><Users size={11} /> {r.guests} personas</span>
                 </div>
@@ -178,7 +178,7 @@ export default function ReservationsPage() {
     const matchStatus = statusFilter === 'all' || r.status === statusFilter
     const matchSearch = !search ||
       r.clientName.toLowerCase().includes(search.toLowerCase()) ||
-      r.clientPhone?.includes(search) || r.id.includes(search)
+      r.clientDni?.includes(search) || r.id.includes(search)
     return matchStatus && matchSearch
   })
 
@@ -224,7 +224,7 @@ export default function ReservationsPage() {
     approveReservation(id, tableId, user.name)
 
     if (reservation) {
-      const existing = findByPhone(reservation.clientPhone)
+      const existing = findByDni(reservation.clientDni)
       if (existing) {
         // Cliente ya registrado → actualizar contador y email si faltaba
         updateClient(existing.id, {
@@ -235,9 +235,8 @@ export default function ReservationsPage() {
         // Cliente nuevo → registrar automáticamente
         addClient({
           name:              reservation.clientName,
-          phone:             reservation.clientPhone,
+          dni:               reservation.clientDni,
           email:             reservation.clientEmail || '',
-          dni:               '',
           birthday:          '',
           preferences:       '',
           allergies:         '',

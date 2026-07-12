@@ -165,7 +165,7 @@ export default function HistoryPage() {
                       <td className={styles.mono}>#{r.id}</td>
                       <td>
                         <div className={styles.clientName}>{r.clientName}</div>
-                        <div className={styles.clientPhone}>{r.clientPhone}</div>
+                        <div className={styles.clientPhone}>{r.clientDni}</div>
                       </td>
                       <td>{r.date}</td>
                       <td>{r.time}</td>

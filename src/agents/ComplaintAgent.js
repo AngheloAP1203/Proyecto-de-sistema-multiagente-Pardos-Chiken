@@ -54,9 +54,9 @@ export class ComplaintAgent extends AgentBase {
 
   /**
    * _triageComplaint — Punto de entrada del triaje (M1).
-   * @param {{ mensaje: string, canal?: string, cliente?: string, telefono?: string }} params
+   * @param {{ mensaje: string, canal?: string, cliente?: string, dni?: string }} params
    */
-  async _triageComplaint({ mensaje, canal = 'WhatsApp', cliente = '', telefono = '' }, correlationId) {
+  async _triageComplaint({ mensaje, canal = 'WhatsApp', cliente = '', dni = '' }, correlationId) {
     if (!mensaje || !mensaje.trim()) {
       return { success: false, error: 'El mensaje de la queja está vacío' }
     }
@@ -95,7 +95,7 @@ export class ComplaintAgent extends AgentBase {
       fecha: new Date().toISOString(),
       canal,
       cliente: cliente || 'Anónimo',
-      telefono,
+      dni,
       mensaje,
       ...data,
       estado: isCritica ? 'escalada' : 'nueva',

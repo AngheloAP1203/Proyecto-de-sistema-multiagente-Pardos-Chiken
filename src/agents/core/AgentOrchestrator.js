@@ -382,7 +382,7 @@ class AgentOrchestratorClass {
 
   /**
    * triageComplaint — M1: estructura y registra una queja de cliente (CoT + JSON).
-   * @param {{ mensaje, canal?, cliente?, telefono? }} data
+   * @param {{ mensaje, canal?, cliente?, dni? }} data
    */
   async triageComplaint(data) {
     this._metrics.totalOrchestrations++

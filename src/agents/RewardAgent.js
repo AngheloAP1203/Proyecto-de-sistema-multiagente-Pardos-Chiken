@@ -7,7 +7,7 @@
  * asigna una recompensa acorde a la severidad y redacta un mensaje empático.
  *
  * Reparto de responsabilidades (el mismo de todo el sistema):
- *   · JavaScript decide la ELEGIBILIDAD (claimVerifier: teléfono + mesa + consumo).
+ *   · JavaScript decide la ELEGIBILIDAD (claimVerifier: DNI + mesa + consumo).
  *   · JavaScript elige la RECOMPENSA (política + promoción por severidad).
  *   · El LLM solo REDACTA el mensaje. No decide si hay premio ni cuál.
  *
@@ -57,7 +57,7 @@ class RewardAgentClass {
   /**
    * evaluar — Punto de entrada (M6).
    *
-   * @param {Object} reclamo  - { tableId, telefono, fecha, cliente, mensaje,
+   * @param {Object} reclamo  - { tableId, dni, fecha, cliente, mensaje,
    *                              puntos_criticos, prioridad }  (post-triaje M1)
    * @param {Object} datos    - { reservations, payments, kitchenTickets, policies, promotions }
    * @returns {Promise<Object>} resultado listo para la UI. Nunca lanza.
@@ -67,7 +67,7 @@ class RewardAgentClass {
     const fecha = reclamo.fecha || new Date().toISOString().split('T')[0]
 
     // 1. VERIFICACIÓN ANTI-FRAUDE (determinista, antes que cualquier LLM).
-    const verif = verificarReclamo({ tableId: reclamo.tableId, telefono: reclamo.telefono, fecha }, datos)
+    const verif = verificarReclamo({ tableId: reclamo.tableId, dni: reclamo.dni, fecha }, datos)
 
     if (!verif.elegible) {
       const res = {
@@ -81,12 +81,12 @@ class RewardAgentClass {
         timestamp:  new Date().toISOString(),
       }
       this._history.push(res)
-      // Auditamos el rechazo: es el registro anti-fraude. El teléfono se redacta.
+      // Auditamos el rechazo: es el registro anti-fraude. El DNI se redacta.
       auditLogger.record({
         agente: 'RewardAgent', accion: 'claim.verify',
         nivel: verif.veredicto === VEREDICTO.RECHAZADO ? 'warn' : 'info',
         resultado: verif.veredicto, latencia: res.latency,
-        detalle: { mesa: reclamo.tableId, telefono: reclamo.telefono, elegible: false },
+        detalle: { mesa: reclamo.tableId, dni: reclamo.dni, elegible: false },
       })
       return res
     }
@@ -123,7 +123,7 @@ class RewardAgentClass {
     auditLogger.record({
       agente: 'RewardAgent', accion: 'claim.reward', resultado: verif.veredicto,
       latencia: res.latency,
-      detalle: { mesa: reclamo.tableId, telefono: reclamo.telefono, elegible: true,
+      detalle: { mesa: reclamo.tableId, dni: reclamo.dni, elegible: true,
                  recompensa: promo?.nombre || null, reservationId: verif.reservationId },
     })
     return res

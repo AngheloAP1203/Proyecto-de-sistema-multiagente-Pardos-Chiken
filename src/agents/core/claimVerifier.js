@@ -7,19 +7,19 @@
  * Un cliente que reclama "porque sí" para sacar un cupón choca contra un cruce
  * de datos, no contra un modelo al que se pueda convencer con palabras.
  *
- * REGLA DE IDENTIDAD (decisión de negocio): teléfono Y número de mesa.
- *   El reclamante debe indicar la mesa, y su teléfono debe coincidir con el de
+ * REGLA DE IDENTIDAD (decisión de negocio): DNI Y número de mesa.
+ *   El reclamante debe indicar la mesa, y su DNI debe coincidir con el de
  *   quien reservó/consumió en esa mesa ese día. Ambas condiciones, no una.
  *
  * CADENA DE EVIDENCIA:
- *   Reserva(tableId, clientPhone) → Comanda(tableId) → Pago(reservationId)
+ *   Reserva(tableId, clientDni) → Comanda(tableId) → Pago(reservationId)
  *   El reclamo se valida contra los tres eslabones.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 export const VEREDICTO = {
-  VERIFICADO:  'VERIFICADO',   // teléfono + mesa + consumo confirmados → elegible
-  RECHAZADO:   'RECHAZADO',    // hubo consumo en la mesa, pero el teléfono no coincide → fraude
+  VERIFICADO:  'VERIFICADO',   // DNI + mesa + consumo confirmados → elegible
+  RECHAZADO:   'RECHAZADO',    // hubo consumo en la mesa, pero el DNI no coincide → fraude
   SIN_COMANDA: 'SIN_COMANDA',  // esa mesa no tuvo pedido/consumo ese día → nadie comió ahí
   SIN_MESA:    'SIN_MESA',     // el reclamo no indica mesa → no se puede verificar
 }
@@ -42,12 +42,12 @@ const HOY = () => new Date().toISOString().split('T')[0]
 /**
  * verificarReclamo — Núcleo determinista.
  *
- * @param {Object} reclamo   - { tableId, telefono, fecha } del reclamo del cliente
+ * @param {Object} reclamo   - { tableId, dni, fecha } del reclamo del cliente
  * @param {Object} datos     - { reservations, payments, kitchenTickets }
  * @returns {Object} { veredicto, elegible, motivo, cliente?, reservationId?, pago? }
  */
 export function verificarReclamo(reclamo = {}, datos = {}) {
-  const { tableId, telefono, fecha } = reclamo
+  const { tableId, dni, fecha } = reclamo
   const reservations   = datos.reservations   || []
   const payments       = datos.payments       || []
   const kitchenTickets = datos.kitchenTickets || []
@@ -87,25 +87,25 @@ export function verificarReclamo(reclamo = {}, datos = {}) {
     }
   }
 
-  // 4. Identidad: el teléfono del reclamo debe coincidir con quien ocupó la mesa.
-  const tel = normTel(telefono)
-  const reservaCoincide = tel
-    ? reservasMesa.find(r => normTel(r.clientPhone) === tel)
+  // 4. Identidad: el DNI del reclamo debe coincidir con quien ocupó la mesa.
+  const docId = dni?.trim()
+  const reservaCoincide = docId
+    ? reservasMesa.find(r => r.clientDni?.trim() === docId)
     : null
 
   if (!reservaCoincide) {
     return {
       veredicto: VEREDICTO.RECHAZADO, elegible: false,
-      motivo: 'El teléfono indicado no coincide con el de quien reservó y consumió en esa mesa. El reclamo no puede validarse.',
+      motivo: 'El DNI indicado no coincide con el de quien reservó y consumió en esa mesa. El reclamo no puede validarse.',
     }
   }
 
-  // 5. Verificado: mesa + teléfono + consumo.
+  // 5. Verificado: mesa + DNI + consumo.
   const pago = pagosMesa.find(p => p.reservationId === reservaCoincide.id) || pagosMesa[0] || null
   return {
     veredicto:     VEREDICTO.VERIFICADO,
     elegible:      true,
-    motivo:        'Identidad confirmada: teléfono y mesa coinciden con un consumo registrado.',
+    motivo:        'Identidad confirmada: DNI y mesa coinciden con un consumo registrado.',
     cliente:       reservaCoincide.clientName,
     reservationId: reservaCoincide.id,
     pago:          pago ? { id: pago.id, amount: pago.amount, fecha: pago.date } : null,

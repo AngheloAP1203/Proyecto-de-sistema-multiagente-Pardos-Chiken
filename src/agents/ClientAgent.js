@@ -11,7 +11,7 @@
  *   Regla: Un cliente con ≥ 5 reservas COMPLETADAS es promovido a VIP automáticamente.
  *   Flujo:
  *     1. Al aprobar una reserva, el Swarm llama a sync_from_reservation en paralelo.
- *     2. ClientAgent busca al cliente por teléfono.
+ *     2. ClientAgent busca al cliente por DNI.
  *     3. Si existe: incrementa contador y verifica umbral VIP (5 reservas).
  *     4. Si no existe: lo crea automáticamente con datos de la reserva.
  *     5. Si alcanzó el umbral: actualiza vip=true y lo registra en el log.
@@ -47,7 +47,7 @@ export class ClientAgent extends AgentBase {
        
        REGLAS:
        1. Un cliente con 5 o más reservas completadas es automáticamente VIP
-       2. Cuando se aprueba una reserva, busca al cliente por teléfono:
+       2. Cuando se aprueba una reserva, busca al cliente por DNI:
           - Si existe → actualiza su contador de reservas
           - Si no existe → créalo automáticamente
        3. Preserva las preferencias y alergias del cliente en cada visita
@@ -82,7 +82,7 @@ export class ClientAgent extends AgentBase {
   _registerTools() {
     this.registerTool(
       'find_client',
-      'Busca un cliente por teléfono o email',
+      'Busca un cliente por DNI o email',
       this._findClient
     )
     this.registerTool(
@@ -112,22 +112,22 @@ export class ClientAgent extends AgentBase {
     )
   }
 
-  async _findClient({ phone, email }) {
-    if (!phone && !email) return { success: false, error: 'Se requiere teléfono o email para buscar' }
+  async _findClient({ dni, email }) {
+    if (!dni && !email) return { success: false, error: 'Se requiere DNI o email para buscar' }
 
-    if (this._contextActions?.findByPhone && phone) {
-      const client = this._contextActions.findByPhone(phone)
+    if (this._contextActions?.findByDni && dni) {
+      const client = this._contextActions.findByDni(dni)
       return { success: true, client: client || null, found: !!client }
     }
     return { success: false, client: null, found: false }
   }
 
-  async _createClient({ name, phone, email, notes = '', preferences = '', allergies = '' }, correlationId) {
-    if (!name || !phone) return { success: false, error: 'Nombre y teléfono son requeridos' }
+  async _createClient({ name, dni, email, notes = '', preferences = '', allergies = '' }, correlationId) {
+    if (!name || !dni) return { success: false, error: 'Nombre y DNI son requeridos' }
 
     if (this._contextActions?.addClient) {
       const client = this._contextActions.addClient({
-        name, phone, email: email || '',
+        name, dni, email: email || '',
         notes, preferences, allergies,
         totalReservations: 1,
         vip: false,
@@ -137,7 +137,7 @@ export class ClientAgent extends AgentBase {
       this.bus.publish(EVENT_TYPES.CLIENT_CREATED, {
         clientId: client?.id,
         name,
-        phone,
+        dni,
       }, this.name, correlationId)
 
       return { success: true, client, message: `Cliente ${name} registrado` }
@@ -166,7 +166,7 @@ export class ClientAgent extends AgentBase {
     if (!reservation || !this._contextActions) return { success: false }
 
     // Buscar si el cliente ya existe
-    const existingClient = this._contextActions.findByPhone?.(reservation.clientPhone)
+    const existingClient = this._contextActions.findByDni?.(reservation.clientDni)
 
     if (existingClient) {
       // Cliente existente → incrementar contador de reservas
@@ -195,7 +195,7 @@ export class ClientAgent extends AgentBase {
       // Cliente nuevo → crear automáticamente
       const result = await this._createClient({
         name:  reservation.clientName,
-        phone: reservation.clientPhone,
+        dni:   reservation.clientDni,
         email: reservation.clientEmail || '',
         notes: reservation.notes
           ? `Registrado vía aprobación de reserva. Nota: ${reservation.notes}`

@@ -33,7 +33,7 @@ const today = new Date().toISOString().split('T')[0]
 const EMPTY_FORM = {
   clientId:    '',
   clientName:  '',
-  clientPhone: '',
+  clientDni:   '',
   clientEmail: '',
   date:        today,
   time:        '13:00',
@@ -47,7 +47,7 @@ const EMPTY_FORM = {
 
 export default function ReservationForm({ initialData, onSubmit, onCancel }) {
   const { user } = useAuth()
-  const { findByPhone, addClient } = useClients()
+  const { findByDni, addClient } = useClients()
   const { tables } = useReservations()
   
   const isCreating = !initialData
@@ -57,7 +57,7 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
 
   const [form,         setForm]      = useState(initialData ? { ...EMPTY_FORM, ...initialData } : EMPTY_FORM)
   const [errors,       setErrors]    = useState({})
-  const [phoneQuery,   setPhone]     = useState(initialData?.clientPhone || '')
+  const [dniQuery,     setDniQuery]  = useState(initialData?.clientDni || '')
   const [clientFound,  setFound]     = useState(!!initialData?.clientId)
   const [isSubmitting, setSubmit]    = useState(false)
 
@@ -67,26 +67,26 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
   const categories = [...new Set(MENU_ITEMS.map(m => m.category))]
   const orderTotal = (form.items || []).reduce((s, i) => s + (i.price * i.qty), 0)
 
-  // Buscar cliente al escribir teléfono
+  // Buscar cliente al escribir DNI
   useEffect(() => {
-    if (phoneQuery.length >= 9) {
-      const client = findByPhone(phoneQuery)
+    if (dniQuery.length >= 8) {
+      const client = findByDni(dniQuery)
       if (client) {
         setForm(f => ({
           ...f,
           clientId:    client.id,
           clientName:  client.name,
-          clientPhone: client.phone,
+          clientDni:   client.dni,
           clientEmail: client.email || '',
         }))
         setFound(true)
         toast.success(`Cliente encontrado: ${client.name}`, { duration: 2000 })
       } else {
         setFound(false)
-        setForm(f => ({ ...f, clientId: '', clientPhone: phoneQuery }))
+        setForm(f => ({ ...f, clientId: '', clientDni: dniQuery }))
       }
     }
-  }, [phoneQuery, findByPhone])
+  }, [dniQuery, findByDni])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -97,7 +97,8 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
   const validate = () => {
     const e = {}
     if (!form.clientName.trim()) e.clientName = 'Nombre del cliente requerido'
-    if (!form.clientPhone.trim()) e.clientPhone = 'Teléfono requerido'
+    if (!form.clientDni.trim()) e.clientDni = 'DNI requerido'
+    else if (!/^\d{8}$/.test(form.clientDni.trim())) e.clientDni = 'DNI inválido (8 dígitos)'
     if (!form.date) e.date = 'Fecha requerida'
     if (!form.time) e.time = 'Hora requerida'
     else {
@@ -150,19 +151,19 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
     setSubmit(true)
     await new Promise(r => setTimeout(r, 500))
 
-    let clientId = form.clientId
-    if (!clientId) {
+    let finalClientId = form.clientId
+    if (!finalClientId) {
       const newClient = addClient({
         name:  form.clientName,
-        phone: form.clientPhone,
+        dni:   form.clientDni,
         email: form.clientEmail,
       })
-      clientId = newClient.id
+      finalClientId = newClient.id
       toast.success('Nuevo cliente registrado automáticamente')
     }
 
     // Preserve items array correctly
-    onSubmit({ ...form, clientId, items: form.items || [] })
+    onSubmit({ ...form, clientId: finalClientId, items: form.items || [] })
     setSubmit(false)
     toast.success(initialData ? 'Reserva actualizada' : 'Reserva creada correctamente')
   }
@@ -176,22 +177,24 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
 
         <div className={styles.phoneSearch}>
           <Input
-            label="Teléfono del cliente"
-            id="res-phone"
-            name="clientPhone"
-            type="tel"
-            placeholder="Ej: 987654321"
-            value={phoneQuery}
-            onChange={e => setPhone(e.target.value)}
+            label="DNI Cliente"
+            id="res-dni"
+            name="clientDni"
+            placeholder="Ej: 76543210"
+            value={dniQuery}
+            onChange={(e) => {
+              setDniQuery(e.target.value)
+              setForm(f => ({ ...f, clientDni: e.target.value }))
+            }}
             icon={<Search size={15} />}
-            hint="Ingresa el teléfono para buscar cliente existente"
+            hint="Ingresa el DNI para buscar cliente existente"
             required
-            error={errors.clientPhone}
+            error={errors.clientDni}
           />
           {clientFound && (
             <span className={styles.clientFoundBadge}>✓ Cliente encontrado</span>
           )}
-          {phoneQuery.length >= 9 && !clientFound && (
+          {dniQuery.length >= 8 && !clientFound && (
             <span className={styles.newClientBadge}>
               <UserPlus size={12} /> Nuevo cliente — se registrará automáticamente
             </span>

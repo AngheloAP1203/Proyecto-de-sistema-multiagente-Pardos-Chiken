@@ -252,7 +252,7 @@ export default function DashboardPage() {
                     <td className={styles.time}>{r.time}</td>
                     <td>
                       <div className={styles.clientName}>{r.clientName}</div>
-                      <div className={styles.clientPhone}>{r.clientPhone}</div>
+                      <div className={styles.clientPhone}>{r.clientDni}</div>
                     </td>
                     <td className={styles.center}>{r.guests} 👥</td>
                     <td className={styles.center}>{r.tableId}</td>
