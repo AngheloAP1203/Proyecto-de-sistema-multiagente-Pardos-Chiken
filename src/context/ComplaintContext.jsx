@@ -40,6 +40,7 @@ export function ComplaintProvider({ children }) {
             canal: c.canal,
             cliente: c.clients?.name || 'Desconocido',
             telefono: c.clients?.phone || '',
+            email: c.clients?.email || '',
             mensaje: c.mensaje,
             tableId: c.reservations?.table_id,
             razonamiento: resObj.razonamiento || '',

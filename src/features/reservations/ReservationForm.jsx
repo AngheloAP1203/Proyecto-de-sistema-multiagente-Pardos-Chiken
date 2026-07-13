@@ -103,6 +103,7 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
     if (!form.clientDni.trim()) e.clientDni = 'DNI requerido'
     else if (!/^\d{8}$/.test(form.clientDni.trim())) e.clientDni = 'DNI inválido (8 dígitos)'
     if (!form.clientPhone.trim()) e.clientPhone = 'Teléfono requerido'
+    if (!form.clientEmail.trim()) e.clientEmail = 'Correo requerido'
     if (!form.date) e.date = 'Fecha requerida'
     if (!form.time) e.time = 'Hora requerida'
     else {
@@ -234,13 +235,15 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
             disabled={clientFound}
           />
           <Input
-            label="Correo (opcional)"
+            label="Correo"
             id="res-email"
             name="clientEmail"
             type="email"
             placeholder="email@ejemplo.com"
             value={form.clientEmail}
             onChange={handleChange}
+            error={errors.clientEmail}
+            required
             disabled={clientFound}
           />
         </div>

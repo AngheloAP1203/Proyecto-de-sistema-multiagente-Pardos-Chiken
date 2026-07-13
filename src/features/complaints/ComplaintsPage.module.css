@@ -438,20 +438,21 @@
 .modalHeader {
   background: var(--color-primary);
   color: #fff;
-  padding: 16px 20px;
+  padding: 20px 24px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-weight: 700;
-  font-size: 1.1rem;
+  gap: 12px;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
 }
 
 .modalBody {
-  padding: 20px;
+  padding: 24px;
   color: var(--color-text-dark);
-  font-size: 14px;
-  line-height: 1.6;
-  max-height: 60vh;
+  font-size: 14.5px;
+  line-height: 1.7;
+  max-height: 55vh;
   overflow-y: auto;
 }
 
@@ -469,8 +470,8 @@
 }
 
 .modalFooter {
-  padding: 16px 20px;
-  background: var(--color-bg-subtle);
+  padding: 20px 24px;
+  background: #fafafa;
   border-top: 1px solid var(--color-border-light);
   display: flex;
   justify-content: flex-end;

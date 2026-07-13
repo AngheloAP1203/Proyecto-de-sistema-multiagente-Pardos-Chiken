@@ -62,7 +62,12 @@ export default function ComplaintsPage() {
   const handleAutoResolve = async (c) => {
     setResolvingIds(prev => ({ ...prev, [c.id]: true }))
     try {
-      const prompt = `Actúa como solucionador. Genera una solución concisa y directa para esta queja del cliente ${c.cliente}: "${c.mensaje}". Propón un descuento o cortesía si aplica, de forma amable y resolutiva.`
+      const prompt = `Actúa como analista de atención al cliente de Pardos Chicken. Usa el modelo L.E.A.R.N. (Listen, Empathize, Apologize, Resolve, Notify) para resolver esta queja del cliente ${c.cliente}: "${c.mensaje}". 
+      Instrucciones estrictas:
+      1. Sé empático, profesional y resolutivo.
+      2. NO ofrezcas descuentos monetarios ni cupones a menos que la queja sea un problema grave o de salubridad. 
+      3. Prioriza disculpas genuinas, explicaciones operativas y compromisos de capacitación al personal o revisión de procesos.
+      4. Tu respuesta debe ser el correo exacto que se le enviará al cliente (formato markdown, claro y directo).`
       const res = await askLeaderQuery(prompt)
       if (res.success) {
         // En lugar de window.confirm, abrimos el modal
