@@ -62,14 +62,15 @@ export function ReservationProvider({ children }) {
       date: data.date,
       time: data.time,
       table_id: data.tableId || 'T01',
-      guests: data.pax || 2,
+      guests: data.guests || 2,
       status: RESERVATION_STATUS.PENDING
     }
     
     const { data: inserted, error } = await supabase.from('reservations').insert(newReservation).select().single()
     
     if (error) {
-      toast.error('Error al crear reserva')
+      console.error('Insert error:', error)
+      toast.error('Error al crear reserva (quizá falta seleccionar mesa)')
       return null
     }
 
@@ -82,6 +83,9 @@ export function ReservationProvider({ children }) {
       time: inserted.time,
       pax: inserted.guests,
       status: inserted.status,
+      notes: inserted.notes,
+      occasion: inserted.occasion,
+      items: inserted.items,
       createdAt: inserted.created_at
     }
 
@@ -174,7 +178,7 @@ export function ReservationProvider({ children }) {
       date: data.date,
       time: data.time,
       table_id: data.tableId || 'T00',
-      guests: data.pax || 2,
+      guests: data.guests || 2,
       status: RESERVATION_STATUS.REQUESTED
     }
     
