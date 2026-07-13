@@ -25,7 +25,7 @@ import { llmMode } from '../../agents/core/llmClient'
 import toast from 'react-hot-toast'
 import ReactMarkdown from 'react-markdown'
 import emailjs from '@emailjs/browser'
-import ResolutionPanel from '../resolutions/ResolutionPanel'
+import ResolutionPanel from './ResolutionPanel'
 import styles from './ComplaintsPage.module.css'
 
 const PRIORIDAD_CLASS = {
