@@ -1,4 +1,4 @@
-import { supabase } from '../domain/supabase'
+import { supabase } from '../../domain/supabase'
 
 export const fetchRequested = async () => {
   try {
