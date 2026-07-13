@@ -157,14 +157,19 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
 
     let finalClientId = form.clientId
     if (!finalClientId) {
-      const newClient = addClient({
+      const newClient = await addClient({
         name:  form.clientName,
         dni:   form.clientDni,
         phone: form.clientPhone,
         email: form.clientEmail,
       })
-      finalClientId = newClient.id
-      toast.success('Nuevo cliente registrado automáticamente')
+      if (newClient) {
+        finalClientId = newClient.id
+        toast.success('Nuevo cliente registrado automáticamente')
+      } else {
+        setSubmit(false)
+        return // Error handled by addClient
+      }
     }
 
     // Preserve items array correctly

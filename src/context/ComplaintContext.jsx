@@ -24,29 +24,40 @@ export function ComplaintProvider({ children }) {
   useEffect(() => { complaintsRef.current = complaints }, [complaints])
 
   const loadComplaints = async () => {
-    const { data, error } = await supabase.from('complaints').select('*').order('fecha', { ascending: false })
-    if (!error && data) {
-      // Mapear campos de supabase a los esperados por el frontend
-      const mapped = data.map(c => ({
-        id: c.id,
-        fecha: c.fecha,
-        canal: c.canal,
-        cliente: c.cliente,
-        telefono: c.telefono,
-        mensaje: c.mensaje,
-        tableId: c.table_id,
-        razonamiento: c.razonamiento,
-        sentimiento: c.sentimiento,
-        prioridad: c.prioridad,
-        sede: c.sede,
-        puntos_criticos: c.puntos_criticos,
-        respuesta_cliente: c.respuesta_cliente,
-        estado: c.estado,
-        createdAt: c.created_at
-      }))
-      setComplaints(mapped)
+    try {
+      const { data, error } = await supabase.from('complaints')
+        .select('*, clients(*), reservations(*)')
+        .order('fecha', { ascending: false })
+        
+      if (!error && data) {
+        // Mapear campos de supabase a los esperados por el frontend
+        const mapped = data.map(c => {
+          const resObj = c.resolution || {}
+          return {
+            id: c.id,
+            fecha: c.fecha,
+            canal: c.canal,
+            cliente: c.clients?.name || 'Desconocido',
+            telefono: c.clients?.phone || '',
+            mensaje: c.mensaje,
+            tableId: c.reservations?.table_id,
+            razonamiento: resObj.razonamiento || '',
+            sentimiento: resObj.sentimiento || '',
+            prioridad: c.severidad || 'Baja',
+            sede: resObj.sede || 'San Isidro',
+            puntos_criticos: resObj.puntos_criticos || null,
+            respuesta_cliente: resObj.respuesta_cliente || '',
+            estado: c.estado,
+            createdAt: c.created_at
+          }
+        })
+        setComplaints(mapped)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   // Cargar quejas desde Supabase
@@ -55,60 +66,75 @@ export function ComplaintProvider({ children }) {
   }, [])
 
   const addComplaint = useCallback(async (complaint) => {
-    const record = {
-      fecha: complaint.fecha || new Date().toISOString().split('T')[0],
-      canal: complaint.canal || 'Web',
-      cliente: complaint.cliente || 'Desconocido',
-      telefono: complaint.telefono || '',
-      mensaje: complaint.mensaje || '',
-      table_id: complaint.tableId || null,
+    // Si no hay clientId asume que necesita ser asignado. En un caso real crearíamos el cliente primero.
+    if (!complaint.clientId) {
+      toast.error('Se requiere un cliente registrado para crear una queja')
+      return null
+    }
+
+    const resolutionObj = {
       razonamiento: complaint.razonamiento || '',
       sentimiento: complaint.sentimiento || '',
-      prioridad: complaint.prioridad || 'Baja',
       sede: complaint.sede || 'San Isidro',
       puntos_criticos: complaint.puntos_criticos || null,
-      respuesta_cliente: complaint.respuesta_cliente || '',
-      estado: complaint.estado || 'nueva'
+      respuesta_cliente: complaint.respuesta_cliente || ''
+    }
+
+    const record = {
+      client_id: complaint.clientId,
+      reservation_id: complaint.reservationId || null,
+      fecha: complaint.fecha || new Date().toISOString().split('T')[0],
+      canal: complaint.canal || 'Web',
+      estado: complaint.estado || 'nueva',
+      severidad: complaint.prioridad || 'Baja',
+      mensaje: complaint.mensaje || '',
+      resolution: resolutionObj
     }
     
-    const { data: inserted, error } = await supabase.from('complaints').insert(record).select().single()
+    const { data: inserted, error } = await supabase.from('complaints').insert(record).select('*, clients(*), reservations(*)').single()
     if (!error && inserted) {
+      const resObj = inserted.resolution || {}
       const mapped = {
         id: inserted.id,
         fecha: inserted.fecha,
         canal: inserted.canal,
-        cliente: inserted.cliente,
-        telefono: inserted.telefono,
+        cliente: inserted.clients?.name || 'Desconocido',
+        telefono: inserted.clients?.phone || '',
         mensaje: inserted.mensaje,
-        tableId: inserted.table_id,
-        razonamiento: inserted.razonamiento,
-        sentimiento: inserted.sentimiento,
-        prioridad: inserted.prioridad,
-        sede: inserted.sede,
-        puntos_criticos: inserted.puntos_criticos,
-        respuesta_cliente: inserted.respuesta_cliente,
+        tableId: inserted.reservations?.table_id,
+        razonamiento: resObj.razonamiento || '',
+        sentimiento: resObj.sentimiento || '',
+        prioridad: inserted.severidad || 'Baja',
+        sede: resObj.sede || 'San Isidro',
+        puntos_criticos: resObj.puntos_criticos || null,
+        respuesta_cliente: resObj.respuesta_cliente || '',
         estado: inserted.estado,
         createdAt: inserted.created_at
       }
       setComplaints(prev => [mapped, ...prev])
-    }
-    
-    const isClientAction = !user
-    auditLogger.record({
-      actor: isClientAction ? `${complaint.cliente || 'Cliente'} (${complaint.canal || 'Web'})` : actorName,
-      tipoActor: isClientAction ? 'cliente' : 'usuario',
-      accion: 'complaint.create',
-      nivel: 'warn',
-      detalle: { id: record.id }
-    })
+      
+      const isClientAction = !user
+      auditLogger.record({
+        actor: isClientAction ? `${mapped.cliente} (${mapped.canal})` : actorName,
+        tipoActor: isClientAction ? 'cliente' : 'usuario',
+        accion: 'complaint.create',
+        nivel: 'warn',
+        detalle: { id: record.id }
+      })
 
-    return { ...complaint, id: record.id }
+      return mapped
+    } else {
+      console.error(error)
+      toast.error('Error al registrar la queja')
+      return null
+    }
   }, [user, actorName])
 
   const updateComplaint = useCallback(async (id, updates) => {
     const recordUpdates = {}
-    if (updates.estado) recordUpdates.status = updates.estado
-    if (updates.resolution) recordUpdates.resolution = JSON.stringify(updates.resolution)
+    if (updates.estado) recordUpdates.estado = updates.estado
+    // We can merge resolution if needed, but for now we just overwrite if passed
+    if (updates.resolution) recordUpdates.resolution = updates.resolution
     
     const { error } = await supabase.from('complaints').update(recordUpdates).eq('id', id)
     if (!error) {
