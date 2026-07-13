@@ -158,7 +158,13 @@ export function KitchenProvider({ children }) {
       for (const it of newItems) {
         if (it.id) {
           // Ya existe, actualizamos cantidad
-          await supabase.from('ticket_items').update({ quantity: it.qty }).eq('id', it.id)
+          const current = (currentItems || []).find(c => c.id === it.id)
+          if (current && it.qty > current.quantity) {
+            // Si aumentó la cantidad, lo devolvemos a pending para que cocina sepa que debe preparar más
+            await supabase.from('ticket_items').update({ quantity: it.qty, status: 'pending' }).eq('id', it.id)
+          } else {
+            await supabase.from('ticket_items').update({ quantity: it.qty }).eq('id', it.id)
+          }
         } else {
           // Es nuevo, lo insertamos
           await supabase.from('ticket_items').insert({
