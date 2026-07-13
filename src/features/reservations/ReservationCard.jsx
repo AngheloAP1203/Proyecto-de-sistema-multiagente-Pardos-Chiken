@@ -48,8 +48,8 @@ export default function ReservationCard({ reservation: r, onEdit, onSeat, onCanc
 
   const handleAddOrderItem = (menuItem) => {
     setLocalItems(prev => {
-      const exists = prev.find(i => i.menuId === menuItem.id)
-      if (exists) return prev.map(i => i.menuId === menuItem.id ? { ...i, qty: i.qty + 1 } : i)
+      const exists = prev.find(i => i.name === menuItem.name)
+      if (exists) return prev.map(i => i.name === menuItem.name ? { ...i, qty: i.qty + 1 } : i)
       return [...prev, { menuId: menuItem.id, name: menuItem.name, price: menuItem.price, qty: 1 }]
     })
   }

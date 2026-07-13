@@ -88,12 +88,21 @@ export function KitchenProvider({ children }) {
     return () => clearInterval(interval)
   }, [])
 
-  /** Devuelve el mapa nombre→menu_item_id, cargándolo una vez desde Supabase. */
   const getMenuMap = useCallback(async () => {
-    if (menuMapRef.current) return menuMapRef.current
-    const { data } = await supabase.from('menu_items').select('id, name')
+    // Si ya tenemos un mapa válido (no vacío), lo retornamos
+    if (menuMapRef.current && Object.keys(menuMapRef.current).length > 0) {
+      return menuMapRef.current
+    }
+    
+    const { data, error } = await supabase.from('menu_items').select('id, name')
+    if (error || !data || data.length === 0) {
+      console.warn('[kitchen] Error al cargar menu_items o está vacío', error)
+      // Si falla, devolvemos un mapa vacío temporalmente, pero NO lo cacheamos
+      return {}
+    }
+    
     const map = {}
-    for (const m of data || []) map[m.name] = m.id
+    for (const m of data) map[m.name] = m.id
     menuMapRef.current = map
     return map
   }, [])
@@ -161,18 +170,24 @@ export function KitchenProvider({ children }) {
           const current = (currentItems || []).find(c => c.id === it.id)
           if (current && it.qty > current.quantity) {
             // Si aumentó la cantidad, lo devolvemos a pending para que cocina sepa que debe preparar más
-            await supabase.from('ticket_items').update({ quantity: it.qty, status: 'pending' }).eq('id', it.id)
+            const { error: errUpd1 } = await supabase.from('ticket_items').update({ quantity: it.qty, status: 'pending' }).eq('id', it.id)
+            if (errUpd1) console.error('Error update qty+pending:', errUpd1)
           } else {
-            await supabase.from('ticket_items').update({ quantity: it.qty }).eq('id', it.id)
+            const { error: errUpd2 } = await supabase.from('ticket_items').update({ quantity: it.qty }).eq('id', it.id)
+            if (errUpd2) console.error('Error update qty:', errUpd2)
           }
         } else {
           // Es nuevo, lo insertamos
-          await supabase.from('ticket_items').insert({
+          const { error: errIns } = await supabase.from('ticket_items').insert({
             ticket_id: ticketId,
             menu_item_id: menuMap[it.name] || it.menuId,
             quantity: it.qty,
             status: 'pending'
           })
+          if (errIns) {
+             console.error('Error insert new item:', errIns, 'menu_item_id used:', menuMap[it.name] || it.menuId)
+             toast.error('Error agregando plato: ' + it.name)
+          }
         }
       }
 
