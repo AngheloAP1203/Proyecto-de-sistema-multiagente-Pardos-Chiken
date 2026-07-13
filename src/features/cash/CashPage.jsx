@@ -204,7 +204,7 @@ function PaymentRow({ p, onViewBoleta }) {
 
 // ── Página principal ──────────────────────────────────────────────────────────
 export default function CashPage() {
-  const { user } = useAuth()
+  const { user, hasPermission } = useAuth()
   const { payments, todayPayments, todayTotal, todayByMethod, shift, openShift, closeShift, addPayment } = useCash()
   const { updateReservation, completeReservation, getReservationsByDate } = useReservations()
   const { tickets, syncTicketItems } = useKitchen()
@@ -608,14 +608,16 @@ export default function CashPage() {
                       )}
                     </span>
                     <div className={styles.orderQtyCtrlCompact}>
-                      <button type="button" onClick={() => updateQty(item.menuId, -1)}>−</button>
+                      {hasPermission('canModifyOrderItems') && <button type="button" onClick={() => updateQty(item.menuId, -1)}>−</button>}
                       <span>{item.qty}</span>
                       <button type="button" onClick={() => updateQty(item.menuId, +1)}>+</button>
                     </div>
                     <span className={styles.orderPriceCompact}>S/ {(item.price * item.qty).toFixed(2)}</span>
-                    <button type="button" className={styles.removeBtn} onClick={() => removeOrderItem(item.menuId)}>
-                      <Trash2 size={13} />
-                    </button>
+                    {hasPermission('canModifyOrderItems') && (
+                      <button type="button" className={styles.removeBtn} onClick={() => removeOrderItem(item.menuId)}>
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 ))}
                 <div className={styles.orderTotalCompact}>
