@@ -7,7 +7,7 @@
  * asigna una recompensa acorde a la severidad y redacta un mensaje empático.
  *
  * Reparto de responsabilidades (el mismo de todo el sistema):
- *   · JavaScript decide la ELEGIBILIDAD (claimVerifier: DNI + mesa + consumo).
+ *   · JavaScript decide la ELEGIBILIDAD (claimVerifier: DNI + código de reserva + consumo).
  *   · JavaScript elige la RECOMPENSA (política + promoción por severidad).
  *   · El LLM solo REDACTA el mensaje. No decide si hay premio ni cuál.
  *
@@ -70,8 +70,8 @@ class RewardAgentClass {
     //    Si el llamador ya trae la evidencia (datos.reservations), se evalúa con la
     //    lógica pura; si no, se consulta el backend (Supabase) dentro de verificarReclamo.
     const verif = Array.isArray(datos?.reservations)
-      ? evaluarEvidencia({ tableId: reclamo.tableId, dni: reclamo.dni, fecha }, datos)
-      : await verificarReclamo({ tableId: reclamo.tableId, dni: reclamo.dni, fecha })
+      ? evaluarEvidencia({ codigo: reclamo.codigo, dni: reclamo.dni }, datos)
+      : await verificarReclamo({ codigo: reclamo.codigo, dni: reclamo.dni })
 
     if (!verif.elegible) {
       const res = {
@@ -90,7 +90,7 @@ class RewardAgentClass {
         agente: 'RewardAgent', accion: 'claim.verify',
         nivel: verif.veredicto === VEREDICTO.RECHAZADO ? 'warn' : 'info',
         resultado: verif.veredicto, latencia: res.latency,
-        detalle: { mesa: reclamo.tableId, dni: reclamo.dni, elegible: false },
+        detalle: { codigo: reclamo.codigo, dni: reclamo.dni, elegible: false },
       })
       return res
     }
@@ -128,7 +128,7 @@ class RewardAgentClass {
     auditLogger.record({
       agente: 'RewardAgent', accion: 'claim.reward', resultado: verif.veredicto,
       latencia: res.latency,
-      detalle: { mesa: reclamo.tableId, dni: reclamo.dni, elegible: true,
+      detalle: { codigo: reclamo.codigo, dni: reclamo.dni, elegible: true,
                  recompensa: promo?.nombre || null, reservationId: verif.reservationId },
     })
     return res
@@ -166,13 +166,14 @@ class RewardAgentClass {
   }
 
   _mensajeRechazo(verif) {
-    // ANTI-ENUMERACIÓN (F-04): SIN_COMANDA y RECHAZADO comparten un ÚNICO mensaje.
-    // Distinguirlos le diría a un atacante si esa mesa tuvo consumo ese día (fuga
-    // de PII) o si solo falló la identidad. El veredicto exacto sí queda en la
-    // auditoría interna, pero nunca en la respuesta al cliente.
-    if (verif.veredicto === VEREDICTO.SIN_MESA) {
-      return 'Para atender tu reclamo necesitamos el número de mesa donde consumiste. ' +
-        'Sin ese dato no podemos verificar tu pedido ni asignarte una compensación.'
+    // ANTI-ENUMERACIÓN (F-04): mensajes genéricos para no revelar info interna.
+    if (verif.veredicto === VEREDICTO.SIN_CODIGO) {
+      return 'Para atender tu reclamo necesitamos el código de tu reserva o boleta. ' +
+        'Lo encuentras en tu boleta impresa o en la confirmación de tu reserva.'
+    }
+    if (verif.veredicto === VEREDICTO.DUPLICADO) {
+      return 'Ya registramos un reclamo para esta visita. Si necesitas agregar información, ' +
+        'acércate a nuestro personal o escríbenos por WhatsApp. ¡Gracias por tu paciencia!'
     }
     return 'No pudimos verificar tu reclamo con los datos indicados. ' +
       'Por seguridad, las compensaciones solo aplican al cliente registrado del pedido. ' +

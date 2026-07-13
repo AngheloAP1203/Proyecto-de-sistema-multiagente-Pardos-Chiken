@@ -4,8 +4,9 @@
  * Página PÚBLICA de Reclamos con Recompensa (M6). Sin login.
  *
  * Cuestionario guiado en 3 pasos:
- *   1. Identidad — DNI + N° de mesa (verificación anti-fraude).
+ *   1. Identificación — DNI + Código de reserva/boleta (verificación anti-fraude).
  *   2. Preguntas cerradas (tipo test) — anclan la severidad de forma determinista.
+ *      Incluye preguntas condicionales según la categoría elegida.
  *   3. Pregunta abierta — "¿algo más?" (opcional).
  *
  * Al enviar: verificación anti-fraude (determinista) → si es legítimo, asigna
@@ -19,6 +20,7 @@ import { Link } from 'react-router-dom'
 import {
   UtensilsCrossed, ArrowLeft, Fingerprint, Hash, Gift, ShieldCheck,
   ShieldAlert, Loader2, Ticket, Star, ChevronRight, ChevronLeft, CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react'
 import { useReservations } from '../../context/ReservationContext'
 import { useCash } from '../../context/CashContext'
@@ -27,44 +29,46 @@ import { useClients } from '../../context/ClientContext'
 import { useComplaints } from '../../context/ComplaintContext'
 import { rewardAgent } from '../../agents/RewardAgent'
 import { intentoPermitido } from '../../domain/security/rateGuard'
-import { PREGUNTAS, PREGUNTA_ABIERTA, analizarRespuestas, respuestasATexto } from '../../domain/complaints/questionnaire'
+import { PREGUNTAS, PREGUNTA_ABIERTA, preguntasVisibles, analizarRespuestas, respuestasATexto } from '../../domain/complaints/questionnaire'
 import { PROMOTIONS } from '../../data/seeds/promotionsSeed'
 import { RESOLUTION_POLICIES } from '../../data/seeds/resolutionPoliciesSeed'
 import styles from './ClaimPage.module.css'
 
 const soloDigitos = (s) => String(s || '').replace(/\D/g, '')
-const HOY = () => new Date().toISOString().split('T')[0]
 
 export default function ClaimPage() {
   const { reservations } = useReservations()
   const { payments }     = useCash()
   const { tickets }      = useKitchen()
   const { findByDni }    = useClients()
-  const { addComplaint } = useComplaints()
+  const { addComplaint, complaints } = useComplaints()
 
   const [step, setStep]         = useState(1)        // 1..3 | 'result'
   const [dni,  setDni]          = useState('')
-  const [mesa, setMesa]         = useState('')
-  const [respuestas, setResp]   = useState({})       // { problema, area, satisfaccion, volveria, comentario }
+  const [codigo, setCodigo]     = useState('')        // UUID de la reserva
+  const [respuestas, setResp]   = useState({})
   const [enviando, setEnviando] = useState(false)
-  const [resultado, setResultado] = useState(null)   // resultado de rewardAgent.evaluar
+  const [resultado, setResultado] = useState(null)
 
   const setR = (id, valor) => setResp(prev => ({ ...prev, [id]: valor }))
 
-  // Las reservas del contexto usan client_id; la lógica pura espera clientId.
+  // Datos de verificación (con quejas previas para detectar duplicados).
   const datosVerificacion = () => ({
     reservations: reservations.map(r => ({ ...r, clientId: r.client_id })),
     payments, kitchenTickets: tickets,
+    complaints: (complaints || []).map(c => ({ reservationId: c.reservation_id || c.reservationId })),
     policies: RESOLUTION_POLICIES, promotions: PROMOTIONS,
   })
 
-  const paso1Valido = soloDigitos(dni).length >= 6 && mesa.trim() !== ''
-  const paso2Valido = respuestas.problema && respuestas.satisfaccion
+  const paso1Valido = soloDigitos(dni).length >= 6 && codigo.trim().length >= 8
+  // Las preguntas visibles cambian según las respuestas (condicionales).
+  const visibles = preguntasVisibles(respuestas)
+  const paso2Valido = respuestas.categoria && respuestas.satisfaccion && respuestas.impacto
 
   const enviar = async () => {
     if (enviando) return
 
-    // Throttle anti fuerza-bruta (F-04): frena probar muchos pares DNI+mesa.
+    // Throttle anti fuerza-bruta (F-04).
     const limite = intentoPermitido('reclamo.verify', { max: 6, windowMs: 300_000 })
     if (!limite.ok) {
       setResultado({ elegible: false, bloqueado: true,
@@ -79,18 +83,17 @@ export default function ClaimPage() {
       const mensaje = respuestasATexto(respuestas)
 
       const reclamo = {
-        tableId: mesa.trim(),
+        codigo: codigo.trim(),
         dni,
         mensaje,
         puntos_criticos,
         prioridad: severidad,
-        fecha: HOY(),
       }
 
       // Verificación anti-fraude + recompensa (determinista; el LLM solo redacta).
       const res = await rewardAgent.evaluar(reclamo, datosVerificacion())
 
-      // Si es legítimo, GUARDA la queja en Supabase (aparece en el panel /quejas).
+      // Si es legítimo, GUARDA la queja en Supabase.
       if (res.elegible) {
         const clientId = res.clientId || findByDni(dni)?.id
         if (clientId) {
@@ -98,7 +101,7 @@ export default function ClaimPage() {
             await addComplaint({
               clientId,
               reservationId: res.reservationId,
-              fecha: HOY(),
+              fecha: new Date().toISOString().split('T')[0],
               canal: 'Web',
               estado: 'nueva',
               prioridad: severidad,
@@ -121,7 +124,7 @@ export default function ClaimPage() {
   }
 
   const reiniciar = () => {
-    setStep(1); setDni(''); setMesa(''); setResp({}); setResultado(null)
+    setStep(1); setDni(''); setCodigo(''); setResp({}); setResultado(null)
   }
 
   return (
@@ -143,13 +146,13 @@ export default function ClaimPage() {
             {[1, 2, 3].map(n => (
               <div key={n} className={`${styles.stepDot} ${step >= n ? styles.stepActive : ''}`}>
                 <span>{n}</span>
-                <em>{n === 1 ? 'Identidad' : n === 2 ? 'Preguntas' : 'Comentario'}</em>
+                <em>{n === 1 ? 'Identificación' : n === 2 ? 'Cuestionario' : 'Comentario'}</em>
               </div>
             ))}
           </div>
         )}
 
-        {/* ── Paso 1: Identidad ── */}
+        {/* ── Paso 1: Identificación ── */}
         {step === 1 && (
           <div className={styles.stepBody}>
             <div className={styles.verifRow}>
@@ -159,14 +162,19 @@ export default function ClaimPage() {
                   inputMode="numeric" placeholder="78765432" maxLength={12} />
               </div>
               <div className={styles.field}>
-                <label><Hash size={13} /> N° de mesa</label>
-                <input value={mesa} onChange={e => setMesa(e.target.value)}
-                  placeholder="Ej. T03 o 3" />
+                <label><Hash size={13} /> Código de reserva / boleta</label>
+                <input value={codigo} onChange={e => setCodigo(e.target.value)}
+                  placeholder="Ej. 92c5b9df-2708-4d01-bacb-..." />
               </div>
             </div>
-            <p className={styles.hint}>
-              <ShieldCheck size={12} /> Verificamos que el reclamo corresponda a quien consumió en esa mesa. Es por tu seguridad.
-            </p>
+            <div className={styles.hintBox}>
+              <p className={styles.hint}>
+                <ShieldCheck size={12} /> El código lo encuentras en tu <strong>boleta impresa</strong> o en la <strong>tarjeta de tu reserva</strong> (debajo del nombre).
+              </p>
+              <p className={styles.hint}>
+                <AlertTriangle size={12} /> Solo puedes enviar <strong>un reclamo por visita</strong>. Así protegemos tu identidad y agilizamos la solución.
+              </p>
+            </div>
             <div className={styles.navRow}>
               <span />
               <button className={styles.btnNext} disabled={!paso1Valido} onClick={() => setStep(2)}>
@@ -176,12 +184,13 @@ export default function ClaimPage() {
           </div>
         )}
 
-        {/* ── Paso 2: Preguntas cerradas ── */}
+        {/* ── Paso 2: Preguntas cerradas (dinámicas) ── */}
         {step === 2 && (
           <div className={styles.stepBody}>
-            {PREGUNTAS.map(p => (
+            {visibles.map(p => (
               <div key={p.id} className={styles.question}>
                 <p className={styles.qTitle}>{p.titulo}</p>
+                {p.subtitulo && <p className={styles.qSubtitle}>{p.subtitulo}</p>}
 
                 {p.tipo === 'opcion' && (
                   <div className={styles.options}>
@@ -298,8 +307,6 @@ function Resultado({ res }) {
       <p className={styles.resultText}>{res.mensaje}</p>
       {!res.bloqueado && (
         <span className={styles.rejectTag}>
-          {/* No mostramos el veredicto exacto: distinguir "sin consumo" de
-              "identidad no coincide" permitiría enumerar quién comió (F-04). */}
           <ShieldAlert size={11} /> Reclamo no verificado
         </span>
       )}

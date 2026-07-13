@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Edit2, UserCheck, XCircle, Clock, Users, MapPin, IdCard, Phone, Utensils, Trash2, Plus, Search, MessageSquare, ChevronRight } from 'lucide-react'
+import { Edit2, UserCheck, XCircle, Clock, Users, MapPin, IdCard, Phone, Utensils, Trash2, Plus, Search, MessageSquare, ChevronRight, Hash } from 'lucide-react'
 import { RESERVATION_STATUS, STATUS_LABELS, STATUS_COLORS } from '../../context/ReservationContext'
 import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Input'
@@ -116,6 +116,10 @@ export default function ReservationCard({ reservation: r, onEdit, onSeat, onCanc
               <span>{r.clientDni}</span>
             </div>
           )}
+          <div className={styles.infoItem} style={{opacity: 0.65, fontSize: '0.85em'}}>
+            <Hash size={12} />
+            <span title={r.id}>#{r.id}</span>
+          </div>
           {r.clientPhone && (
             <div className={styles.infoItem}>
               <Phone size={14} />

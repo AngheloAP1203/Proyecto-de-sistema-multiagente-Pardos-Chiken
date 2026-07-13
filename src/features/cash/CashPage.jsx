@@ -592,6 +592,11 @@ export default function CashPage() {
                 <div className={styles.servedHint}>
                   <Utensils size={12} /> Platos servidos por cocina · puedes ajustar antes de cobrar
                 </div>
+                {form.reservationId && (
+                  <div style={{fontSize: '11px', color: 'var(--color-text-light)', padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 6, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4}}>
+                    🔖 Código para reclamos: <strong style={{fontFamily: 'monospace', fontSize: '10.5px'}}>{form.reservationId}</strong>
+                  </div>
+                )}
                 {orderItems.map(item => (
                   <div key={item.menuId} className={styles.orderRowCompact}>
                     <span className={styles.orderNameCompact}>

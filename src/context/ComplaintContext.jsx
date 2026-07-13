@@ -35,6 +35,7 @@ export function ComplaintProvider({ children }) {
           const resObj = c.resolution || {}
           return {
             id: c.id,
+            reservation_id: c.reservation_id,
             fecha: c.fecha,
             canal: c.canal,
             cliente: c.clients?.name || 'Desconocido',
@@ -98,6 +99,7 @@ export function ComplaintProvider({ children }) {
       const resObj = inserted.resolution || {}
       const mapped = {
         id: inserted.id,
+        reservation_id: inserted.reservation_id,
         fecha: inserted.fecha,
         canal: inserted.canal,
         cliente: inserted.clients?.name || 'Desconocido',
