@@ -60,7 +60,7 @@ export default function ClaimPage() {
     policies: RESOLUTION_POLICIES, promotions: PROMOTIONS,
   })
 
-  const paso1Valido = soloDigitos(dni).length >= 6 && codigo.trim().length >= 8
+  const paso1Valido = soloDigitos(dni).length >= 6 && codigo.trim().length >= 6
   const visibles = preguntasVisibles(respuestas)
   const paso2Valido = respuestas.categoria && respuestas.satisfaccion && respuestas.impacto
 
