@@ -177,6 +177,18 @@ export function KitchenProvider({ children }) {
       }
     }
 
+    // Recalcular estado del ticket tras la sincronización.
+    // Si se agregaron items nuevos (pending), un ticket que estaba "ready" debe volver a "pending".
+    const { data: updatedItems } = await supabase.from('ticket_items').select('status').eq('ticket_id', ticketId)
+    const mappedForDerive = (updatedItems || []).map(i => ({ itemStatus: i.status }))
+    const { data: currentTicket } = await supabase.from('kitchen_tickets').select('status').eq('id', ticketId).single()
+    const correctStatus = mappedForDerive.length === 0
+      ? TICKET_STATUS.PENDING
+      : deriveTicketStatus(mappedForDerive, currentTicket?.status || TICKET_STATUS.PENDING)
+    if (currentTicket && correctStatus !== currentTicket.status) {
+      await supabase.from('kitchen_tickets').update({ status: correctStatus }).eq('id', ticketId)
+    }
+
     await loadTickets()
     auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'kitchen.sync_ticket', nivel: 'info', detalle: { ticketId, items: newItems.length } })
     toast.success('Comanda actualizada en cocina')

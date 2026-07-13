@@ -155,6 +155,7 @@ export default function DashboardPage() {
         Los valores son cruciales para el criterio 5 de la rúbrica:
         "Métricas cuantitativas reportadas (latencia, tasa de éxito, token usage)"
       */}
+      {user?.role === 'admin' && (
       <div className={styles.sysMetricsSection}>
         <div className={styles.sysMetricsHeader}>
           <div className={styles.sysMetricsTitle}>
@@ -214,13 +215,14 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+      )}
 
       {/* ── Panel interactivo del sistema multiagente ── */}
       {/*
         AgentStatusPanel muestra: estado de agentes, historial MCP, topología,
         notificaciones. Es la PRUEBA VISUAL del sistema multiagente funcionando.
       */}
-      <AgentStatusPanel />
+      {user?.role === 'admin' && <AgentStatusPanel />}
 
       {/* ── Grid inferior: tabla de reservas + resumen ── */}
       <div className={styles.bottomGrid}>
