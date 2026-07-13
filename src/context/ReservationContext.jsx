@@ -2,18 +2,15 @@
  * src/context/ReservationContext.jsx
  * ─────────────────────────────────────────────────────────────────────────────
  * Contexto global de reservas.
- * Centraliza el estado de todas las reservas (actuales e históricas),
- * las mesas disponibles y los clientes registrados.
+ * Centraliza el estado de todas las reservas consultando directamente a Supabase.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { format } from 'date-fns'
 import { RESERVATION_STATUS, STATUS_LABELS, STATUS_COLORS } from '../domain/reservations/reservationStatus'
-import { generateReservationId, isHistorical, isToday } from '../domain/reservations/reservationRules'
-import { SAMPLE_RESERVATIONS, INITIAL_TABLES } from '../data/seeds/reservationsSeed'
-import { fetchRequested, patchReservation } from '../data/api/reservationsApi'
-import { readJSON, writeJSON } from '../data/storage/localStorage'
+import { isHistorical, isToday } from '../domain/reservations/reservationRules'
+import { INITIAL_TABLES } from '../data/seeds/reservationsSeed'
+import { supabase } from '../domain/supabase'
 import { auditLogger } from '../agents/core/auditLogger'
 import { useAuth } from './AuthContext'
 import toast from 'react-hot-toast'
@@ -26,182 +23,236 @@ export function ReservationProvider({ children }) {
   const [reservations, setReservations] = useState([])
   const [tables, setTables] = useState(INITIAL_TABLES)
   const [isLoading, setIsLoading] = useState(true)
-  const seenApiIds = useRef(new Set())
   const { user } = useAuth()
   const actorName = user ? `${user.name} (${user.role})` : 'Sistema'
 
-  // Cargar datos desde localStorage al montar.
-  // Igual que en CashContext: si lo guardado no tiene ninguna reserva de hoy
-  // (visita de un día anterior), se refrescan los seeds para que la demo
-  // nunca muestre un día vacío.
-  useEffect(() => {
-    const saved = readJSON('pardos_reservations', null)
-    const hoy = new Date().toISOString().split('T')[0]
-    const tieneDatosDeHoy = Array.isArray(saved) && saved.some(r => r.date === hoy)
-    setReservations(tieneDatosDeHoy ? saved : SAMPLE_RESERVATIONS)
+  const loadReservations = async () => {
+    const { data, error } = await supabase.from('reservations').select('*').order('date', { ascending: false }).order('time', { ascending: false })
+    if (!error && data) {
+      const mapped = data.map(r => ({
+        id: r.id,
+        clientName: r.client_name,
+        clientDni: r.client_dni,
+        tableId: r.table_id,
+        date: r.date,
+        time: r.time,
+        pax: r.guests,
+        status: r.status,
+        createdAt: r.created_at
+      }))
+      setReservations(mapped)
+    }
     setIsLoading(false)
+  }
+
+  useEffect(() => {
+    loadReservations()
   }, [])
 
-  // Persistir reservas en localStorage cada vez que cambian
+  // Poll de Supabase cada 10s para nuevas reservas web
   useEffect(() => {
-    if (!isLoading) {
-      writeJSON('pardos_reservations', reservations)
-    }
-  }, [reservations, isLoading])
-
-  useEffect(() => {
-    const pollApi = async () => {
-      try {
-        const apiRequested = await fetchRequested()
-        if (apiRequested.length === 0) return
-
-        setReservations(prev => {
-          const existingIds = new Set(prev.map(r => r.id))
-          const newOnes = apiRequested.filter(r => {
-            if (existingIds.has(r.id)) return false
-            if (seenApiIds.current.has(r.id)) return false
-            return true
-          })
-          if (newOnes.length === 0) return prev
-          newOnes.forEach(r => seenApiIds.current.add(r.id))
-          return [...newOnes, ...prev]
-        })
-      } catch {
-        // Silent block
-      }
-    }
-
-    pollApi()
-    const interval = setInterval(pollApi, 5000)
+    const interval = setInterval(loadReservations, 10000)
     return () => clearInterval(interval)
   }, [])
 
-  const addReservation = useCallback((data) => {
+  const addReservation = useCallback(async (data) => {
     const newReservation = {
-      ...data,
-      id: generateReservationId(),
-      status: RESERVATION_STATUS.PENDING,
-      createdAt: new Date().toISOString(),
+      client_name: data.clientName,
+      client_dni: data.clientDni || '00000000',
+      date: data.date,
+      time: data.time,
+      table_id: data.tableId || 'T01',
+      guests: data.pax || 2,
+      status: RESERVATION_STATUS.PENDING
     }
-    setReservations(prev => [newReservation, ...prev])
+    
+    const { data: inserted, error } = await supabase.from('reservations').insert(newReservation).select().single()
+    
+    if (error) {
+      toast.error('Error al crear reserva')
+      return null
+    }
+
+    const mapped = {
+      id: inserted.id,
+      clientName: inserted.client_name,
+      clientDni: inserted.client_dni,
+      tableId: inserted.table_id,
+      date: inserted.date,
+      time: inserted.time,
+      pax: inserted.guests,
+      status: inserted.status,
+      createdAt: inserted.created_at
+    }
+
+    setReservations(prev => [mapped, ...prev])
     
     auditLogger.record({
       actor: actorName,
       tipoActor: 'usuario',
       accion: 'reservation.create',
       nivel: 'info',
-      detalle: { id: newReservation.id, client: data.clientName }
+      detalle: { id: mapped.id, client: data.clientName }
     })
 
     toast.success('Reserva creada exitosamente')
-    return newReservation
+    return mapped
   }, [actorName])
 
-  const updateReservation = useCallback((id, updates) => {
-    setReservations(prev =>
-      prev.map(r => r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r)
-    )
-    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.update', nivel: 'info', detalle: { id, updates } })
-    toast.success('Reserva actualizada')
-  }, [actorName])
+  const updateReservation = useCallback(async (id, updates) => {
+    const dbUpdates = {}
+    if (updates.clientName) dbUpdates.client_name = updates.clientName
+    if (updates.clientDni) dbUpdates.client_dni = updates.clientDni
+    if (updates.tableId) dbUpdates.table_id = updates.tableId
+    if (updates.date) dbUpdates.date = updates.date
+    if (updates.time) dbUpdates.time = updates.time
+    if (updates.pax) dbUpdates.guests = updates.pax
+    if (updates.status) dbUpdates.status = updates.status
 
-  const cancelReservation = useCallback((id, reason = '') => {
-    setReservations(prev =>
-      prev.map(r =>
-        r.id === id
-          ? { ...r, status: RESERVATION_STATUS.CANCELLED, cancelReason: reason, updatedAt: new Date().toISOString() }
-          : r
-      )
-    )
-    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.cancel', nivel: 'warn', detalle: { id, reason } })
-    toast.success('Reserva cancelada')
-  }, [actorName])
-
-  const completeReservation = useCallback((id) => {
-    setReservations(prev =>
-      prev.map(r =>
-        r.id === id
-          ? { ...r, status: RESERVATION_STATUS.COMPLETED, updatedAt: new Date().toISOString() }
-          : r
-      )
-    )
-    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.complete', nivel: 'info', detalle: { id } })
-    toast.success('Reserva completada')
-  }, [actorName])
-
-  const seatReservation = useCallback((id) => {
-    setReservations(prev =>
-      prev.map(r =>
-        r.id === id
-          ? { ...r, status: RESERVATION_STATUS.SEATED, seatedAt: new Date().toISOString() }
-          : r
-      )
-    )
-    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.seat', nivel: 'info', detalle: { id } })
-    toast.success('Cliente en mesa')
-  }, [actorName])
-
-  const requestReservation = useCallback((data) => {
-    const newReservation = {
-      ...data,
-      id:        generateReservationId(),
-      status:    RESERVATION_STATUS.REQUESTED,
-      createdAt: new Date().toISOString(),
-      source:    'public',
-    }
-    setReservations(prev => [newReservation, ...prev])
+    const { error } = await supabase.from('reservations').update(dbUpdates).eq('id', id)
     
-    auditLogger.record({
-      actor: `${data.clientName} (Web)`,
-      tipoActor: 'cliente',
-      accion: 'reservation.request',
-      nivel: 'info',
-      detalle: { id: newReservation.id, pax: data.pax }
-    })
+    if (!error) {
+      setReservations(prev =>
+        prev.map(r => r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r)
+      )
+      auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.update', nivel: 'info', detalle: { id, updates } })
+      toast.success('Reserva actualizada')
+    } else {
+      toast.error('Error actualizando reserva')
+    }
+  }, [actorName])
 
-    toast.success('Solicitud enviada')
-    return newReservation
+  const cancelReservation = useCallback(async (id, reason = '') => {
+    const { error } = await supabase.from('reservations').update({ status: RESERVATION_STATUS.CANCELLED }).eq('id', id)
+    if (!error) {
+      setReservations(prev =>
+        prev.map(r =>
+          r.id === id
+            ? { ...r, status: RESERVATION_STATUS.CANCELLED, cancelReason: reason, updatedAt: new Date().toISOString() }
+            : r
+        )
+      )
+      auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.cancel', nivel: 'warn', detalle: { id, reason } })
+      toast.success('Reserva cancelada')
+    }
+  }, [actorName])
+
+  const completeReservation = useCallback(async (id) => {
+    const { error } = await supabase.from('reservations').update({ status: RESERVATION_STATUS.COMPLETED }).eq('id', id)
+    if (!error) {
+      setReservations(prev =>
+        prev.map(r =>
+          r.id === id
+            ? { ...r, status: RESERVATION_STATUS.COMPLETED, updatedAt: new Date().toISOString() }
+            : r
+        )
+      )
+      auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.complete', nivel: 'info', detalle: { id } })
+      toast.success('Reserva completada')
+    }
+  }, [actorName])
+
+  const seatReservation = useCallback(async (id) => {
+    const { error } = await supabase.from('reservations').update({ status: RESERVATION_STATUS.SEATED }).eq('id', id)
+    if (!error) {
+      setReservations(prev =>
+        prev.map(r =>
+          r.id === id
+            ? { ...r, status: RESERVATION_STATUS.SEATED, seatedAt: new Date().toISOString() }
+            : r
+        )
+      )
+      auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.seat', nivel: 'info', detalle: { id } })
+      toast.success('Cliente en mesa')
+    }
+  }, [actorName])
+
+  const requestReservation = useCallback(async (data) => {
+    const newReservation = {
+      client_name: data.clientName,
+      client_dni: data.clientDni || '00000000',
+      date: data.date,
+      time: data.time,
+      table_id: data.tableId || 'T00',
+      guests: data.pax || 2,
+      status: RESERVATION_STATUS.REQUESTED
+    }
+    
+    const { data: inserted, error } = await supabase.from('reservations').insert(newReservation).select().single()
+    if (!error && inserted) {
+      const mapped = {
+        id: inserted.id,
+        clientName: inserted.client_name,
+        clientDni: inserted.client_dni,
+        tableId: inserted.table_id,
+        date: inserted.date,
+        time: inserted.time,
+        pax: inserted.guests,
+        status: inserted.status,
+        createdAt: inserted.created_at
+      }
+      setReservations(prev => [mapped, ...prev])
+      
+      auditLogger.record({
+        actor: `${data.clientName} (Web)`,
+        tipoActor: 'cliente',
+        accion: 'reservation.request',
+        nivel: 'info',
+        detalle: { id: mapped.id, pax: data.pax }
+      })
+
+      toast.success('Solicitud enviada')
+      return mapped
+    } else {
+      toast.error('Error enviando solicitud')
+      return null
+    }
   }, [])
 
-  const approveReservation = useCallback((id, tableId, approvedBy) => {
-    const approvedAt = new Date().toISOString()
-    setReservations(prev =>
-      prev.map(r =>
-        r.id === id
-          ? { ...r, status: RESERVATION_STATUS.PENDING, tableId, approvedBy, approvedAt }
-          : r
+  const approveReservation = useCallback(async (id, tableId, approvedBy) => {
+    const { error } = await supabase.from('reservations').update({ status: RESERVATION_STATUS.PENDING, table_id: tableId }).eq('id', id)
+    if (!error) {
+      setReservations(prev =>
+        prev.map(r =>
+          r.id === id
+            ? { ...r, status: RESERVATION_STATUS.PENDING, tableId, approvedBy, approvedAt: new Date().toISOString() }
+            : r
+        )
       )
-    )
-    patchReservation(id, { status: 'pending', tableId, approvedBy, approvedAt })
-    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.approve', nivel: 'info', detalle: { id, tableId } })
-    toast.success('Solicitud aprobada')
+      auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.approve', nivel: 'info', detalle: { id, tableId } })
+      toast.success('Solicitud aprobada')
+    }
   }, [actorName])
 
-  const rejectReservation = useCallback((id, reason = '') => {
-    const updatedAt = new Date().toISOString()
-    setReservations(prev =>
-      prev.map(r =>
-        r.id === id
-          ? { ...r, status: RESERVATION_STATUS.REJECTED, rejectReason: reason, updatedAt }
-          : r
+  const rejectReservation = useCallback(async (id, reason = '') => {
+    const { error } = await supabase.from('reservations').update({ status: RESERVATION_STATUS.CANCELLED }).eq('id', id)
+    if (!error) {
+      setReservations(prev =>
+        prev.map(r =>
+          r.id === id
+            ? { ...r, status: RESERVATION_STATUS.CANCELLED, rejectReason: reason, updatedAt: new Date().toISOString() }
+            : r
+        )
       )
-    )
-    patchReservation(id, { status: 'rejected', rejectReason: reason, updatedAt })
-    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.reject', nivel: 'warn', detalle: { id, reason } })
-    toast.success('Solicitud rechazada')
+      auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'reservation.reject', nivel: 'warn', detalle: { id, reason } })
+      toast.success('Solicitud rechazada')
+    }
   }, [actorName])
 
-  const deleteReservationFromDB = useCallback((id) => {
-    setReservations(prev => prev.filter(r => r.id !== id))
-    // En API se usaría un DELETE /api/reservations/:id
-    toast.success('Reserva eliminada')
+  const deleteReservationFromDB = useCallback(async (id) => {
+    const { error } = await supabase.from('reservations').delete().eq('id', id)
+    if (!error) {
+      setReservations(prev => prev.filter(r => r.id !== id))
+      toast.success('Reserva eliminada')
+    } else {
+      toast.error('Error eliminando reserva')
+    }
   }, [])
 
   const todayReservations = reservations.filter(isToday)
   const pendingRequests = reservations.filter(r => r.status === RESERVATION_STATUS.REQUESTED)
   const historicalReservations = reservations.filter(isHistorical)
 
-  // Devuelve reservas de una fecha específica (para Caja, que puede cobrar cualquier día)
   const getReservationsByDate = useCallback((dateStr) => {
     return reservations.filter(r =>
       r.date === dateStr &&
