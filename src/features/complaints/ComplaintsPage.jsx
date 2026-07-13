@@ -24,6 +24,7 @@ import { Button } from '../../components/ui/Button'
 import { llmMode } from '../../agents/core/llmClient'
 import toast from 'react-hot-toast'
 import ReactMarkdown from 'react-markdown'
+import emailjs from '@emailjs/browser'
 import ResolutionPanel from '../resolutions/ResolutionPanel'
 import styles from './ComplaintsPage.module.css'
 
@@ -69,7 +70,26 @@ export default function ComplaintsPage() {
             estado: 'resuelta',
             resolution: { respuesta_cliente: res.result }
           })
-          toast.success(`Queja de ${c.cliente} resuelta. Correo enviado exitosamente (Simulado).`)
+          
+          const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
+          const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
+          const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+
+          if (serviceId && templateId && publicKey) {
+            try {
+              // Convertimos el markdown a texto plano o enviamos tal cual, la vista HTML renderizará saltos
+              await emailjs.send(serviceId, templateId, {
+                to_email: c.email || 'cliente@test.com', 
+                message: res.result
+              }, publicKey)
+              toast.success(`Queja de ${c.cliente} resuelta. Correo real enviado exitosamente.`)
+            } catch (err) {
+              console.error('Error enviando correo con EmailJS:', err)
+              toast.error('La queja se resolvió, pero falló el envío del correo real.')
+            }
+          } else {
+            toast.success(`Queja de ${c.cliente} resuelta. Correo enviado exitosamente (Simulado).`)
+          }
         } else {
           toast('Resolución cancelada.', { icon: 'ℹ️' })
         }
