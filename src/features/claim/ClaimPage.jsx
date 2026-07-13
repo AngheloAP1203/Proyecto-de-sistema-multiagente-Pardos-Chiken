@@ -37,11 +37,9 @@ export default function ClaimPage() {
   const { reservations } = useReservations()
   const { payments }     = useCash()
   const { tickets }      = useKitchen()
-  const { findByDni }    = useClients()
   const { addComplaint, complaints } = useComplaints()
 
   const [step, setStep]         = useState(1)
-  const [dni,  setDni]          = useState('')
   const [codigo, setCodigo]     = useState('')
   const [respuestas, setResp]   = useState({})
   const [enviando, setEnviando] = useState(false)
@@ -57,12 +55,12 @@ export default function ClaimPage() {
     policies: RESOLUTION_POLICIES, promotions: PROMOTIONS,
   })
 
-  const paso1Valido = soloDigitos(dni).length >= 6 && codigo.trim().length >= 6
+  const paso1Valido = codigo.trim().length >= 6
   const visibles = preguntasVisibles(respuestas)
   const paso2Valido = respuestas.categoria && respuestas.satisfaccion && respuestas.impacto
 
   const handleNextStep1 = () => {
-    const res = evaluarEvidencia({ codigo, dni }, datosVerificacion())
+    const res = evaluarEvidencia({ codigo }, datosVerificacion())
     if (res.veredicto === 'SIN_RESERVA') {
       toast.error('No se encontró ninguna reserva con este código.')
       return
@@ -93,11 +91,11 @@ export default function ClaimPage() {
     try {
       const { severidad, puntos_criticos } = analizarRespuestas(respuestas)
       const mensaje = respuestasATexto(respuestas)
-      const reclamo = { codigo: codigo.trim(), dni, mensaje, puntos_criticos, prioridad: severidad }
+      const reclamo = { codigo: codigo.trim(), mensaje, puntos_criticos, prioridad: severidad }
       const res = await rewardAgent.evaluar(reclamo, datosVerificacion())
 
       if (res.elegible) {
-        const clientId = res.clientId || findByDni(dni)?.id
+        const clientId = res.clientId
         if (clientId) {
           try {
             await addComplaint({
@@ -116,7 +114,7 @@ export default function ClaimPage() {
     } finally { setEnviando(false) }
   }
 
-  const reiniciar = () => { setStep(1); setDni(''); setCodigo(''); setResp({}); setResultado(null) }
+  const reiniciar = () => { setStep(1); setCodigo(''); setResp({}); setResultado(null) }
 
   return (
     <div className={styles.page}>
@@ -147,11 +145,7 @@ export default function ClaimPage() {
         {step === 1 && (
           <div className={styles.stepBody}>
             <div className={styles.verifRow}>
-              <div className={styles.field}>
-                <label><Fingerprint size={13} /> Tu DNI</label>
-                <input value={dni} onChange={e => setDni(e.target.value)}
-                  inputMode="numeric" placeholder="Ej. 78765432" maxLength={12} />
-              </div>
+
               <div className={styles.field}>
                 <label><Receipt size={13} /> Código de tu visita</label>
                 <input value={codigo} onChange={e => setCodigo(e.target.value)}

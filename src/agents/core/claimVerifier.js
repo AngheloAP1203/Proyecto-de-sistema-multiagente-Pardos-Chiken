@@ -44,7 +44,7 @@ const CONSUMIO = ['seated', 'completed', 'approved', 'confirmed']
  * @returns {Object} { veredicto, elegible, motivo, cliente?, clientId?, reservationId?, pago? }
  */
 export function evaluarEvidencia(reclamo = {}, datos = {}) {
-  const { codigo, dni } = reclamo
+  const { codigo } = reclamo
   const reservations   = datos.reservations   || []
   const payments       = datos.payments       || []
   const kitchenTickets = datos.kitchenTickets || []
@@ -69,16 +69,7 @@ export function evaluarEvidencia(reclamo = {}, datos = {}) {
     }
   }
 
-  // 3. Verificar identidad: el DNI del reclamo debe coincidir con el de la reserva.
-  const docId = normDoc(dni)
-  const docReserva = normDoc(reserva.clientDni)
 
-  if (!docId || docId !== docReserva) {
-    return {
-      veredicto: VEREDICTO.RECHAZADO, elegible: false,
-      motivo: 'El DNI indicado no coincide con el del cliente que realizó esta reserva. Por seguridad, solo el titular puede presentar un reclamo.',
-    }
-  }
 
   // 4. Verificar que hubo consumo real (no una reserva cancelada antes de sentarse).
   const huboConsumo =
@@ -107,7 +98,7 @@ export function evaluarEvidencia(reclamo = {}, datos = {}) {
   return {
     veredicto:     VEREDICTO.VERIFICADO,
     elegible:      true,
-    motivo:        'Identidad confirmada: DNI y código de reserva coinciden con un consumo registrado.',
+    motivo:        'Identidad confirmada: código de reserva coincide con un consumo registrado.',
     cliente:       reserva.clientName,
     clientId:      reserva.clientId,
     reservationId: reserva.id,
