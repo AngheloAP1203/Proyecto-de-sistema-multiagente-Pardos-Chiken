@@ -19,6 +19,7 @@ import {
   STATUS_LABELS,
   STATUS_COLORS,
 } from '../../context/ReservationContext'
+import { useComplaints } from '../../context/ComplaintContext'
 import { Card } from '../../components/ui/Card'
 import styles from './HistoryPage.module.css'
 
@@ -41,6 +42,7 @@ const PAGE_SIZE = 15
 
 export default function HistoryPage() {
   const { reservations } = useReservations()
+  const { complaints } = useComplaints()
 
   const [search,     setSearch]  = useState('')
   const [statusFilt, setStatus]  = useState('all')
@@ -153,33 +155,48 @@ export default function HistoryPage() {
                     <th>Fecha</th>
                     <th>Hora</th>
                     <th>Personas</th>
-                    <th>Mesa</th>
-                    <th>Ocasión</th>
+                    <th>Consumo</th>
                     <th>Estado</th>
-                    <th>Motivo cancel.</th>
+                    <th>Reclamo</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginated.map(r => (
-                    <tr key={r.id}>
-                      <td className={styles.mono}>#{r.id}</td>
-                      <td>
-                        <div className={styles.clientName}>{r.clientName}</div>
-                        <div className={styles.clientPhone}>{r.clientDni}</div>
-                      </td>
-                      <td>{r.date}</td>
-                      <td>{r.time}</td>
-                      <td className={styles.center}>{r.guests}</td>
-                      <td className={styles.center}>{r.tableId}</td>
-                      <td>{r.occasion || '—'}</td>
-                      <td>
-                        <span className={BADGE_MAP[STATUS_COLORS[r.status]] || 'badge'}>
-                          {STATUS_LABELS[r.status]}
-                        </span>
-                      </td>
-                      <td className={styles.reason}>{r.cancelReason || '—'}</td>
-                    </tr>
-                  ))}
+                  {paginated.map(r => {
+                    const linkedComplaint = complaints.find(c => c.reservation_id === r.id)
+                    const consumoText = r.items?.length 
+                      ? r.items.map(i => `${i.qty}x ${i.name}`).join(', ')
+                      : 'Sin consumo'
+
+                    return (
+                      <tr key={r.id}>
+                        <td className={styles.mono}>#{r.id}</td>
+                        <td>
+                          <div className={styles.clientName}>{r.clientName}</div>
+                          <div className={styles.clientPhone}>{r.clientDni}</div>
+                        </td>
+                        <td>{r.date}</td>
+                        <td>{r.time}</td>
+                        <td className={styles.center}>{r.guests}</td>
+                        <td>
+                          <div className={styles.consumo}>{consumoText}</div>
+                        </td>
+                        <td>
+                          <span className={BADGE_MAP[STATUS_COLORS[r.status]] || 'badge'}>
+                            {STATUS_LABELS[r.status]}
+                          </span>
+                        </td>
+                        <td>
+                          {linkedComplaint ? (
+                            <span className={styles.complaintBadge}>
+                              Queja #{linkedComplaint.id.slice(0, 5).toUpperCase()}
+                            </span>
+                          ) : (
+                            <span className={styles.noComplaint}>Sin reclamos</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
