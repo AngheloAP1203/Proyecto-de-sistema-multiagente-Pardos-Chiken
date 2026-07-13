@@ -20,6 +20,9 @@ import {
 import { useComplaints } from '../../context/ComplaintContext'
 import { useAgents } from '../../context/AgentContext'
 import { useAuth } from '../../context/AuthContext'
+import { useReservations } from '../../context/ReservationContext'
+import { useKitchen } from '../../context/KitchenContext'
+import { useCash } from '../../context/CashContext'
 import { Button } from '../../components/ui/Button'
 import { llmMode } from '../../agents/core/llmClient'
 import toast from 'react-hot-toast'
@@ -41,6 +44,9 @@ export default function ComplaintsPage() {
   const { complaints, totalComplaints, criticasCount, deleteComplaint } = useComplaints()
   const { triageComplaint, askLeaderQuery } = useAgents()
   const { hasPermission } = useAuth()
+  const { reservations } = useReservations()
+  const { tickets } = useKitchen()
+  const { payments } = useCash()
   const canDelete = hasPermission('canDeleteClients')
 
   // ── Filtro de bandeja ──
@@ -62,9 +68,26 @@ export default function ComplaintsPage() {
   const handleAutoResolve = async (c) => {
     setResolvingIds(prev => ({ ...prev, [c.id]: true }))
     try {
+      const reserva = reservations.find(r => r.id === c.reservationId || r.id === c.reservation_id)
+      const ticket = reserva ? tickets.find(t => t.reservationId === reserva.id) : null
+      const consumosStr = ticket && ticket.items && ticket.items.length > 0 
+        ? ticket.items.map(i => `${i.quantity}x ${i.name}`).join(', ') 
+        : 'Desconocido'
+      const pago = reserva ? payments.find(p => p.reservationId === reserva.id) : null
+      const pagoStr = pago ? `S/${pago.amount}` : 'Desconocido'
+
+      const contextData = `
+      [CONTEXTO ADICIONAL PARA TI]
+      - Consumo del cliente: ${consumosStr}
+      - Monto pagado: ${pagoStr}
+      - DNI del cliente: ${reserva ? reserva.clientDni : 'Desconocido'}
+      - Correo registrado: ${c.email || 'No proporcionado'}
+      `
+
       const prompt = `Actúa como analista de atención al cliente de Pardos Chicken. Usa el modelo L.E.A.R.N. (Listen, Empathize, Apologize, Resolve, Notify) para resolver esta queja del cliente ${c.cliente}: "${c.mensaje}". 
+      ${contextData}
       Instrucciones estrictas:
-      1. Sé empático, profesional y resolutivo.
+      1. Sé empático, profesional y resolutivo. Usa los datos del consumo para personalizar tu respuesta si es relevante (ej. "Lamento que su ${ticket?.items?.[0]?.name || 'plato'} no haya estado a la altura...").
       2. NO ofrezcas descuentos monetarios ni cupones a menos que la queja sea un problema grave o de salubridad. 
       3. Prioriza disculpas genuinas, explicaciones operativas y compromisos de capacitación al personal o revisión de procesos.
       4. Tu respuesta debe ser el correo exacto que se le enviará al cliente (formato markdown, claro y directo).`
