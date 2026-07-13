@@ -56,6 +56,7 @@ export default function ComplaintsPage() {
   )
 
   const [resolvingIds, setResolvingIds] = useState({})
+  const [pendingResolution, setPendingResolution] = useState(null)
   const { updateComplaint } = useComplaints()
 
   const handleAutoResolve = async (c) => {
@@ -64,35 +65,8 @@ export default function ComplaintsPage() {
       const prompt = `Actúa como solucionador. Genera una solución concisa y directa para esta queja del cliente ${c.cliente}: "${c.mensaje}". Propón un descuento o cortesía si aplica, de forma amable y resolutiva.`
       const res = await askLeaderQuery(prompt)
       if (res.success) {
-        const confirmar = window.confirm(`Solución propuesta por la IA:\n\n${res.result}\n\n¿Deseas aplicar esta solución y enviar el correo de disculpas al cliente?`)
-        if (confirmar) {
-          await updateComplaint(c.id, {
-            estado: 'resuelta',
-            resolution: { respuesta_cliente: res.result }
-          })
-          
-          const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
-          const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
-          const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
-
-          if (serviceId && templateId && publicKey) {
-            try {
-              // Convertimos el markdown a texto plano o enviamos tal cual, la vista HTML renderizará saltos
-              await emailjs.send(serviceId, templateId, {
-                to_email: c.email || 'cliente@test.com', 
-                message: res.result
-              }, publicKey)
-              toast.success(`Queja de ${c.cliente} resuelta. Correo real enviado exitosamente.`)
-            } catch (err) {
-              console.error('Error enviando correo con EmailJS:', err)
-              toast.error('La queja se resolvió, pero falló el envío del correo real.')
-            }
-          } else {
-            toast.success(`Queja de ${c.cliente} resuelta. Correo enviado exitosamente (Simulado).`)
-          }
-        } else {
-          toast('Resolución cancelada.', { icon: 'ℹ️' })
-        }
+        // En lugar de window.confirm, abrimos el modal
+        setPendingResolution({ complaint: c, result: res.result })
       } else {
         toast.error('No se pudo generar solución')
       }
@@ -100,6 +74,43 @@ export default function ComplaintsPage() {
       toast.error('Error al resolver: ' + err.message)
     } finally {
       setResolvingIds(prev => ({ ...prev, [c.id]: false }))
+    }
+  }
+
+  const confirmResolution = async () => {
+    if (!pendingResolution) return
+    const { complaint: c, result } = pendingResolution
+    setPendingResolution(null) // cerramos el modal
+    
+    // Mostramos un toast loading manual (opcional, o podemos re-activar resolvingIds)
+    const tId = toast.loading('Aplicando solución y enviando correo...')
+
+    try {
+      await updateComplaint(c.id, {
+        estado: 'resuelta',
+        resolution: { respuesta_cliente: result }
+      })
+      
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
+      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+
+      if (serviceId && templateId && publicKey) {
+        try {
+          await emailjs.send(serviceId, templateId, {
+            to_email: c.email || 'cliente@test.com', 
+            message: result
+          }, publicKey)
+          toast.success(`Queja de ${c.cliente} resuelta. Correo real enviado.`, { id: tId })
+        } catch (err) {
+          console.error('Error enviando correo con EmailJS:', err)
+          toast.error('La queja se resolvió, pero falló el envío del correo.', { id: tId })
+        }
+      } else {
+        toast.success(`Queja de ${c.cliente} resuelta. (Simulado)`, { id: tId })
+      }
+    } catch (err) {
+      toast.error('Error al aplicar solución: ' + err.message, { id: tId })
     }
   }
 
@@ -270,6 +281,36 @@ export default function ComplaintsPage() {
 
         </aside>
       </div>
+
+      {/* MODAL DE RESOLUCIÓN IA */}
+      {pendingResolution && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <Sparkles size={20} />
+              Solución Propuesta por la IA
+            </div>
+            <div className={styles.modalBody}>
+              <ReactMarkdown>{pendingResolution.result}</ReactMarkdown>
+            </div>
+            <div className={styles.modalFooter}>
+              <button 
+                className={styles.btnCancel} 
+                onClick={() => setPendingResolution(null)}
+              >
+                Cancelar
+              </button>
+              <button 
+                className={styles.btnApprove} 
+                onClick={confirmResolution}
+              >
+                <Send size={16} />
+                Aprobar y Enviar Correo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

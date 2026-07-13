@@ -406,3 +406,106 @@
   margin-top: 4px; padding-top: 6px; border-top: 1px dashed #cdeede;
 }
 .recoGroup:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+
+/* ── Modal IA Avanzado ───────────────────────────────────────────────────── */
+.modalOverlay {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modalContent {
+  background: #fff;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 550px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modalHeader {
+  background: var(--color-primary);
+  color: #fff;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.modalBody {
+  padding: 20px;
+  color: var(--color-text-dark);
+  font-size: 14px;
+  line-height: 1.6;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.modalBody strong {
+  color: var(--color-primary);
+}
+
+.modalBody ul, .modalBody ol {
+  padding-left: 20px;
+  margin: 10px 0;
+}
+
+.modalBody p {
+  margin-bottom: 12px;
+}
+
+.modalFooter {
+  padding: 16px 20px;
+  background: var(--color-bg-subtle);
+  border-top: 1px solid var(--color-border-light);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btnCancel {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text-mid);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnCancel:hover {
+  background: var(--color-border-light);
+}
+
+.btnApprove {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btnApprove:hover {
+  background: var(--color-primary-deep);
+}
