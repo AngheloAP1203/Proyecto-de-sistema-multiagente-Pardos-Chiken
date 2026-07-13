@@ -184,7 +184,7 @@ export default function ReservationsPage() {
 
   // Integrar items de cocina a las reservas filtradas
   const filteredWithItems = filtered.map(r => {
-    const ticket = tickets.find(t => t.reservationId === r.id && t.status !== 'served')
+    const ticket = tickets.filter(t => t.reservationId === r.id).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
     return { ...r, items: ticket ? ticket.items : [] }
   })
 
