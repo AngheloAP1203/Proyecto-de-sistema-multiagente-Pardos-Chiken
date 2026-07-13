@@ -77,7 +77,9 @@ export function ComplaintProvider({ children }) {
       sentimiento: complaint.sentimiento || '',
       sede: complaint.sede || 'San Isidro',
       puntos_criticos: complaint.puntos_criticos || null,
-      respuesta_cliente: complaint.respuesta_cliente || ''
+      respuesta_cliente: complaint.respuesta_cliente || '',
+      // Respuestas del cuestionario guiado (preguntas cerradas + abierta), si las hay.
+      respuestas: complaint.respuestas || null,
     }
 
     const record = {

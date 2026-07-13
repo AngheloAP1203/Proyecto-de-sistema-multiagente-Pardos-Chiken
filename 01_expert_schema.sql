@@ -77,6 +77,7 @@ CREATE TABLE public.ticket_items (
     ticket_id uuid REFERENCES public.kitchen_tickets(id) ON DELETE CASCADE,
     menu_item_id uuid REFERENCES public.menu_items(id),
     quantity integer NOT NULL,
+    status text DEFAULT 'pending',
     notes text
 );
 
@@ -90,6 +91,7 @@ CREATE TABLE public.payments (
     status text DEFAULT 'pending',
     date date NOT NULL,
     time text,
+    items jsonb,
     created_at timestamptz DEFAULT now()
 );
 
@@ -105,6 +107,18 @@ CREATE TABLE public.complaints (
     mensaje text,
     resolution jsonb,
     created_at timestamptz DEFAULT now()
+);
+
+-- ===========================================================================
+DROP TABLE IF EXISTS public.cash_shifts CASCADE;
+CREATE TABLE public.cash_shifts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  opened_by text NOT NULL,
+  start_balance numeric NOT NULL,
+  opened_at timestamp with time zone DEFAULT now(),
+  closed_at timestamp with time zone,
+  end_balance numeric,
+  status text DEFAULT 'open'
 );
 
 -- ===========================================================================

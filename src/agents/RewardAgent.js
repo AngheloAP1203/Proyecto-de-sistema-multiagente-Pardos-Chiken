@@ -111,6 +111,7 @@ class RewardAgentClass {
       elegible:      true,
       veredicto:     verif.veredicto,
       cliente:       verif.cliente || reclamo.cliente,
+      clientId:      verif.clientId,
       reservationId: verif.reservationId,
       pagoVerificado: verif.pago,
       recompensa:    promo ? {

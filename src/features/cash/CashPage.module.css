@@ -494,6 +494,18 @@
   margin-bottom: 10px;
 }
 
+.servedHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-success, #12a06f);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+  border-bottom: 1px dashed var(--color-border-light);
+}
+
 .orderRowCompact {
   display: flex;
   align-items: center;

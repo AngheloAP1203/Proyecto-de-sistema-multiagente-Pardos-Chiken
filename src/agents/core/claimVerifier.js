@@ -44,11 +44,12 @@ const HOY = () => new Date().toISOString().split('T')[0]
  * evaluarEvidencia — Núcleo determinista PURO (sin efectos, testeable).
  *
  * @param {Object} reclamo - { tableId, dni, fecha }
- * @param {Object} datos   - { reservations, payments, kitchenTickets } ya normalizados
- *                           a camelCase: reservations[{ id, tableId, clientDni,
- *                           clientName, status, date }], payments[{ id, reservationId,
- *                           tableId, amount, date }], kitchenTickets[{ tableId }]
- * @returns {Object} { veredicto, elegible, motivo, cliente?, reservationId?, pago? }
+ * @param {Object} datos   - { reservations, payments, kitchenTickets } normalizados a
+ *                           camelCase: reservations[{ id, tableId, clientDni, clientName,
+ *                           clientId, status, date }], payments[{ id, reservationId,
+ *                           amount, date }], kitchenTickets[{ reservationId, status }]
+ *                           (las comandas se enlazan por reservationId, no por mesa).
+ * @returns {Object} { veredicto, elegible, motivo, cliente?, clientId?, reservationId?, pago? }
  */
 export function evaluarEvidencia(reclamo = {}, datos = {}) {
   const { tableId, dni, fecha } = reclamo
@@ -67,13 +68,13 @@ export function evaluarEvidencia(reclamo = {}, datos = {}) {
   // 2. Reservas de esa mesa (ese día si se conoce la fecha).
   const reservasMesa = reservations.filter(r =>
     mismaMesa(r.tableId, tableId) && (!fecha || r.date === fecha))
+  const idsMesa = new Set(reservasMesa.map(r => r.id))
 
   const pagosMesa = payments.filter(p =>
-    (reservasMesa.some(r => r.id === p.reservationId) || (p.tableId && mismaMesa(p.tableId, tableId))) &&
-    (!fecha || !p.date || p.date === fecha))
+    idsMesa.has(p.reservationId) && (!fecha || !p.date || p.date === fecha))
 
-  const comandaCuenta = (!fecha || fecha === HOY()) &&
-    kitchenTickets.some(t => mismaMesa(t.tableId, tableId))
+  // Comanda: se enlaza por reservationId (kitchen_tickets no tiene mesa ni fecha).
+  const comandaCuenta = kitchenTickets.some(t => idsMesa.has(t.reservationId))
 
   // 3. ¿Hubo consumo real en esa mesa ese día?
   const huboConsumo =
@@ -109,6 +110,7 @@ export function evaluarEvidencia(reclamo = {}, datos = {}) {
     elegible:      true,
     motivo:        'Identidad confirmada: DNI y mesa coinciden con un consumo registrado.',
     cliente:       reservaCoincide.clientName,
+    clientId:      reservaCoincide.clientId,
     reservationId: reservaCoincide.id,
     pago:          pago ? { id: pago.id, amount: pago.amount, fecha: pago.date } : null,
   }
@@ -129,12 +131,15 @@ export async function verificarReclamo(reclamo = {}) {
   // importable en Node para el golden set sin arrastrar el backend.
   const { supabase } = await import('../../domain/supabase.js')
 
+  // Reservas del día con el cliente (el DNI/nombre viven en `clients`, no en
+  // `reservations`). Pagos del día. Comandas: sin fecha/mesa → se traen todas y
+  // se enlazan por reservation_id en la lógica pura.
   const [{ data: reservas, error: resErr },
          { data: pagos,   error: payErr },
          { data: comandas, error: kitErr }] = await Promise.all([
-    supabase.from('reservations').select('*').eq('date', queryDate),
-    supabase.from('payments').select('*').eq('date', queryDate),
-    supabase.from('kitchen_tickets').select('*'),
+    supabase.from('reservations').select('*, clients(dni, name)').eq('date', queryDate),
+    supabase.from('payments').select('id, reservation_id, amount, date').eq('date', queryDate),
+    supabase.from('kitchen_tickets').select('reservation_id, status'),
   ])
 
   if (resErr || payErr || kitErr) {
@@ -145,14 +150,13 @@ export async function verificarReclamo(reclamo = {}) {
   // Mapear snake_case (Supabase) → camelCase (contrato de la lógica pura).
   const datos = {
     reservations: (reservas || []).map(r => ({
-      id: r.id, tableId: r.table_id, clientDni: r.client_dni,
-      clientName: r.client_name, status: r.status, date: r.date,
+      id: r.id, tableId: r.table_id, clientDni: r.clients?.dni,
+      clientName: r.clients?.name, clientId: r.client_id, status: r.status, date: r.date,
     })),
     payments: (pagos || []).map(p => ({
-      id: p.id, reservationId: p.reservation_id, tableId: p.table_id,
-      amount: p.amount, date: p.date,
+      id: p.id, reservationId: p.reservation_id, amount: p.amount, date: p.date,
     })),
-    kitchenTickets: (comandas || []).map(t => ({ tableId: t.table_id })),
+    kitchenTickets: (comandas || []).map(t => ({ reservationId: t.reservation_id, status: t.status })),
   }
 
   return evaluarEvidencia(reclamo, datos)

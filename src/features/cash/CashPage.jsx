@@ -20,7 +20,8 @@ import { CreditCard, DollarSign, Plus, Clock, CheckCircle, X, Printer, Receipt, 
 import { useCash, PAYMENT_METHODS } from '../../context/CashContext'
 import { useReservations, RESERVATION_STATUS } from '../../context/ReservationContext'
 import { useAuth } from '../../context/AuthContext'
-import { MENU_ITEMS } from '../../context/KitchenContext'
+import { MENU_ITEMS, useKitchen } from '../../context/KitchenContext'
+import { platosServidosDeTickets } from '../../domain/kitchen/servedItems'
 import { Card, StatCard } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input, Select, Textarea } from '../../components/ui/Input'
@@ -206,6 +207,11 @@ export default function CashPage() {
   const { user } = useAuth()
   const { payments, todayPayments, todayTotal, todayByMethod, shift, openShift, closeShift, addPayment } = useCash()
   const { updateReservation, completeReservation, getReservationsByDate } = useReservations()
+  const { tickets } = useKitchen()
+
+  // Platos SERVIDOS (desde cocina) de una reserva → listos para cobrar.
+  const servedItemsFor = (reservationId) =>
+    platosServidosDeTickets(tickets.filter(t => t.reservationId === reservationId))
 
   const [isPaymentOpen, setPaymentOpen] = useState(false)
   const [isShiftOpen,   setShiftOpen]   = useState(false)
@@ -265,14 +271,14 @@ export default function CashPage() {
     return e
   }
 
-  const handleRegisterPayment = (e) => {
+  const handleRegisterPayment = async (e) => {
     e.preventDefault()
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     const totalAmount = orderTotal > 0 ? orderTotal : 0
 
-    const newPayment = addPayment({
+    const newPayment = await addPayment({
       ...form,
       amount:     totalAmount,
       guests:     Number(form.guests) || 1,
@@ -280,6 +286,7 @@ export default function CashPage() {
       cashierId:  user.id,
       cashierName: user.name,
     })
+    if (!newPayment) return
 
     if (form.reservationId) {
       const res = reservasDelDia.find(r => r.id === form.reservationId)
@@ -438,7 +445,11 @@ export default function CashPage() {
                         clientName: r.clientName,
                         guests: r.guests,
                       }))
-                      if (r.items && r.items.length > 0) setOrderItems(r.items)
+                      const servidos = servedItemsFor(r.id)
+                      setOrderItems(servidos)
+                      if (servidos.length === 0) {
+                        toast('Esta mesa aún no tiene platos servidos por cocina', { icon: '🍽️' })
+                      }
                       setPaymentOpen(true)
                     }}
                     id={`btn-cobrar-${r.id}`}
@@ -526,7 +537,11 @@ export default function CashPage() {
                     const res = reservasDelDia.find(r => r.id === val)
                     if (res) {
                       setForm(f => ({...f, clientName: res.clientName, guests: res.guests, reservationId: val}))
-                      if (res.items && res.items.length > 0) setOrderItems(res.items)
+                      const servidos = servedItemsFor(res.id)
+                      setOrderItems(servidos)
+                      if (servidos.length === 0) {
+                        toast('Esta mesa aún no tiene platos servidos por cocina', { icon: '🍽️' })
+                      }
                     }
                   } else {
                     setForm(f => ({...f, clientName: '', guests: '', reservationId: ''}))
@@ -566,6 +581,9 @@ export default function CashPage() {
             {/* Vista compacta del pedido actual */}
             {orderItems.length > 0 && (
               <div className={styles.orderSummaryCompact}>
+                <div className={styles.servedHint}>
+                  <Utensils size={12} /> Platos servidos por cocina · puedes ajustar antes de cobrar
+                </div>
                 {orderItems.map(item => (
                   <div key={item.menuId} className={styles.orderRowCompact}>
                     <span className={styles.orderNameCompact}>{item.qty}× {item.name}</span>

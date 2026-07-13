@@ -139,3 +139,88 @@
 }
 .send:disabled { opacity: .45; cursor: not-allowed; }
 .send:not(:disabled):active { transform: scale(.94); }
+
+/* ── Stepper (barra de progreso) ─────────────────────────────────────────── */
+.steps { display: flex; gap: 8px; margin: 4px 0 18px; }
+.stepDot {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  position: relative;
+}
+.stepDot span {
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 12px; font-weight: 800;
+  background: var(--color-border-light); color: var(--color-text-light);
+  border: 2px solid transparent; transition: all .2s;
+}
+.stepDot em { font-size: 10.5px; font-style: normal; color: var(--color-text-light); font-weight: 600; }
+.stepActive span { background: var(--color-primary); color: #fff; box-shadow: 0 2px 8px rgba(232,69,60,.35); }
+.stepActive em   { color: var(--color-text-mid); }
+
+.stepBody { display: flex; flex-direction: column; animation: fadeStep .25s ease both; }
+@keyframes fadeStep { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ── Preguntas ───────────────────────────────────────────────────────────── */
+.question { margin-bottom: 16px; }
+.qTitle { font-size: 13.5px; font-weight: 700; color: var(--color-text-dark); margin-bottom: 9px; }
+
+.options { display: flex; flex-wrap: wrap; gap: 8px; }
+.option {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 13px; font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1.5px solid var(--color-border); border-radius: 999px;
+  background: var(--color-bg); color: var(--color-text-mid);
+  transition: all .15s;
+}
+.option:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.optionSel {
+  border-color: var(--color-primary); background: var(--color-primary-soft);
+  color: var(--color-primary-deep);
+}
+
+.rating { display: flex; gap: 6px; }
+.star {
+  border: none; background: none; cursor: pointer; padding: 2px;
+  color: #d8b400; opacity: .35; transition: opacity .15s, transform .1s;
+}
+.star:hover { transform: scale(1.12); }
+.starOn { opacity: 1; }
+
+.openText {
+  width: 100%; resize: vertical; padding: 11px 13px; font-size: 13.5px; font-family: inherit;
+  border: 1px solid var(--color-border); border-radius: var(--radius-md, 12px);
+  background: var(--color-bg); color: var(--color-text-dark); line-height: 1.5;
+}
+.openText:focus { outline: none; border-color: var(--color-primary); }
+
+/* ── Navegación entre pasos ──────────────────────────────────────────────── */
+.navRow { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.btnNext, .btnSubmit, .btnBack {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13.5px; font-weight: 700; cursor: pointer; border-radius: 10px;
+  padding: 10px 16px; border: none; transition: opacity .15s, transform .1s;
+}
+.btnNext, .btnSubmit {
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-deep) 100%);
+}
+.btnNext:disabled, .btnSubmit:disabled { opacity: .4; cursor: not-allowed; }
+.btnNext:not(:disabled):active, .btnSubmit:not(:disabled):active { transform: scale(.97); }
+.btnBack {
+  background: var(--color-bg); color: var(--color-text-mid);
+  border: 1px solid var(--color-border);
+}
+.btnBack:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Resultado ───────────────────────────────────────────────────────────── */
+.result {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 12px; padding: 22px 16px; border-radius: var(--radius-md, 12px);
+  margin-bottom: 8px;
+}
+.resultOk     { background: var(--color-success-soft); border: 1px solid var(--color-success); }
+.resultReject { background: var(--color-primary-soft); border: 1px solid var(--color-border); }
+.resultIcon {
+  width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+}
+.resultText { font-size: 13.5px; line-height: 1.55; color: var(--color-text-dark); max-width: 420px; }
+.result .coupon { width: 100%; max-width: 380px; text-align: left; }

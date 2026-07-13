@@ -201,15 +201,9 @@ export default function ReservationsPage() {
   // Al sentar: cambia el estado de la reserva Y envía un ticket a cocina si hay platos
   const handleSeat = (reservation) => {
     seatReservation(reservation.id)
+    // La comanda se enlaza por reservationId; mesa/cliente salen del JOIN en cocina.
     if (reservation.items && reservation.items.length > 0) {
-      addTicket({
-        tableId:    reservation.tableId,
-        clientName: reservation.clientName,
-        guests:     reservation.guests,
-        notes:      reservation.notes || '',
-        priority:   'normal',
-        items:      reservation.items.map(item => ({ ...item, itemStatus: 'pending' })),
-      })
+      addTicket({ reservationId: reservation.id, items: reservation.items })
     }
   }
 

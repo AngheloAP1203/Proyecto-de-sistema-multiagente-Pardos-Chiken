@@ -20,6 +20,7 @@ async function seedAll() {
   // Solo con borrar clientes, mesas y menús en cascada se limpia casi todo, pero por si acaso borraremos todo explícitamente si queremos, aunque el SQL ya limpió.
   await supabase.from('complaints').delete().neq('id', '00000000-0000-0000-0000-000000000000')
   await supabase.from('payments').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+  await supabase.from('cash_shifts').delete().neq('id', '00000000-0000-0000-0000-000000000000')
   await supabase.from('ticket_items').delete().neq('id', '00000000-0000-0000-0000-000000000000')
   await supabase.from('kitchen_tickets').delete().neq('id', '00000000-0000-0000-0000-000000000000')
   await supabase.from('reservations').delete().neq('id', '00000000-0000-0000-0000-000000000000')
@@ -116,6 +117,14 @@ async function seedAll() {
     const pIdNum = String(p.id).replace(/\D/g, '')
     
     // a. Insertar Pago
+    const itemsJsonb = p.items ? {
+      lineas: p.items,
+      clientName: p.clientName || '',
+      guests: p.guests || 2,
+      notes: p.notes || '',
+      cashierName: p.cashierName || 'Lucia Torres'
+    } : null
+
     const payRes = await supabase.from('payments').insert({
       id: '00000000-0000-4000-d000-' + pIdNum.padStart(12, '0'),
       reservation_id: resId,
@@ -123,7 +132,8 @@ async function seedAll() {
       method: p.method,
       status: p.status,
       date: p.date,
-      time: p.time
+      time: p.time,
+      items: itemsJsonb
     })
     if (payRes.error) console.error('Error insertando pago:', payRes.error)
 
@@ -147,6 +157,19 @@ async function seedAll() {
     }
   }
   console.log('✅ Pagos y Tickets de Cocina insertados')
+
+  // 5.5 Turnos de Caja
+  console.log('🌱 Insertando Turnos de Caja...')
+  const shiftRes = await supabase.from('cash_shifts').insert([
+    {
+      opened_by: 'Lucia Torres',
+      start_balance: 150.00,
+      opened_at: new Date().toISOString(),
+      status: 'open'
+    }
+  ])
+  if (shiftRes.error) console.error('Error insertando turno de caja:', shiftRes.error)
+  else console.log('✅ Turno de caja abierto insertado')
 
   // 6. Quejas
   for (const c of COMPLAINTS_SEED) {
