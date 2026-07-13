@@ -132,6 +132,56 @@ export function KitchenProvider({ children }) {
     return kt.id
   }, [actorName, getMenuMap])
 
+  const syncTicketItems = useCallback(async (reservationId, newItems) => {
+    let { data: ticket } = await supabase.from('kitchen_tickets')
+      .select('id').eq('reservation_id', reservationId).neq('status', 'served').limit(1).maybeSingle()
+
+    if (!ticket) {
+      const { data: newTicket, error } = await supabase.from('kitchen_tickets')
+        .insert({ reservation_id: reservationId, status: TICKET_STATUS.PENDING })
+        .select('id').single()
+      if (error || !newTicket) {
+        toast.error('Error al crear comanda')
+        return
+      }
+      ticket = newTicket
+    }
+
+    const ticketId = ticket.id
+    const menuMap = await getMenuMap()
+
+    if (newItems.length === 0) {
+      await supabase.from('ticket_items').delete().eq('ticket_id', ticketId).in('status', ['pending', 'preparing'])
+    } else {
+      const { data: currentItems } = await supabase.from('ticket_items').select('*').eq('ticket_id', ticketId)
+
+      for (const it of newItems) {
+        if (it.id) {
+          // Ya existe, actualizamos cantidad
+          await supabase.from('ticket_items').update({ quantity: it.qty }).eq('id', it.id)
+        } else {
+          // Es nuevo, lo insertamos
+          await supabase.from('ticket_items').insert({
+            ticket_id: ticketId,
+            menu_item_id: menuMap[it.name] || it.menuId,
+            quantity: it.qty,
+            status: 'pending'
+          })
+        }
+      }
+
+      const newIds = newItems.map(i => i.id).filter(Boolean)
+      const toDelete = (currentItems || []).filter(c => !newIds.includes(c.id) && ['pending', 'preparing'].includes(c.status))
+      for (const d of toDelete) {
+        await supabase.from('ticket_items').delete().eq('id', d.id)
+      }
+    }
+
+    await loadTickets()
+    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'kitchen.sync_ticket', nivel: 'info', detalle: { ticketId, items: newItems.length } })
+    toast.success('Comanda actualizada en cocina')
+  }, [actorName, getMenuMap])
+
   const updateTicketStatus = useCallback(async (id, newStatus) => {
     const { error } = await supabase.from('kitchen_tickets').update({ status: newStatus }).eq('id', id)
     if (error) { toast.error('No se pudo actualizar el pedido'); return }
@@ -180,6 +230,7 @@ export function KitchenProvider({ children }) {
     preparingCount,
     readyCount,
     addTicket,
+    syncTicketItems,
     updateTicketStatus,
     updateTicket,
     advanceItem,

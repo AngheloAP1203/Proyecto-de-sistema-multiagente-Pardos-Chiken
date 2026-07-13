@@ -207,11 +207,16 @@ export default function CashPage() {
   const { user } = useAuth()
   const { payments, todayPayments, todayTotal, todayByMethod, shift, openShift, closeShift, addPayment } = useCash()
   const { updateReservation, completeReservation, getReservationsByDate } = useReservations()
-  const { tickets } = useKitchen()
+  const { tickets, syncTicketItems } = useKitchen()
 
-  // Platos SERVIDOS (desde cocina) de una reserva → listos para cobrar.
-  const servedItemsFor = (reservationId) =>
-    platosServidosDeTickets(tickets.filter(t => t.reservationId === reservationId))
+  // Platos de una reserva → listos para cobrar (todos, servidos y pendientes).
+  const allItemsFor = (reservationId) => {
+    const ticket = tickets.find(t => t.reservationId === reservationId && t.status !== 'served')
+    if (!ticket) return []
+    return ticket.items.map(it => ({
+      ...it, // contiene id, menuId, name, price, qty, itemStatus
+    }))
+  }
 
   const [isPaymentOpen, setPaymentOpen] = useState(false)
   const [isShiftOpen,   setShiftOpen]   = useState(false)
@@ -297,6 +302,8 @@ export default function CashPage() {
         updateReservation(res.id, { isPaid: true })
         toast.success(`Reserva marcada como pagada`)
       }
+      // Sincronizar con cocina para eliminar los ítems que la cajera borró
+      syncTicketItems(form.reservationId, orderItems)
     }
 
     toast.success(`Boleta generada: S/ ${totalAmount.toFixed(2)}`)
@@ -445,10 +452,10 @@ export default function CashPage() {
                         clientName: r.clientName,
                         guests: r.guests,
                       }))
-                      const servidos = servedItemsFor(r.id)
-                      setOrderItems(servidos)
-                      if (servidos.length === 0) {
-                        toast('Esta mesa aún no tiene platos servidos por cocina', { icon: '🍽️' })
+                      const items = allItemsFor(r.id)
+                      setOrderItems(items)
+                      if (items.length === 0) {
+                        toast('Esta reserva aún no tiene platos registrados', { icon: '🍽️' })
                       }
                       setPaymentOpen(true)
                     }}
@@ -537,10 +544,10 @@ export default function CashPage() {
                     const res = reservasDelDia.find(r => r.id === val)
                     if (res) {
                       setForm(f => ({...f, clientName: res.clientName, guests: res.guests, reservationId: val}))
-                      const servidos = servedItemsFor(res.id)
-                      setOrderItems(servidos)
-                      if (servidos.length === 0) {
-                        toast('Esta mesa aún no tiene platos servidos por cocina', { icon: '🍽️' })
+                      const items = allItemsFor(res.id)
+                      setOrderItems(items)
+                      if (items.length === 0) {
+                        toast('Esta reserva aún no tiene platos registrados', { icon: '🍽️' })
                       }
                     }
                   } else {
@@ -586,7 +593,14 @@ export default function CashPage() {
                 </div>
                 {orderItems.map(item => (
                   <div key={item.menuId} className={styles.orderRowCompact}>
-                    <span className={styles.orderNameCompact}>{item.qty}× {item.name}</span>
+                    <span className={styles.orderNameCompact}>
+                      {item.qty}× {item.name}
+                      {['pending', 'preparing'].includes(item.itemStatus) && (
+                        <span style={{marginLeft: 8, fontSize: '0.7em', color: '#b91c1c', background: '#fee2e2', padding: '2px 4px', borderRadius: 4}}>
+                          Falta servir
+                        </span>
+                      )}
+                    </span>
                     <div className={styles.orderQtyCtrlCompact}>
                       <button type="button" onClick={() => updateQty(item.menuId, -1)}>−</button>
                       <span>{item.qty}</span>

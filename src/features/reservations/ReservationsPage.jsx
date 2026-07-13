@@ -162,7 +162,7 @@ export default function ReservationsPage() {
   } = useReservations()
   const { user, hasPermission } = useAuth()
   const { findByPhone, addClient, updateClient } = useClients()
-  const { addTicket } = useKitchen()
+  const { tickets, addTicket, syncTicketItems } = useKitchen()
 
   const [search,       setSearch]     = useState('')
   const [statusFilter, setStatus]     = useState('all')
@@ -180,6 +180,12 @@ export default function ReservationsPage() {
       r.clientName.toLowerCase().includes(search.toLowerCase()) ||
       r.clientDni?.includes(search) || r.id.includes(search)
     return matchStatus && matchSearch
+  })
+
+  // Integrar items de cocina a las reservas filtradas
+  const filteredWithItems = filtered.map(r => {
+    const ticket = tickets.find(t => t.reservationId === r.id && t.status !== 'served')
+    return { ...r, items: ticket ? ticket.items : [] }
   })
 
   const handleCreate = (data) => {
@@ -255,7 +261,7 @@ export default function ReservationsPage() {
         <div>
           <h1 className={styles.title}>Reservas</h1>
           <p className={styles.subtitle}>
-            {filtered.length} reserva{filtered.length !== 1 ? 's' : ''} · {pendingRequests.length > 0 && (
+            {filteredWithItems.length} reserva{filteredWithItems.length !== 1 ? 's' : ''} · {pendingRequests.length > 0 && (
               <span className={styles.badgeIndicator}>{pendingRequests.length} solicitud{pendingRequests.length > 1 ? 'es' : ''} pendiente{pendingRequests.length > 1 ? 's' : ''}</span>
             )}
           </p>
@@ -306,7 +312,7 @@ export default function ReservationsPage() {
       </Card>
 
       {/* Lista */}
-      {filtered.length === 0 ? (
+      {filteredWithItems.length === 0 ? (
         <div className={styles.emptyState}>
           <CalendarCheck size={56} />
           <h3>No hay reservas</h3>
@@ -319,7 +325,7 @@ export default function ReservationsPage() {
         </div>
       ) : (
         <div className={styles.reservationGrid}>
-          {filtered.map(r => (
+          {filteredWithItems.map(r => (
             <ReservationCard
               key={r.id}
               reservation={r}
@@ -328,8 +334,9 @@ export default function ReservationsPage() {
               onCancel={(reason) => cancelReservation(r.id, reason)}
               canCancel={hasPermission('canCancelAnyReservation')}
               onDelete={hasPermission('canDeleteReservations') ? () => deleteReservationFromDB(r.id) : null}
-              onUpdateItems={(newItems, notes) => updateReservation(r.id, { items: newItems, ...(notes !== undefined && { notes }) })}
-              canAddItems={['mozo', 'cajero', 'admin'].includes(user?.role)}
+              onUpdateItems={(newItems, notes) => syncTicketItems(r.id, newItems)}
+              canAddItems={['mozo', 'cajero', 'admin', 'lider'].includes(user?.role)}
+              canModifyExisting={['lider', 'admin', 'cajero'].includes(user?.role)}
             />
           ))}
         </div>

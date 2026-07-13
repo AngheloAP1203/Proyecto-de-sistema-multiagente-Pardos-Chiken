@@ -12,6 +12,7 @@ import { RESERVATION_STATUS, STATUS_LABELS, STATUS_COLORS } from '../../context/
 import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Input'
 import { MENU_ITEMS } from '../../domain/kitchen/menu'
+import toast from 'react-hot-toast'
 import styles from './ReservationCard.module.css'
 
 const BADGE_CLASS = {
@@ -22,7 +23,7 @@ const BADGE_CLASS = {
   neutral: 'badge badge--neutral',
 }
 
-export default function ReservationCard({ reservation: r, onEdit, onSeat, onCancel, canCancel, onDelete, onUpdateItems, canAddItems }) {
+export default function ReservationCard({ reservation: r, onEdit, onSeat, onCancel, canCancel, onDelete, onUpdateItems, canAddItems, canModifyExisting }) {
   const [showCancelInput, setShowCancelInput] = useState(false)
   const [cancelReason, setCancelReason]       = useState('')
   const [isMenuOpen, setMenuOpen]             = useState(false)
@@ -54,10 +55,24 @@ export default function ReservationCard({ reservation: r, onEdit, onSeat, onCanc
   }
 
   const updateQty = (menuId, delta) => {
-    setLocalItems(prev => prev.map(i => i.menuId === menuId ? { ...i, qty: Math.max(1, i.qty + delta) } : i))
+    setLocalItems(prev => prev.map(i => {
+      if (i.menuId === menuId) {
+        if (i.id && !canModifyExisting && delta < 0) {
+          toast.error("Solo Líder o Cajera pueden reducir cantidades enviadas a cocina.")
+          return i
+        }
+        return { ...i, qty: Math.max(1, i.qty + delta) }
+      }
+      return i
+    }))
   }
 
   const removeOrderItem = (menuId) => {
+    const item = localItems.find(i => i.menuId === menuId)
+    if (item?.id && !canModifyExisting) {
+      toast.error("Solo Líder o Cajera pueden eliminar platos ya enviados a cocina.")
+      return
+    }
     setLocalItems(prev => prev.filter(i => i.menuId !== menuId))
   }
 
