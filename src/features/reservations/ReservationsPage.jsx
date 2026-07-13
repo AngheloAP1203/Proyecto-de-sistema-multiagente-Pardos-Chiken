@@ -188,8 +188,11 @@ export default function ReservationsPage() {
     return { ...r, items: ticket ? ticket.items : [] }
   })
 
-  const handleCreate = (data) => {
-    addReservation({ ...data, createdBy: user.id })
+  const handleCreate = async (data) => {
+    const newRes = await addReservation({ ...data, createdBy: user.id })
+    if (newRes && data.items && data.items.length > 0) {
+      syncTicketItems(newRes.id, data.items)
+    }
     setModalOpen(false)
   }
 
