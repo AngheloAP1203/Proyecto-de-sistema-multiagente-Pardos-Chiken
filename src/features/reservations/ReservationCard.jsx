@@ -116,9 +116,9 @@ export default function ReservationCard({ reservation: r, onEdit, onSeat, onCanc
               <span>{r.clientDni}</span>
             </div>
           )}
-          <div className={styles.infoItem} style={{opacity: 0.65, fontSize: '0.85em'}}>
+          <div className={styles.infoItem} style={{color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.9em'}}>
             <Hash size={12} />
-            <span title={r.id}>#{r.id.split('-').pop().slice(-6).toUpperCase()}</span>
+            <span title={r.id}>Cód. Reclamo: {r.id.split('-').pop().slice(-6).toUpperCase()}</span>
           </div>
           {r.clientPhone && (
             <div className={styles.infoItem}>
