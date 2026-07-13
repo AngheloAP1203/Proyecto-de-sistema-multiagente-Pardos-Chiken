@@ -134,7 +134,7 @@ export function KitchenProvider({ children }) {
 
   const syncTicketItems = useCallback(async (reservationId, newItems) => {
     let { data: ticket } = await supabase.from('kitchen_tickets')
-      .select('id').eq('reservation_id', reservationId).neq('status', 'served').limit(1).maybeSingle()
+      .select('id').eq('reservation_id', reservationId).order('created_at', { ascending: false }).limit(1).maybeSingle()
 
     if (!ticket) {
       const { data: newTicket, error } = await supabase.from('kitchen_tickets')

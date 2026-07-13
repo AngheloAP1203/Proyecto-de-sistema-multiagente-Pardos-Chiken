@@ -207,13 +207,9 @@ export default function ReservationsPage() {
     setEdit(null)
   }
 
-  // Al sentar: cambia el estado de la reserva Y envía un ticket a cocina si hay platos
+  // Al sentar: solo cambia el estado de la reserva (los items ya se sincronizan al crearlos/editarlos)
   const handleSeat = (reservation) => {
     seatReservation(reservation.id)
-    // La comanda se enlaza por reservationId; mesa/cliente salen del JOIN en cocina.
-    if (reservation.items && reservation.items.length > 0) {
-      addTicket({ reservationId: reservation.id, items: reservation.items })
-    }
   }
 
 

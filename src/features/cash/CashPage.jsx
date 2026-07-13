@@ -211,7 +211,8 @@ export default function CashPage() {
 
   // Platos de una reserva → listos para cobrar (todos, servidos y pendientes).
   const allItemsFor = (reservationId) => {
-    const ticket = tickets.find(t => t.reservationId === reservationId && t.status !== 'served')
+    // Tomamos el ticket más reciente de esta reserva, sin importar su estado, para poder cobrar todo.
+    const ticket = tickets.filter(t => t.reservationId === reservationId).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
     if (!ticket) return []
     return ticket.items.map(it => ({
       ...it, // contiene id, menuId, name, price, qty, itemStatus
