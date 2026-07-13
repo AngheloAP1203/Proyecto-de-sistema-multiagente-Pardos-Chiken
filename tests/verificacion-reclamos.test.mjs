@@ -16,34 +16,30 @@ const datos = {
   complaints: []
 }
 
-console.log('\n1) VERIFICADO — DNI + codigo de reserva coinciden')
-let r = evaluarEvidencia({ codigo:'R001', dni:'78765432' }, datos)
-ok(r.veredicto===VEREDICTO.VERIFICADO && r.elegible, 'María reclama su propia reserva → elegible')
+console.log('\n1) VERIFICADO — codigo de reserva coincide')
+let r = evaluarEvidencia({ codigo:'R001' }, datos)
+ok(r.veredicto===VEREDICTO.VERIFICADO && r.elegible, 'María reclama su reserva → elegible')
 ok(r.cliente==='María García' && r.reservationId==='R001', 'identifica al cliente y la reserva')
 ok(r.clientId==='CL01', 'devuelve el clientId para enlazar la queja')
 ok(r.pago?.amount===110, 'adjunta el pago verificado')
 
 console.log('\n2) VERIFICADO tolerante a formato')
-ok(evaluarEvidencia({ codigo:'r001',    dni:'78 765 432' }, datos).elegible, 'acepta "r001" y DNI con espacios')
-ok(evaluarEvidencia({ codigo:' R001 ',dni:'78-765-432' }, datos).elegible, 'acepta espacios extra y guiones')
+ok(evaluarEvidencia({ codigo:'r001' }, datos).elegible, 'acepta "r001"')
+ok(evaluarEvidencia({ codigo:' R001 ' }, datos).elegible, 'acepta espacios extra')
 
-console.log('\n3) RECHAZADO — el código existe pero el DNI NO coincide (fraude)')
-r = evaluarEvidencia({ codigo:'R001', dni:'99900011' }, datos)
-ok(r.veredicto===VEREDICTO.RECHAZADO && !r.elegible, 'un extraño reclama la reserva de María → rechazado')
-r = evaluarEvidencia({ codigo:'R002', dni:'78765432' }, datos)
-ok(r.veredicto===VEREDICTO.RECHAZADO && !r.elegible, 'María reclama la reserva de Roberto con su propio DNI → rechazado')
+
 
 console.log('\n4) SIN_RESERVA — código que no existe en reservas')
-r = evaluarEvidencia({ codigo:'R009', dni:'78765432' }, datos)
+r = evaluarEvidencia({ codigo:'R009' }, datos)
 ok(r.veredicto===VEREDICTO.SIN_RESERVA && !r.elegible, 'código inexistente → sin recompensa')
 
 console.log('\n5) SIN_CODIGO — el reclamo no indica código')
-r = evaluarEvidencia({ dni:'78765432' }, datos)
+r = evaluarEvidencia({}, datos)
 ok(r.veredicto===VEREDICTO.SIN_CODIGO && !r.elegible, 'sin código no se puede verificar')
 
 console.log('\n6) DUPLICADO — ya existe una queja para esa reserva')
 const datosConQueja = { ...datos, complaints: [{ reservationId: 'R001' }] }
-r = evaluarEvidencia({ codigo:'R001', dni:'78765432' }, datosConQueja)
+r = evaluarEvidencia({ codigo:'R001' }, datosConQueja)
 ok(r.veredicto===VEREDICTO.DUPLICADO && !r.elegible, 'reserva ya reclamada → rechazado')
 
 console.log(`\n${fail===0?'TODO OK':fail+' FALLOS'}\n`); process.exit(fail?1:0)

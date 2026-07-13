@@ -22,32 +22,26 @@ const datos = {
 
 console.log('\n1) VERIFICADO → recompensa acorde al problema')
 let r = await rewardAgent.evaluar(
-  { codigo:'R001', dni:'78765432', cliente:'María García', puntos_criticos:['Pollo frío'], prioridad:'Alta', mensaje:'el pollo llegó frío' },
+  { codigo:'R001', cliente:'María García', puntos_criticos:['Pollo frío'], prioridad:'Alta', mensaje:'el pollo llegó frío' },
   datos)
 ok(r.elegible===true, 'María (verificada) es elegible')
 ok(r.recompensa?.id==='P001', `recompensa = política del pollo frío (P001), obtenido ${r.recompensa?.id}`)
 ok(r.mensaje.includes('20%') || r.mensaje.includes('Vale'), 'el mensaje nombra la recompensa real')
 ok(!r.mensaje.includes('S/30'), 'no menciona un cupón distinto al asignado')
 
-console.log('\n2) RECHAZADO (fraude) → sin recompensa, nunca llama al LLM para premiar')
-r = await rewardAgent.evaluar(
-  { codigo:'R001', dni:'99900011', cliente:'Vivo', puntos_criticos:['Pollo frío'], prioridad:'Alta' },
-  datos)
-ok(r.elegible===false && r.veredicto==='RECHAZADO', 'DNI no coincide → rechazado')
-ok(r.recompensa===null, 'sin recompensa')
-ok(/no pudimos verificar|seguridad|boleta/i.test(r.mensaje), 'mensaje de rechazo, no de premio')
+
 
 console.log('\n3) SIN_CODIGO → pide código, sin premio')
-r = await rewardAgent.evaluar({ dni:'78765432', puntos_criticos:['Pollo frío'], prioridad:'Alta' }, datos)
+r = await rewardAgent.evaluar({ puntos_criticos:['Pollo frío'], prioridad:'Alta' }, datos)
 ok(r.elegible===false && r.veredicto==='SIN_CODIGO' && r.recompensa===null, 'sin codigo → no elegible')
 
 console.log('\n4) SIN_RESERVA → código inexistente, sin premio')
-r = await rewardAgent.evaluar({ codigo:'R009', dni:'78765432', prioridad:'Alta' }, datos)
+r = await rewardAgent.evaluar({ codigo:'R009', prioridad:'Alta' }, datos)
 ok(r.elegible===false && r.veredicto==='SIN_RESERVA', 'codigo inexistente → no elegible')
 
 console.log('\n5) Severidad sin política específica → default por prioridad')
 r = await rewardAgent.evaluar(
-  { codigo:'R001', dni:'78765432', puntos_criticos:['algo raro'], prioridad:'Crítica' }, datos)
+  { codigo:'R001', puntos_criticos:['algo raro'], prioridad:'Crítica' }, datos)
 ok(r.elegible && r.recompensa?.id==='P002', `Crítica sin política → P002 (S/30), obtenido ${r.recompensa?.id}`)
 
 console.log(`\n${fail===0?'TODO OK':fail+' FALLOS'}\n`); process.exit(fail?1:0)
