@@ -58,9 +58,9 @@ export function evaluarEvidencia(reclamo = {}, datos = {}) {
     }
   }
 
-  // 2. Buscar la reserva por su ID (código único) (case-insensitive)
+  // 2. Buscar la reserva por su ID (código único) (soporta UUID completo o el código corto de 6 caracteres del final)
   const normalizedCodigo = codigo.trim().toLowerCase()
-  const reserva = reservations.find(r => r.id.toLowerCase() === normalizedCodigo)
+  const reserva = reservations.find(r => r.id.toLowerCase() === normalizedCodigo || r.id.toLowerCase().endsWith(normalizedCodigo))
 
   if (!reserva) {
     return {

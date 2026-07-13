@@ -66,8 +66,8 @@ export const ROLE_PERMISSIONS = {
     canViewComplaints: false,
     canViewAudit: false,
     canViewSecurity: false,
-    // Puede modificar items de pedidos
-    canModifyOrderItems: true,
+    // Puede modificar items de pedidos (solo Lider lo tiene en true ahora)
+    canModifyOrderItems: false,
     canEditClients: false,
   },
   hostess: {

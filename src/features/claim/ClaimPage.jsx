@@ -152,7 +152,7 @@ export default function ClaimPage() {
 
             {showHelp && (
               <div className={styles.helpBox}>
-                <p>📄 <strong>En tu boleta impresa:</strong> Aparece al final como un código largo (ejemplo: <code>92c5b9df-2708-4d01-bacb-13eb79c50b74</code>).</p>
+                <p>📄 <strong>En tu boleta impresa:</strong> Aparece al final como un código corto de 6 letras/números (ejemplo: <code>A3F91B</code>).</p>
                 <p>📱 <strong>En tu tarjeta de reserva:</strong> Lo encuentras debajo de tu nombre, junto al icono <code>#</code>.</p>
                 <p>💡 <strong>¿No lo tienes?</strong> Pide al personal de caja que te lo proporcione. Ellos pueden verlo en el sistema.</p>
               </div>
