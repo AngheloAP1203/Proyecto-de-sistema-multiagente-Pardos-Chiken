@@ -65,7 +65,7 @@ const NAV_ITEMS = [
     path: '/clientes',
     label: 'Clientes',
     icon: <Users size={20} />,
-    roles: ['admin', 'cajero', 'hostess'],
+    roles: ['admin'],
   },
   {
     id: 'cash',
@@ -107,14 +107,14 @@ const NAV_ITEMS = [
     path: '/asistente',
     label: 'Asistente IA',
     icon: <Bot size={20} />,
-    roles: ['admin', 'cajero', 'hostess'],
+    roles: ['admin'],
   },
   {
     id: 'complaints',
     path: '/quejas',
     label: 'Quejas IA',
     icon: <MessageSquare size={20} />,
-    roles: ['admin', 'cajero', 'hostess'],
+    roles: ['admin'],
   },
   {
     id: 'audit',
@@ -185,6 +185,7 @@ export default function AppLayout() {
         {/* Navegación */}
         <nav className={styles.nav} aria-label="Navegación principal">
           {/* Botón especial para el Sistema Multiagente */}
+          {user?.role === 'admin' && (
           <button
             className={styles.agentSidebarBtn}
             onClick={() => setAgentDrawer(true)}
@@ -206,6 +207,7 @@ export default function AppLayout() {
             )}
             <ChevronRight size={14} className={styles.agentSidebarChevron} />
           </button>
+          )}
 
           <ul className={styles.navList}>
             {allowedNav.map(item => (

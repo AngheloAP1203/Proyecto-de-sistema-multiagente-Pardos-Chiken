@@ -20,7 +20,7 @@ import { Link } from 'react-router-dom'
 import {
   UtensilsCrossed, ArrowLeft, Fingerprint, Hash, Gift, ShieldCheck,
   ShieldAlert, Loader2, Ticket, Star, ChevronRight, ChevronLeft, CheckCircle2,
-  AlertTriangle,
+  AlertTriangle, HelpCircle, Receipt,
 } from 'lucide-react'
 import { useReservations } from '../../context/ReservationContext'
 import { useCash } from '../../context/CashContext'
@@ -43,16 +43,16 @@ export default function ClaimPage() {
   const { findByDni }    = useClients()
   const { addComplaint, complaints } = useComplaints()
 
-  const [step, setStep]         = useState(1)        // 1..3 | 'result'
+  const [step, setStep]         = useState(1)
   const [dni,  setDni]          = useState('')
-  const [codigo, setCodigo]     = useState('')        // UUID de la reserva
+  const [codigo, setCodigo]     = useState('')
   const [respuestas, setResp]   = useState({})
   const [enviando, setEnviando] = useState(false)
   const [resultado, setResultado] = useState(null)
+  const [showHelp, setShowHelp] = useState(false)
 
   const setR = (id, valor) => setResp(prev => ({ ...prev, [id]: valor }))
 
-  // Datos de verificación (con quejas previas para detectar duplicados).
   const datosVerificacion = () => ({
     reservations: reservations.map(r => ({ ...r, clientId: r.client_id })),
     payments, kitchenTickets: tickets,
@@ -61,14 +61,11 @@ export default function ClaimPage() {
   })
 
   const paso1Valido = soloDigitos(dni).length >= 6 && codigo.trim().length >= 8
-  // Las preguntas visibles cambian según las respuestas (condicionales).
   const visibles = preguntasVisibles(respuestas)
   const paso2Valido = respuestas.categoria && respuestas.satisfaccion && respuestas.impacto
 
   const enviar = async () => {
     if (enviando) return
-
-    // Throttle anti fuerza-bruta (F-04).
     const limite = intentoPermitido('reclamo.verify', { max: 6, windowMs: 300_000 })
     if (!limite.ok) {
       setResultado({ elegible: false, bloqueado: true,
@@ -81,72 +78,51 @@ export default function ClaimPage() {
     try {
       const { severidad, puntos_criticos } = analizarRespuestas(respuestas)
       const mensaje = respuestasATexto(respuestas)
-
-      const reclamo = {
-        codigo: codigo.trim(),
-        dni,
-        mensaje,
-        puntos_criticos,
-        prioridad: severidad,
-      }
-
-      // Verificación anti-fraude + recompensa (determinista; el LLM solo redacta).
+      const reclamo = { codigo: codigo.trim(), dni, mensaje, puntos_criticos, prioridad: severidad }
       const res = await rewardAgent.evaluar(reclamo, datosVerificacion())
 
-      // Si es legítimo, GUARDA la queja en Supabase.
       if (res.elegible) {
         const clientId = res.clientId || findByDni(dni)?.id
         if (clientId) {
           try {
             await addComplaint({
-              clientId,
-              reservationId: res.reservationId,
+              clientId, reservationId: res.reservationId,
               fecha: new Date().toISOString().split('T')[0],
-              canal: 'Web',
-              estado: 'nueva',
-              prioridad: severidad,
-              mensaje,
-              puntos_criticos,
-              sentimiento: 'negativo',
-              razonamiento: 'Cuestionario guiado del cliente (preguntas cerradas + abierta)',
-              respuesta_cliente: res.mensaje,
-              respuestas,
+              canal: 'Web', estado: 'nueva', prioridad: severidad,
+              mensaje, puntos_criticos, sentimiento: 'negativo',
+              razonamiento: 'Cuestionario guiado del cliente',
+              respuesta_cliente: res.mensaje, respuestas,
             })
           } catch (err) { console.warn('No se pudo guardar la queja:', err) }
         }
       }
-
       setResultado(res)
       setStep('result')
-    } finally {
-      setEnviando(false)
-    }
+    } finally { setEnviando(false) }
   }
 
-  const reiniciar = () => {
-    setStep(1); setDni(''); setCodigo(''); setResp({}); setResultado(null)
-  }
+  const reiniciar = () => { setStep(1); setDni(''); setCodigo(''); setResp({}); setResultado(null) }
 
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <Link to="/login" className={styles.back}><ArrowLeft size={16} /> Volver</Link>
+        <Link to="/login" className={styles.back}><ArrowLeft size={16} /> Volver al inicio</Link>
 
         <header className={styles.head}>
           <div className={styles.logo}><UtensilsCrossed size={22} /></div>
           <div>
-            <h1 className={styles.title}>Reclamos con recompensa</h1>
-            <p className={styles.subtitle}>Responde unas preguntas rápidas. Si tu reclamo es válido, te compensamos.</p>
+            <h1 className={styles.title}>¿Tuviste un problema?</h1>
+            <p className={styles.subtitle}>Cuéntanos qué pasó y te compensamos. Solo toma 2 minutos.</p>
           </div>
         </header>
 
-        {/* Barra de progreso (pasos 1–3) */}
+        {/* Barra de progreso */}
         {step !== 'result' && (
           <div className={styles.steps}>
             {[1, 2, 3].map(n => (
               <div key={n} className={`${styles.stepDot} ${step >= n ? styles.stepActive : ''}`}>
                 <span>{n}</span>
-                <em>{n === 1 ? 'Identificación' : n === 2 ? 'Cuestionario' : 'Comentario'}</em>
+                <em>{n === 1 ? 'Identifícate' : n === 2 ? 'Cuéntanos' : 'Detalle'}</em>
               </div>
             ))}
           </div>
@@ -159,22 +135,34 @@ export default function ClaimPage() {
               <div className={styles.field}>
                 <label><Fingerprint size={13} /> Tu DNI</label>
                 <input value={dni} onChange={e => setDni(e.target.value)}
-                  inputMode="numeric" placeholder="78765432" maxLength={12} />
+                  inputMode="numeric" placeholder="Ej. 78765432" maxLength={12} />
               </div>
               <div className={styles.field}>
-                <label><Hash size={13} /> Código de reserva / boleta</label>
+                <label><Receipt size={13} /> Código de tu visita</label>
                 <input value={codigo} onChange={e => setCodigo(e.target.value)}
-                  placeholder="Ej. 92c5b9df-2708-4d01-bacb-..." />
+                  placeholder="Copia el código de tu boleta" />
               </div>
             </div>
-            <div className={styles.hintBox}>
-              <p className={styles.hint}>
-                <ShieldCheck size={12} /> El código lo encuentras en tu <strong>boleta impresa</strong> o en la <strong>tarjeta de tu reserva</strong> (debajo del nombre).
-              </p>
-              <p className={styles.hint}>
-                <AlertTriangle size={12} /> Solo puedes enviar <strong>un reclamo por visita</strong>. Así protegemos tu identidad y agilizamos la solución.
-              </p>
+
+            {/* Ayuda expandible */}
+            <button className={styles.helpToggle} onClick={() => setShowHelp(!showHelp)} type="button">
+              <HelpCircle size={14} />
+              {showHelp ? 'Ocultar ayuda' : '¿Dónde encuentro mi código?'}
+            </button>
+
+            {showHelp && (
+              <div className={styles.helpBox}>
+                <p>📄 <strong>En tu boleta impresa:</strong> Aparece al final como un código largo (ejemplo: <code>92c5b9df-2708-4d01-bacb-13eb79c50b74</code>).</p>
+                <p>📱 <strong>En tu tarjeta de reserva:</strong> Lo encuentras debajo de tu nombre, junto al icono <code>#</code>.</p>
+                <p>💡 <strong>¿No lo tienes?</strong> Pide al personal de caja que te lo proporcione. Ellos pueden verlo en el sistema.</p>
+              </div>
+            )}
+
+            <div className={styles.infoBox}>
+              <ShieldCheck size={14} />
+              <p>Verificamos tu identidad para protegerte. Solo el titular de la reserva puede presentar un reclamo. <strong>Un reclamo por visita.</strong></p>
             </div>
+
             <div className={styles.navRow}>
               <span />
               <button className={styles.btnNext} disabled={!paso1Valido} onClick={() => setStep(2)}>
@@ -195,12 +183,9 @@ export default function ClaimPage() {
                 {p.tipo === 'opcion' && (
                   <div className={styles.options}>
                     {p.opciones.map(o => (
-                      <button
-                        key={o.valor}
-                        type="button"
+                      <button key={o.valor} type="button"
                         className={`${styles.option} ${respuestas[p.id] === o.valor ? styles.optionSel : ''}`}
-                        onClick={() => setR(p.id, o.valor)}
-                      >
+                        onClick={() => setR(p.id, o.valor)}>
                         {respuestas[p.id] === o.valor && <CheckCircle2 size={14} />}
                         {o.label}
                       </button>
@@ -211,13 +196,9 @@ export default function ClaimPage() {
                 {p.tipo === 'rating' && (
                   <div className={styles.rating}>
                     {[1, 2, 3, 4, 5].map(n => (
-                      <button
-                        key={n}
-                        type="button"
+                      <button key={n} type="button"
                         className={`${styles.star} ${Number(respuestas[p.id]) >= n ? styles.starOn : ''}`}
-                        onClick={() => setR(p.id, n)}
-                        aria-label={`${n} estrellas`}
-                      >
+                        onClick={() => setR(p.id, n)} aria-label={`${n} estrellas`}>
                         <Star size={26} fill={Number(respuestas[p.id]) >= n ? 'currentColor' : 'none'} />
                       </button>
                     ))}
@@ -241,17 +222,15 @@ export default function ClaimPage() {
           <div className={styles.stepBody}>
             <div className={styles.question}>
               <p className={styles.qTitle}>{PREGUNTA_ABIERTA.titulo}</p>
-              <textarea
-                className={styles.openText}
+              <textarea className={styles.openText}
                 value={respuestas.comentario || ''}
                 onChange={e => setR('comentario', e.target.value)}
-                placeholder={PREGUNTA_ABIERTA.placeholder}
-                rows={4}
-              />
+                placeholder={PREGUNTA_ABIERTA.placeholder} rows={4} />
             </div>
-            <p className={styles.hint}>
-              <ShieldCheck size={12} /> Al enviar, verificamos tu consumo y, si corresponde, te asignamos una recompensa.
-            </p>
+            <div className={styles.infoBox}>
+              <ShieldCheck size={14} />
+              <p>Al enviar, verificamos tu consumo y, si corresponde, te asignamos una recompensa de inmediato.</p>
+            </div>
             <div className={styles.navRow}>
               <button className={styles.btnBack} onClick={() => setStep(2)} disabled={enviando}>
                 <ChevronLeft size={16} /> Atrás
@@ -278,12 +257,13 @@ export default function ClaimPage() {
   )
 }
 
-// ── Pantalla de resultado: recompensa o rechazo ───────────────────────────────
+// ── Pantalla de resultado ─────────────────────────────────────────────────────
 function Resultado({ res }) {
   if (res.elegible) {
     return (
       <div className={`${styles.result} ${styles.resultOk}`}>
         <div className={`${styles.resultIcon} ${styles.iconReward}`}><Gift size={22} /></div>
+        <h3 className={styles.resultTitle}>¡Tu reclamo fue aceptado!</h3>
         <p className={styles.resultText}>{res.mensaje}</p>
         {res.recompensa && (
           <div className={styles.coupon}>
@@ -304,11 +284,17 @@ function Resultado({ res }) {
   return (
     <div className={`${styles.result} ${styles.resultReject}`}>
       <div className={`${styles.resultIcon} ${styles.iconReject}`}><ShieldAlert size={22} /></div>
+      <h3 className={styles.resultTitle}>No pudimos verificar tu reclamo</h3>
       <p className={styles.resultText}>{res.mensaje}</p>
       {!res.bloqueado && (
-        <span className={styles.rejectTag}>
-          <ShieldAlert size={11} /> Reclamo no verificado
-        </span>
+        <div className={styles.rejectHelp}>
+          <p>💡 <strong>¿Necesitas ayuda?</strong></p>
+          <ul>
+            <li>Verifica que tu DNI y código sean correctos.</li>
+            <li>Si no tienes el código, pídelo al personal de caja.</li>
+            <li>También puedes acercarte directamente al mostrador.</li>
+          </ul>
+        </div>
       )}
     </div>
   )

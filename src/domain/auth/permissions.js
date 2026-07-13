@@ -21,12 +21,21 @@ export const ROLE_PERMISSIONS = {
     // Cocina
     canViewKitchen: true,
     canManageKitchenOrders: true,
-    // Acciones exclusivas del admin
+    // Acciones exclusivas del admin/líder
     canDeleteClients: true,
     canDeleteReservations: true,
     canSeatGuests: true,
-    // Gestión del menú (solo admin/líder)
     canManageMenu: true,
+    // IA y Agentes — SOLO el líder
+    canViewAgents: true,
+    canViewAssistant: true,
+    canViewComplaints: true,
+    canViewAudit: true,
+    canViewSecurity: true,
+    // Modificar items de pedidos ya enviados a cocina
+    canModifyOrderItems: true,
+    // Modificar datos de clientes
+    canEditClients: true,
   },
 
   cajero: {
@@ -35,7 +44,7 @@ export const ROLE_PERMISSIONS = {
     canManageUsers: false,
     canManageReservations: true,
     canViewReports: true,
-    canManageClients: true,
+    canManageClients: false,
     canManageTables: false,
     canViewAllReservations: true,
     canCancelAnyReservation: true,
@@ -51,6 +60,15 @@ export const ROLE_PERMISSIONS = {
     canDeleteClients: false,
     canDeleteReservations: false,
     canSeatGuests: false,
+    // IA — NO
+    canViewAgents: false,
+    canViewAssistant: false,
+    canViewComplaints: false,
+    canViewAudit: false,
+    canViewSecurity: false,
+    // Puede modificar items de pedidos
+    canModifyOrderItems: true,
+    canEditClients: false,
   },
   hostess: {
     label: 'Anfitriona de Bienvenida',
@@ -58,7 +76,7 @@ export const ROLE_PERMISSIONS = {
     canManageUsers: false,
     canManageReservations: true,
     canViewReports: false,
-    canManageClients: true,
+    canManageClients: false,
     canManageTables: true,
     canViewAllReservations: true,
     canCancelAnyReservation: false,
@@ -74,6 +92,15 @@ export const ROLE_PERMISSIONS = {
     canDeleteClients: false,
     canDeleteReservations: false,
     canSeatGuests: true,
+    // IA — NO
+    canViewAgents: false,
+    canViewAssistant: false,
+    canViewComplaints: false,
+    canViewAudit: false,
+    canViewSecurity: false,
+    // Solo agregar, NO quitar items
+    canModifyOrderItems: false,
+    canEditClients: false,
   },
   mozo: {
     label: 'Mozo/a',
@@ -97,6 +124,15 @@ export const ROLE_PERMISSIONS = {
     canDeleteClients: false,
     canDeleteReservations: false,
     canSeatGuests: false,
+    // IA — NO
+    canViewAgents: false,
+    canViewAssistant: false,
+    canViewComplaints: false,
+    canViewAudit: false,
+    canViewSecurity: false,
+    // Solo agregar, NO quitar items
+    canModifyOrderItems: false,
+    canEditClients: false,
   },
   jefe_cocina: {
     label: 'Jefe de Cocina',
@@ -120,5 +156,13 @@ export const ROLE_PERMISSIONS = {
     canDeleteClients: false,
     canDeleteReservations: false,
     canSeatGuests: false,
+    // IA — NO
+    canViewAgents: false,
+    canViewAssistant: false,
+    canViewComplaints: false,
+    canViewAudit: false,
+    canViewSecurity: false,
+    canModifyOrderItems: false,
+    canEditClients: false,
   },
 }

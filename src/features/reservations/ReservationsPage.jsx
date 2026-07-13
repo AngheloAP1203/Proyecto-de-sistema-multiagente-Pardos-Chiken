@@ -334,8 +334,8 @@ export default function ReservationsPage() {
               canCancel={hasPermission('canCancelAnyReservation')}
               onDelete={hasPermission('canDeleteReservations') ? () => deleteReservationFromDB(r.id) : null}
               onUpdateItems={(newItems, notes) => syncTicketItems(r.id, newItems)}
-              canAddItems={['mozo', 'cajero', 'admin', 'lider'].includes(user?.role)}
-              canModifyExisting={['lider', 'admin', 'cajero'].includes(user?.role)}
+              canAddItems={['mozo', 'cajero', 'admin', 'hostess'].includes(user?.role)}
+              canModifyExisting={hasPermission('canModifyOrderItems')}
             />
           ))}
         </div>
