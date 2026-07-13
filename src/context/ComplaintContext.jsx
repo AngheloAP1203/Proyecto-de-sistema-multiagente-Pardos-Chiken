@@ -24,21 +24,25 @@ export function ComplaintProvider({ children }) {
   useEffect(() => { complaintsRef.current = complaints }, [complaints])
 
   const loadComplaints = async () => {
-    const { data, error } = await supabase.from('complaints').select('*').order('date', { ascending: false })
+    const { data, error } = await supabase.from('complaints').select('*').order('fecha', { ascending: false })
     if (!error && data) {
       // Mapear campos de supabase a los esperados por el frontend
       const mapped = data.map(c => ({
         id: c.id,
-        cliente: c.client_name,
-        email: c.client_email,
-        dni: c.client_dni,
+        fecha: c.fecha,
+        canal: c.canal,
+        cliente: c.cliente,
+        telefono: c.telefono,
+        mensaje: c.mensaje,
         tableId: c.table_id,
-        mensaje: c.message,
-        estado: c.status,
-        prioridad: c.severity,
-        fecha: c.date,
-        tags: c.tags,
-        resolution: c.resolution ? JSON.parse(c.resolution) : null
+        razonamiento: c.razonamiento,
+        sentimiento: c.sentimiento,
+        prioridad: c.prioridad,
+        sede: c.sede,
+        puntos_criticos: c.puntos_criticos,
+        respuesta_cliente: c.respuesta_cliente,
+        estado: c.estado,
+        createdAt: c.created_at
       }))
       setComplaints(mapped)
     }
@@ -52,22 +56,41 @@ export function ComplaintProvider({ children }) {
 
   const addComplaint = useCallback(async (complaint) => {
     const record = {
-      id: complaint.id || `Q${Date.now().toString().slice(-6)}`,
-      client_name: complaint.cliente || '',
-      client_email: complaint.email || '',
-      client_dni: complaint.dni || '',
-      table_id: complaint.tableId || '',
-      message: complaint.mensaje || '',
-      status: complaint.estado || 'nueva',
-      severity: complaint.prioridad || 'Baja',
-      date: complaint.fecha || new Date().toISOString(),
-      tags: complaint.tags || [],
-      resolution: complaint.resolution ? JSON.stringify(complaint.resolution) : null
+      fecha: complaint.fecha || new Date().toISOString().split('T')[0],
+      canal: complaint.canal || 'Web',
+      cliente: complaint.cliente || 'Desconocido',
+      telefono: complaint.telefono || '',
+      mensaje: complaint.mensaje || '',
+      table_id: complaint.tableId || null,
+      razonamiento: complaint.razonamiento || '',
+      sentimiento: complaint.sentimiento || '',
+      prioridad: complaint.prioridad || 'Baja',
+      sede: complaint.sede || 'San Isidro',
+      puntos_criticos: complaint.puntos_criticos || null,
+      respuesta_cliente: complaint.respuesta_cliente || '',
+      estado: complaint.estado || 'nueva'
     }
     
-    const { error } = await supabase.from('complaints').insert(record)
-    if (!error) {
-      setComplaints(prev => [{ ...complaint, id: record.id, fecha: record.date, estado: record.status }, ...prev])
+    const { data: inserted, error } = await supabase.from('complaints').insert(record).select().single()
+    if (!error && inserted) {
+      const mapped = {
+        id: inserted.id,
+        fecha: inserted.fecha,
+        canal: inserted.canal,
+        cliente: inserted.cliente,
+        telefono: inserted.telefono,
+        mensaje: inserted.mensaje,
+        tableId: inserted.table_id,
+        razonamiento: inserted.razonamiento,
+        sentimiento: inserted.sentimiento,
+        prioridad: inserted.prioridad,
+        sede: inserted.sede,
+        puntos_criticos: inserted.puntos_criticos,
+        respuesta_cliente: inserted.respuesta_cliente,
+        estado: inserted.estado,
+        createdAt: inserted.created_at
+      }
+      setComplaints(prev => [mapped, ...prev])
     }
     
     const isClientAction = !user

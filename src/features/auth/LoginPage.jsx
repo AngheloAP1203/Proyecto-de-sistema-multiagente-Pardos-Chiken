@@ -63,11 +63,25 @@ export default function LoginPage() {
     }
   }
 
-  // Acceso rápido para demos
-  const quickLogin = (user) => {
-    // La contraseña de demo vive en DEMO_LOGINS (el seed de usuarios ya no la guarda).
+  // Autocompletar credenciales (en vez de "demo")
+  const quickLogin = async (user) => {
+    // La contraseña de demo vive en DEMO_LOGINS
     const demo = DEMO_LOGINS.find(d => d.email === user.email)
-    setForm({ email: user.email, password: demo?.password || '' })
+    const pass = demo?.password || ''
+    setForm({ email: user.email, password: pass })
+    
+    if (pass) {
+      setIsLoading(true)
+      const result = await login(user.email, pass)
+      setIsLoading(false)
+
+      if (result.success) {
+        toast.success(result.message)
+      } else {
+        toast.error(result.message)
+        setErrors({ password: result.message })
+      }
+    }
   }
 
   return (
@@ -168,9 +182,9 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Acceso rápido para demo */}
+          {/* Autocompletar credenciales */}
           <div className={styles.quickAccess}>
-            <p className={styles.quickLabel}>Acceso rápido (demo)</p>
+            <p className={styles.quickLabel}>Autocompletar credenciales</p>
             <div className={styles.quickGrid}>
               {MOCK_USERS.map(u => (
                 <button
