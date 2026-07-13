@@ -3,31 +3,23 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Motor de verificación anti-fraude de reclamos (M6).
  *
- * PRINCIPIO: la elegibilidad para recompensa la decide JAVASCRIPT, nunca el LLM.
- * Un cliente que reclama "porque sí" para sacar un cupón choca contra un cruce
- * de datos, no contra un modelo al que se pueda convencer con palabras.
- *
  * REGLA DE IDENTIDAD (decisión de negocio): DNI Y número de mesa.
- *   El reclamante debe indicar la mesa, y su DNI debe coincidir con el de
- *   quien reservó/consumió en esa mesa ese día. Ambas condiciones, no una.
  *
- * CADENA DE EVIDENCIA:
+ * CADENA DE EVIDENCIA (Backend / Supabase):
  *   Reserva(tableId, clientDni) → Comanda(tableId) → Pago(reservationId)
- *   El reclamo se valida contra los tres eslabones.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+import { supabase } from '../../domain/supabase'
+
 export const VEREDICTO = {
-  VERIFICADO:  'VERIFICADO',   // DNI + mesa + consumo confirmados → elegible
-  RECHAZADO:   'RECHAZADO',    // hubo consumo en la mesa, pero el DNI no coincide → fraude
-  SIN_COMANDA: 'SIN_COMANDA',  // esa mesa no tuvo pedido/consumo ese día → nadie comió ahí
-  SIN_MESA:    'SIN_MESA',     // el reclamo no indica mesa → no se puede verificar
+  VERIFICADO:  'VERIFICADO',
+  RECHAZADO:   'RECHAZADO',
+  SIN_COMANDA: 'SIN_COMANDA',
+  SIN_MESA:    'SIN_MESA',
 }
 
-/** Deja solo dígitos: "78 765 432" y "78-765-432" se comparan igual que "78765432". */
 const normDoc = (d) => String(d || '').replace(/\D/g, '')
-
-/** Normaliza el id de mesa: "T03", "t3", "mesa 3" → "3" para comparar (sin cero inicial). */
 const normMesa = (m) => String(m || '')
   .toLowerCase()
   .replace(/[^0-9a-z]/g, '')
@@ -40,19 +32,12 @@ const CONSUMIO = ['seated', 'completed', 'approved', 'confirmed']
 const HOY = () => new Date().toISOString().split('T')[0]
 
 /**
- * verificarReclamo — Núcleo determinista.
- *
- * @param {Object} reclamo   - { tableId, dni, fecha } del reclamo del cliente
- * @param {Object} datos     - { reservations, payments, kitchenTickets }
- * @returns {Object} { veredicto, elegible, motivo, cliente?, reservationId?, pago? }
+ * verificarReclamo — Consulta segura a Supabase.
+ * @param {Object} reclamo - { tableId, dni, fecha }
  */
-export function verificarReclamo(reclamo = {}, datos = {}) {
+export async function verificarReclamo(reclamo = {}) {
   const { tableId, dni, fecha } = reclamo
-  const reservations   = datos.reservations   || []
-  const payments       = datos.payments       || []
-  const kitchenTickets = datos.kitchenTickets || []
 
-  // 1. Sin mesa no hay forma de verificar identidad → no elegible.
   if (!tableId || normMesa(tableId) === '') {
     return {
       veredicto: VEREDICTO.SIN_MESA, elegible: false,
@@ -60,25 +45,41 @@ export function verificarReclamo(reclamo = {}, datos = {}) {
     }
   }
 
-  // 2. Reservas de esa mesa (ese día si se conoce la fecha).
-  const reservasMesa = reservations.filter(r =>
-    mismaMesa(r.tableId, tableId) && (!fecha || r.date === fecha))
+  const queryDate = fecha || HOY()
 
-  // Pagos ligados a esa mesa, del mismo día si se conoce la fecha.
-  const pagosMesa = payments.filter(p =>
-    (reservasMesa.some(r => r.id === p.reservationId) || (p.tableId && mismaMesa(p.tableId, tableId))) &&
-    (!fecha || !p.date || p.date === fecha))
+  // 1. Obtener Reservas de esa mesa y fecha
+  const { data: reservasMesa, error: resErr } = await supabase
+    .from('reservations')
+    .select('*')
+    .eq('date', queryDate)
 
-  // Comanda (ticket de cocina): es del día en curso; solo cuenta si el reclamo
-  // es de hoy (o no trae fecha). Una comanda de hoy no prueba un consumo de 2020.
-  const comandaCuenta = (!fecha || fecha === HOY()) &&
-    kitchenTickets.some(t => mismaMesa(t.tableId, tableId))
+  // 2. Obtener Pagos
+  const { data: pagosMesa, error: payErr } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('date', queryDate)
 
-  // 3. ¿Hubo consumo real en esa mesa ese día?
+  // 3. Obtener Comandas (Kitchen Tickets)
+  const { data: comandasMesa, error: kitErr } = await supabase
+    .from('kitchen_tickets')
+    .select('*')
+
+  if (resErr || payErr || kitErr) {
+    console.error('Error verificando reclamo:', resErr || payErr || kitErr)
+    return { veredicto: VEREDICTO.RECHAZADO, elegible: false, motivo: 'Error interno del servidor al verificar datos.' }
+  }
+
+  // Filtrar localmente por mesa (ya que normalizamos el formato en JS)
+  const reservasFiltradas = (reservasMesa || []).filter(r => mismaMesa(r.table_id, tableId))
+  const pagosFiltrados = (pagosMesa || []).filter(p => 
+    (reservasFiltradas.some(r => r.id === p.reservation_id) || (p.table_id && mismaMesa(p.table_id, tableId)))
+  )
+  const comandaCuenta = (comandasMesa || []).some(t => mismaMesa(t.table_id, tableId))
+
   const huboConsumo =
     comandaCuenta ||
-    pagosMesa.length > 0 ||
-    reservasMesa.some(r => CONSUMIO.includes(r.status))
+    pagosFiltrados.length > 0 ||
+    reservasFiltradas.some(r => CONSUMIO.includes(r.status))
 
   if (!huboConsumo) {
     return {
@@ -87,28 +88,25 @@ export function verificarReclamo(reclamo = {}, datos = {}) {
     }
   }
 
-  // 4. Identidad: el DNI del reclamo debe coincidir con quien ocupó la mesa.
-  //    Se comparan solo los dígitos, así "78 765 432" y "78-765-432" valen igual.
   const docId = normDoc(dni)
   const reservaCoincide = docId
-    ? reservasMesa.find(r => normDoc(r.clientDni) === docId)
+    ? reservasFiltradas.find(r => normDoc(r.client_dni) === docId)
     : null
 
   if (!reservaCoincide) {
     return {
       veredicto: VEREDICTO.RECHAZADO, elegible: false,
-      motivo: 'El DNI indicado no coincide con el de quien reservó y consumió en esa mesa. El reclamo no puede validarse.',
+      motivo: 'El DNI indicado no coincide con el de quien reservó y consumió en esa mesa.',
     }
   }
 
-  // 5. Verificado: mesa + DNI + consumo.
-  const pago = pagosMesa.find(p => p.reservationId === reservaCoincide.id) || pagosMesa[0] || null
+  const pago = pagosFiltrados.find(p => p.reservation_id === reservaCoincide.id) || pagosFiltrados[0] || null
   return {
-    veredicto:     VEREDICTO.VERIFICADO,
-    elegible:      true,
-    motivo:        'Identidad confirmada: DNI y mesa coinciden con un consumo registrado.',
-    cliente:       reservaCoincide.clientName,
+    veredicto: VEREDICTO.VERIFICADO,
+    elegible: true,
+    motivo: 'Identidad confirmada: DNI y mesa coinciden con un consumo registrado.',
+    cliente: reservaCoincide.client_name,
     reservationId: reservaCoincide.id,
-    pago:          pago ? { id: pago.id, amount: pago.amount, fecha: pago.date } : null,
+    pago: pago ? { id: pago.id, amount: pago.amount, fecha: pago.date } : null,
   }
 }

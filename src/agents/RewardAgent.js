@@ -67,7 +67,7 @@ class RewardAgentClass {
     const fecha = reclamo.fecha || new Date().toISOString().split('T')[0]
 
     // 1. VERIFICACIÓN ANTI-FRAUDE (determinista, antes que cualquier LLM).
-    const verif = verificarReclamo({ tableId: reclamo.tableId, dni: reclamo.dni, fecha }, datos)
+    const verif = await verificarReclamo({ tableId: reclamo.tableId, dni: reclamo.dni, fecha })
 
     if (!verif.elegible) {
       const res = {

@@ -1,10 +1,25 @@
-const API_URL = 'http://localhost:3001/api/reservations'
+import { supabase } from '../domain/supabase'
 
 export const fetchRequested = async () => {
   try {
-    const res = await fetch(`${API_URL}/requested`)
-    if (!res.ok) return []
-    return await res.json()
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('*')
+      .eq('status', 'requested')
+      
+    if (error) return []
+    // Mapear de supabase a frontend format
+    return data.map(r => ({
+      id: r.id,
+      clientName: r.client_name,
+      clientDni: r.client_dni,
+      tableId: r.table_id,
+      date: r.date,
+      time: r.time,
+      pax: r.pax,
+      status: r.status,
+      notes: r.notes || ''
+    }))
   } catch {
     return []
   }
@@ -12,11 +27,14 @@ export const fetchRequested = async () => {
 
 export const patchReservation = async (id, payload) => {
   try {
-    await fetch(`${API_URL}/${id}`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
-    })
+    const updatePayload = {}
+    if (payload.status) updatePayload.status = payload.status
+    if (payload.tableId) updatePayload.table_id = payload.tableId
+
+    await supabase
+      .from('reservations')
+      .update(updatePayload)
+      .eq('id', id)
   } catch {
     // Silent error handler corresponding to existing behaviour
   }

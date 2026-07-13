@@ -1,16 +1,13 @@
 /**
  * src/context/ComplaintContext.jsx
  * ─────────────────────────────────────────────────────────────────────────────
- * Contexto global de quejas (módulo de IA).
- * Centraliza el registro, listado y actualización de las quejas triadas.
- * Espejo de ClientContext, con un ref para que los agentes lean siempre el
- * estado más reciente (evita closures obsoletos al inyectar context actions).
+ * Contexto global de quejas.
+ * Centraliza el registro, listado y actualización de las quejas consultando a Supabase.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { SAMPLE_COMPLAINTS } from '../data/seeds/complaintsSeed'
-import { readJSON, writeJSON } from '../data/storage/localStorage'
+import { supabase } from '../domain/supabase'
 import { auditLogger } from '../agents/core/auditLogger'
 import { useAuth } from './AuthContext'
 import toast from 'react-hot-toast'
@@ -23,62 +20,93 @@ export function ComplaintProvider({ children }) {
   const { user } = useAuth()
   const actorName = user ? `${user.name} (${user.role})` : 'Sistema'
 
-  // Ref siempre actualizado → los agentes leen la lista más reciente
   const complaintsRef = useRef([])
   useEffect(() => { complaintsRef.current = complaints }, [complaints])
 
-  // Cargar quejas desde localStorage (o seeds)
-  useEffect(() => {
-    const saved = readJSON('pardos_complaints', null)
-    setComplaints(saved || SAMPLE_COMPLAINTS)
+  const loadComplaints = async () => {
+    const { data, error } = await supabase.from('complaints').select('*').order('date', { ascending: false })
+    if (!error && data) {
+      // Mapear campos de supabase a los esperados por el frontend
+      const mapped = data.map(c => ({
+        id: c.id,
+        cliente: c.client_name,
+        email: c.client_email,
+        dni: c.client_dni,
+        tableId: c.table_id,
+        mensaje: c.message,
+        estado: c.status,
+        prioridad: c.severity,
+        fecha: c.date,
+        tags: c.tags,
+        resolution: c.resolution ? JSON.parse(c.resolution) : null
+      }))
+      setComplaints(mapped)
+    }
     setIsLoading(false)
+  }
+
+  // Cargar quejas desde Supabase
+  useEffect(() => {
+    loadComplaints()
   }, [])
 
-  // Persistir en localStorage
-  useEffect(() => {
-    if (!isLoading) writeJSON('pardos_complaints', complaints)
-  }, [complaints, isLoading])
-
-  /**
-   * addComplaint — Inserta una queja ya triada (la genera el ComplaintAgent).
-   * Si no trae id, se genera uno.
-   */
-  const addComplaint = useCallback((complaint) => {
+  const addComplaint = useCallback(async (complaint) => {
     const record = {
       id: complaint.id || `Q${Date.now().toString().slice(-6)}`,
-      fecha: complaint.fecha || new Date().toISOString(),
-      estado: complaint.estado || 'nueva',
-      ...complaint,
+      client_name: complaint.cliente || '',
+      client_email: complaint.email || '',
+      client_dni: complaint.dni || '',
+      table_id: complaint.tableId || '',
+      message: complaint.mensaje || '',
+      status: complaint.estado || 'nueva',
+      severity: complaint.prioridad || 'Baja',
+      date: complaint.fecha || new Date().toISOString(),
+      tags: complaint.tags || [],
+      resolution: complaint.resolution ? JSON.stringify(complaint.resolution) : null
     }
-    setComplaints(prev => [record, ...prev])
     
-    // Log as client if it comes from the agent/web, else as system/user
+    const { error } = await supabase.from('complaints').insert(record)
+    if (!error) {
+      setComplaints(prev => [{ ...complaint, id: record.id, fecha: record.date, estado: record.status }, ...prev])
+    }
+    
     const isClientAction = !user
     auditLogger.record({
       actor: isClientAction ? `${complaint.cliente || 'Cliente'} (${complaint.canal || 'Web'})` : actorName,
       tipoActor: isClientAction ? 'cliente' : 'usuario',
       accion: 'complaint.create',
       nivel: 'warn',
-      detalle: { id: record.id, sede: record.sede }
+      detalle: { id: record.id }
     })
 
-    return record
+    return { ...complaint, id: record.id }
   }, [user, actorName])
 
-  const updateComplaint = useCallback((id, updates) => {
-    setComplaints(prev =>
-      prev.map(c => c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c)
-    )
-    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'complaint.update', nivel: 'info', detalle: { id, updates } })
+  const updateComplaint = useCallback(async (id, updates) => {
+    const recordUpdates = {}
+    if (updates.estado) recordUpdates.status = updates.estado
+    if (updates.resolution) recordUpdates.resolution = JSON.stringify(updates.resolution)
+    
+    const { error } = await supabase.from('complaints').update(recordUpdates).eq('id', id)
+    if (!error) {
+      setComplaints(prev =>
+        prev.map(c => c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c)
+      )
+      auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'complaint.update', nivel: 'info', detalle: { id, updates } })
+    }
   }, [actorName])
 
-  const deleteComplaint = useCallback((id) => {
-    setComplaints(prev => prev.filter(c => c.id !== id))
-    auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'complaint.delete', nivel: 'warn', detalle: { id } })
-    toast.success('Queja eliminada')
+  const deleteComplaint = useCallback(async (id) => {
+    const { error } = await supabase.from('complaints').delete().eq('id', id)
+    if (!error) {
+      setComplaints(prev => prev.filter(c => c.id !== id))
+      auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'complaint.delete', nivel: 'warn', detalle: { id } })
+      toast.success('Queja eliminada')
+    } else {
+      toast.error('Error al eliminar queja')
+    }
   }, [actorName])
 
-  /** Lectura síncrona del estado más reciente (para los agentes). */
   const getComplaints = useCallback(() => complaintsRef.current, [])
 
   const getBySede = useCallback((sede) => {
@@ -111,3 +139,4 @@ export function useComplaints() {
 }
 
 export default ComplaintContext
+

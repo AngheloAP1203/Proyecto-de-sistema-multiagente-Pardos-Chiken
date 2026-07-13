@@ -3,15 +3,14 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Contexto global de autenticación.
  * Provee el estado del usuario autenticado, su rol y las funciones de
- * login / logout a toda la aplicación mediante React Context API.
+ * login / logout usando Supabase.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { supabase } from '../domain/supabase'
 import { MOCK_USERS } from '../data/seeds/usersSeed'
-import { hashPassword } from '../domain/auth/passwordHash'
 import { ROLE_PERMISSIONS } from '../domain/auth/permissions'
-import { readJSON, writeJSON, remove } from '../data/storage/localStorage'
 import { auditLogger } from '../agents/core/auditLogger'
 import toast from 'react-hot-toast'
 export { MOCK_USERS, ROLE_PERMISSIONS }
@@ -22,64 +21,89 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Restaurar sesión desde localStorage al montar
-  useEffect(() => {
-    const savedUser = readJSON('pardos_user', null)
-    if (savedUser) {
-      setUser(savedUser)
-    } else {
-      remove('pardos_user')
+  const fetchProfile = async (userId) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    if (error) {
+      console.error('Error fetching profile:', error)
+      return null
     }
-    setIsLoading(false)
+    return data
+  }
+
+  // Restaurar sesión desde Supabase al montar
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id)
+        if (profile) setUser(profile)
+      }
+      setIsLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id)
+        if (profile) setUser(profile)
+      } else {
+        setUser(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   /**
-   * login — Autentica un usuario con email + contraseña.
-   * Compara el hash de la contraseña ingresada contra el `passwordHash`
-   * almacenado; nunca se maneja la contraseña en claro más allá de este cálculo.
+   * login — Autentica un usuario con email + contraseña en Supabase.
    */
   const login = useCallback(async (email, password) => {
-    const candidato = MOCK_USERS.find(u => u.email === email.trim().toLowerCase())
-    // Se calcula el hash aunque el email no exista, para no filtrar por tiempo
-    // qué correos están registrados.
-    const hash = await hashPassword(candidato?.id || 'u000', password)
-    const found = candidato && hash === candidato.passwordHash ? candidato : null
-    if (!found) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    })
+
+    if (error) {
       toast.error('Correo o contraseña incorrectos.')
       return { success: false, message: 'Correo o contraseña incorrectos.' }
     }
-    const { passwordHash: _ph, ...safeUser } = found
-    setUser(safeUser)
-    writeJSON('pardos_user', safeUser)
+
+    const profile = await fetchProfile(data.user.id)
+    if (!profile) {
+      toast.error('Error al cargar perfil.')
+      return { success: false, message: 'Error al cargar perfil.' }
+    }
+
+    setUser(profile)
     
     auditLogger.record({
-      actor: `${safeUser.name} (${safeUser.role})`,
+      actor: `${profile.name} (${profile.role})`,
       tipoActor: 'usuario',
       accion: 'auth.login',
       nivel: 'info',
-      detalle: { email: safeUser.email }
+      detalle: { email: profile.email }
     })
 
-    toast.success(`Bienvenido, ${safeUser.name}`)
-    return { success: true, message: `Bienvenido, ${safeUser.name}` }
+    toast.success(`Bienvenido, ${profile.name}`)
+    return { success: true, message: `Bienvenido, ${profile.name}` }
   }, [])
 
-  /** logout — Cierra la sesión y limpia el storage. */
-  const logout = useCallback(() => {
-    setUser(prev => {
-      if (prev) {
-        auditLogger.record({
-          actor: `${prev.name} (${prev.role})`,
-          tipoActor: 'usuario',
-          accion: 'auth.logout',
-          nivel: 'info'
-        })
-      }
-      return null
-    })
-    remove('pardos_user')
+  /** logout — Cierra la sesión en Supabase. */
+  const logout = useCallback(async () => {
+    if (user) {
+      auditLogger.record({
+        actor: `${user.name} (${user.role})`,
+        tipoActor: 'usuario',
+        accion: 'auth.logout',
+        nivel: 'info'
+      })
+    }
+    await supabase.auth.signOut()
+    setUser(null)
     toast.success('Sesión cerrada correctamente')
-  }, [])
+  }, [user])
 
   /**
    * hasPermission — Verifica si el usuario actual tiene un permiso específico.
