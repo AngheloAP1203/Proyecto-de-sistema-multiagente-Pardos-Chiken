@@ -15,7 +15,7 @@
 import { useMemo, useState } from 'react'
 import {
   Send, Sparkles, Shield, AlertTriangle, Filter, Trash2, Bot, MessageSquare,
-  ShieldAlert, ShieldCheck, CheckCircle2, Activity,
+  ShieldAlert, ShieldCheck, CheckCircle2, Activity, Zap
 } from 'lucide-react'
 import { useComplaints } from '../../context/ComplaintContext'
 import { useAgents } from '../../context/AgentContext'
@@ -23,7 +23,8 @@ import { useAuth } from '../../context/AuthContext'
 import { Button } from '../../components/ui/Button'
 import { llmMode } from '../../agents/core/llmClient'
 import toast from 'react-hot-toast'
-import ResolutionPanel from './ResolutionPanel'
+import ReactMarkdown from 'react-markdown'
+import ResolutionPanel from '../resolutions/ResolutionPanel'
 import styles from './ComplaintsPage.module.css'
 
 const PRIORIDAD_CLASS = {
@@ -43,11 +44,44 @@ export default function ComplaintsPage() {
 
   // ── Filtro de bandeja ──
   const [sedeFilter, setSedeFilter] = useState('Todas')
+  const [estadoFilter, setEstadoFilter] = useState('Todas')
   const sedes = useMemo(
     () => ['Todas', ...Array.from(new Set(complaints.map(c => c.sede).filter(Boolean)))],
     [complaints]
   )
-  const displayed = complaints.filter(c => sedeFilter === 'Todas' || c.sede === sedeFilter)
+  const displayed = complaints.filter(c => 
+    (sedeFilter === 'Todas' || c.sede === sedeFilter) &&
+    (estadoFilter === 'Todas' || (estadoFilter === 'Resueltas' ? c.estado === 'resuelta' : c.estado !== 'resuelta'))
+  )
+
+  const [resolvingIds, setResolvingIds] = useState({})
+  const { updateComplaint } = useComplaints()
+
+  const handleAutoResolve = async (c) => {
+    setResolvingIds(prev => ({ ...prev, [c.id]: true }))
+    try {
+      const prompt = `Actúa como solucionador. Genera una solución concisa y directa para esta queja del cliente ${c.cliente}: "${c.mensaje}". Propón un descuento o cortesía si aplica, de forma amable y resolutiva.`
+      const res = await askLeaderQuery(prompt)
+      if (res.success) {
+        const confirmar = window.confirm(`Solución propuesta por la IA:\n\n${res.result}\n\n¿Deseas aplicar esta solución y enviar el correo de disculpas al cliente?`)
+        if (confirmar) {
+          await updateComplaint(c.id, {
+            estado: 'resuelta',
+            resolution: { respuesta_cliente: res.result }
+          })
+          toast.success(`Queja de ${c.cliente} resuelta. Correo enviado exitosamente (Simulado).`)
+        } else {
+          toast('Resolución cancelada.', { icon: 'ℹ️' })
+        }
+      } else {
+        toast.error('No se pudo generar solución')
+      }
+    } catch (err) {
+      toast.error('Error al resolver: ' + err.message)
+    } finally {
+      setResolvingIds(prev => ({ ...prev, [c.id]: false }))
+    }
+  }
 
 
 
@@ -109,6 +143,15 @@ export default function ComplaintsPage() {
               <Filter size={14} />
               <select
                 className={styles.select}
+                value={estadoFilter}
+                onChange={e => setEstadoFilter(e.target.value)}
+              >
+                <option value="Todas">Todos los estados</option>
+                <option value="Pendientes">Pendientes</option>
+                <option value="Resueltas">Resueltas</option>
+              </select>
+              <select
+                className={styles.select}
                 value={sedeFilter}
                 onChange={e => setSedeFilter(e.target.value)}
               >
@@ -132,6 +175,17 @@ export default function ComplaintsPage() {
                     </span>
                     <span className={styles.sede}>{c.sede}</span>
                     <span className={styles.estado} data-estado={c.estado}>{c.estado}</span>
+                    {c.estado !== 'resuelta' && (
+                      <button 
+                        className={styles.resolveBtn} 
+                        onClick={() => handleAutoResolve(c)} 
+                        title="Auto-Resolver con IA"
+                        disabled={resolvingIds[c.id]}
+                        style={{ background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: '0.75em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <Zap size={12} /> {resolvingIds[c.id] ? 'Resolviendo...' : 'Auto-Resolver'}
+                      </button>
+                    )}
                     {canDelete && (
                       <button className={styles.del} onClick={() => deleteComplaint(c.id)} title="Eliminar">
                         <Trash2 size={13} />
@@ -140,6 +194,11 @@ export default function ComplaintsPage() {
                   </div>
                   <p className={styles.cliente}>{c.cliente} · <span>{c.canal}</span></p>
                   <p className={styles.mensaje}>{c.mensaje}</p>
+                  {c.estado === 'resuelta' && c.resolution?.respuesta_cliente && (
+                    <div style={{ marginTop: 8, padding: 8, background: '#f8fafc', borderRadius: 6, fontSize: '0.85em', borderLeft: '3px solid var(--color-success)' }}>
+                      <strong>Solución de IA:</strong> <ReactMarkdown>{c.resolution.respuesta_cliente}</ReactMarkdown>
+                    </div>
+                  )}
                   <div className={styles.puntos}>
                     {(c.puntos_criticos || []).map((p, i) => (
                       <span key={i} className={styles.punto}>{p}</span>
@@ -169,8 +228,8 @@ export default function ComplaintsPage() {
                 </div>
               )}
               {chat.map((m, i) => (
-                <div key={i} className={m.role === 'user' ? styles.msgUser : styles.msgIa} style={{ whiteSpace: 'pre-wrap' }}>
-                  {m.text}
+                <div key={i} className={m.role === 'user' ? styles.msgUser : styles.msgIa}>
+                  {m.role === 'user' ? m.text : <ReactMarkdown>{m.text}</ReactMarkdown>}
                 </div>
               ))}
               {asking && <div className={styles.msgIa}>Consultando…</div>}

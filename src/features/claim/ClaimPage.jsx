@@ -17,16 +17,13 @@
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  UtensilsCrossed, ArrowLeft, Fingerprint, Hash, Gift, ShieldCheck,
-  ShieldAlert, Loader2, Ticket, Star, ChevronRight, ChevronLeft, CheckCircle2,
-  AlertTriangle, HelpCircle, Receipt,
-} from 'lucide-react'
+import { MessageSquare, ArrowLeft, Send, CheckCircle2, AlertCircle, UtensilsCrossed, ShieldCheck, HelpCircle, FileText, Frown, Phone, MapPin, Search, Plus, Calendar, Clock, ChevronRight, Fingerprint, Receipt } from 'lucide-react'
+import { useComplaints } from '../../context/ComplaintContext'
 import { useReservations } from '../../context/ReservationContext'
 import { useCash } from '../../context/CashContext'
 import { useKitchen } from '../../context/KitchenContext'
 import { useClients } from '../../context/ClientContext'
-import { useComplaints } from '../../context/ComplaintContext'
+import { evaluarEvidencia } from '../../agents/core/claimVerifier'
 import { rewardAgent } from '../../agents/RewardAgent'
 import { intentoPermitido } from '../../domain/security/rateGuard'
 import { PREGUNTAS, PREGUNTA_ABIERTA, preguntasVisibles, analizarRespuestas, respuestasATexto } from '../../domain/complaints/questionnaire'
@@ -63,6 +60,24 @@ export default function ClaimPage() {
   const paso1Valido = soloDigitos(dni).length >= 6 && codigo.trim().length >= 6
   const visibles = preguntasVisibles(respuestas)
   const paso2Valido = respuestas.categoria && respuestas.satisfaccion && respuestas.impacto
+
+  const handleNextStep1 = () => {
+    const res = evaluarEvidencia({ codigo, dni }, datosVerificacion())
+    if (res.veredicto === 'SIN_RESERVA') {
+      toast.error('No se encontró ninguna reserva con este código.')
+      return
+    }
+    if (res.veredicto === 'RECHAZADO') {
+      toast.error('El DNI ingresado no coincide con el titular de la reserva.')
+      return
+    }
+    if (res.veredicto === 'DUPLICADO') {
+      toast.error('Ya existe un reclamo registrado para esta visita.')
+      return
+    }
+    // Si pasa, avanzamos al paso 2
+    setStep(2)
+  }
 
   const enviar = async () => {
     if (enviando) return
@@ -165,7 +180,7 @@ export default function ClaimPage() {
 
             <div className={styles.navRow}>
               <span />
-              <button className={styles.btnNext} disabled={!paso1Valido} onClick={() => setStep(2)}>
+              <button className={styles.btnNext} disabled={!paso1Valido} onClick={handleNextStep1}>
                 Continuar <ChevronRight size={16} />
               </button>
             </div>
