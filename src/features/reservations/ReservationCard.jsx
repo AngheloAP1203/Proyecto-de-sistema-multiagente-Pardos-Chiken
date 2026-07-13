@@ -118,7 +118,7 @@ export default function ReservationCard({ reservation: r, onEdit, onSeat, onCanc
           )}
           <div className={styles.infoItem} style={{opacity: 0.65, fontSize: '0.85em'}}>
             <Hash size={12} />
-            <span title={r.id}>#{r.id}</span>
+            <span title={r.id}>#{r.id.split('-').pop().slice(-6).toUpperCase()}</span>
           </div>
           {r.clientPhone && (
             <div className={styles.infoItem}>

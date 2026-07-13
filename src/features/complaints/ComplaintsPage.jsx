@@ -49,32 +49,7 @@ export default function ComplaintsPage() {
   )
   const displayed = complaints.filter(c => sedeFilter === 'Todas' || c.sede === sedeFilter)
 
-  // ── M1: Nueva queja ──
-  const [mensaje, setMensaje] = useState('')
-  const [cliente, setCliente] = useState('')
-  const [triaging, setTriaging] = useState(false)
-  const [lastTriage, setLastTriage] = useState(null)
 
-  const handleTriage = async (e) => {
-    e.preventDefault()
-    if (!mensaje.trim()) { toast.error('Escribe el mensaje del cliente'); return }
-    setTriaging(true)
-    setLastTriage(null)
-    try {
-      const res = await triageComplaint({ mensaje, cliente, canal: 'WhatsApp' })
-      if (res.success) {
-        setLastTriage(res.result)
-        setMensaje(''); setCliente('')
-        toast.success(res.escalated ? '🚨 Queja CRÍTICA escalada al líder' : 'Queja registrada por IA')
-      } else {
-        toast.error(res.error || 'No se pudo analizar la queja')
-      }
-    } catch (err) {
-      toast.error(`Error: ${err.message}`)
-    } finally {
-      setTriaging(false)
-    }
-  }
 
   // ── M2: Analista del líder ──
   const [pregunta, setPregunta] = useState('')
@@ -180,47 +155,7 @@ export default function ComplaintsPage() {
         <aside className={styles.side}>
           {/* M4 — Resoluciones activas */}
           <ResolutionPanel />
-          {/* M1 — Nueva queja */}
-          <div className={styles.panel}>
-            <h3 className={styles.panelTitle}><Sparkles size={15} /> Nueva queja (triaje IA)</h3>
-            <form onSubmit={handleTriage} className={styles.form}>
-              <input
-                className={styles.input}
-                placeholder="Cliente (opcional)"
-                value={cliente}
-                onChange={e => setCliente(e.target.value)}
-              />
-              <textarea
-                className={styles.textarea}
-                placeholder="Pega aquí el mensaje del cliente…"
-                rows={4}
-                value={mensaje}
-                onChange={e => setMensaje(e.target.value)}
-              />
-              <Button type="submit" variant="primary" icon={<Sparkles size={15} />} isLoading={triaging} fullWidth>
-                {triaging ? 'Analizando…' : 'Analizar con IA'}
-              </Button>
-            </form>
 
-            {lastTriage && (
-              <div className={styles.result}>
-                <div className={styles.resultRow}>
-                  <span className={`${styles.badge} ${PRIORIDAD_CLASS[lastTriage.prioridad] || ''}`}>
-                    {lastTriage.prioridad}
-                  </span>
-                  <span className={styles.sede}>{lastTriage.sede}</span>
-                  <span className={styles.sentBadge}>Sentimiento: {lastTriage.sentimiento}</span>
-                </div>
-                <p className={styles.reason}><strong>Razonamiento:</strong> {lastTriage.razonamiento}</p>
-                <div className={styles.puntos}>
-                  {(lastTriage.puntos_criticos || []).map((p, i) => (
-                    <span key={i} className={styles.punto}>{p}</span>
-                  ))}
-                </div>
-                <p className={styles.respuesta}>💬 {lastTriage.respuesta_cliente}</p>
-              </div>
-            )}
-          </div>
 
           {/* M2 — Analista del líder */}
           <div className={styles.panel}>
@@ -234,7 +169,7 @@ export default function ComplaintsPage() {
                 </div>
               )}
               {chat.map((m, i) => (
-                <div key={i} className={m.role === 'user' ? styles.msgUser : styles.msgIa}>
+                <div key={i} className={m.role === 'user' ? styles.msgUser : styles.msgIa} style={{ whiteSpace: 'pre-wrap' }}>
                   {m.text}
                 </div>
               ))}
