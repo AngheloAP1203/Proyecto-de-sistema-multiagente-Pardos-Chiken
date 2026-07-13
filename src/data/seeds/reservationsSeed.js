@@ -1,5 +1,5 @@
 import { format, subDays } from 'date-fns'
-import { RESERVATION_STATUS } from '../../domain/reservations/reservationStatus'
+import { RESERVATION_STATUS } from '../../domain/reservations/reservationStatus.js'
 
 export const INITIAL_TABLES = Array.from({ length: 20 }, (_, i) => ({
   id: `T${String(i + 1).padStart(2, '0')}`,

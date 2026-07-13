@@ -28,7 +28,8 @@ const TIME_SLOTS = [
   '19:00','19:30','20:00','20:30','21:00','21:30',
 ]
 
-const today = new Date().toISOString().split('T')[0]
+// Usar la zona horaria local en lugar de UTC pura para evitar que salte de día anticipadamente
+const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]
 
 const EMPTY_FORM = {
   clientId:    '',

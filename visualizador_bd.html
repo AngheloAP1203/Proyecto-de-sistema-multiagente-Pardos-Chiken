@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador - Arquitectura de Base de Datos PARDOS</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            er: {
+                diagramPadding: 20,
+                layoutDirection: 'TB',
+                minEntityWidth: 100,
+                minEntityHeight: 75,
+                entityPadding: 15,
+                stroke: 'gray',
+                fill: 'honeydew',
+                fontSize: 12,
+                useMaxWidth: true,
+            }
+        });
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background-color: #f8fafc;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        h1 {
+            color: #0f172a;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        p.subtitle {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 2rem;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Arquitectura Relacional Supabase</h1>
+        <p class="subtitle">Diagrama Entidad-Relación de Pardos Chicken</p>
+        
+        <div class="mermaid">
+            erDiagram
+                %% ENTIDADES MAESTRAS %%
+                PROFILES {
+                    uuid id PK "auth.users ID"
+                    string email
+                    string role "admin, cajero, mozo, hostess"
+                    string name
+                }
+                
+                CLIENTS {
+                    uuid id PK
+                    string dni UK
+                    string name
+                    string email
+                    string phone
+                }
+
+                TABLES {
+                    string id PK "Ej: T01"
+                    integer capacity
+                    string zone
+                }
+
+                MENU_ITEMS {
+                    uuid id PK
+                    string name
+                    string category
+                    float price
+                }
+
+                %% ENTIDADES MAESTRAS (Catálogos) %%
+                PROFILES {
+                    uuid id PK "ID Auth"
+                    string email
+                    string role "admin, cajero, mozo, hostess"
+                    string name
+                }
+                
+                CLIENTS {
+                    uuid id PK
+                    string dni UK "Documento Identidad"
+                    string name
+                    string email
+                    string phone
+                    boolean is_vip
+                }
+
+                TABLES {
+                    string id PK "Ej: T01"
+                    integer number
+                    integer capacity
+                    string zone "Salón, Terraza, VIP"
+                }
+
+                MENU_CATEGORIES {
+                    uuid id PK
+                    string name "Ej: Bebidas, Platos Fondo"
+                }
+
+                MENU_ITEMS {
+                    uuid id PK
+                    uuid category_id FK
+                    string name
+                    float price
+                    boolean is_available
+                }
+
+                %% ENTIDADES OPERACIONALES (Transaccionales) %%
+                RESERVATIONS {
+                    uuid id PK
+                    uuid client_id FK
+                    string table_id FK
+                    uuid approved_by FK "Profile ID"
+                    date date
+                    time time
+                    integer guests
+                    string status "pending, seated, completed, cancelled"
+                    text notes
+                }
+
+                KITCHEN_TICKETS {
+                    uuid id PK
+                    uuid reservation_id FK
+                    string status "pending, preparing, completed"
+                }
+
+                TICKET_ITEMS {
+                    uuid id PK
+                    uuid ticket_id FK
+                    uuid menu_item_id FK
+                    integer quantity
+                    string notes
+                }
+
+                PAYMENTS {
+                    uuid id PK
+                    uuid reservation_id FK
+                    uuid processed_by FK "Profile ID"
+                    float amount
+                    string method "tarjeta, efectivo, yape"
+                    string status "completed, pending"
+                    timestamp date
+                }
+
+                COMPLAINTS {
+                    uuid id PK
+                    uuid client_id FK
+                    uuid reservation_id FK "Opcional"
+                    date fecha
+                    string canal "Web, Presencial"
+                    string estado "nueva, en_resolucion, resuelta"
+                    string severidad "Alta, Media, Baja"
+                    text mensaje
+                    json resolution
+                }
+
+                %% RELACIONES EXACTAS CON FLECHAS (CROW'S FOOT) %%
+                CLIENTS ||--o{ RESERVATIONS : "realiza"
+                CLIENTS ||--o{ COMPLAINTS : "presenta reclamo"
+                
+                TABLES ||--o{ RESERVATIONS : "es asignada a"
+                MENU_CATEGORIES ||--|{ MENU_ITEMS : "clasifica"
+                
+                PROFILES ||--o{ RESERVATIONS : "aprueba"
+                PROFILES ||--o{ PAYMENTS : "procesa"
+
+                RESERVATIONS ||--o| KITCHEN_TICKETS : "genera"
+                RESERVATIONS ||--o{ PAYMENTS : "tiene"
+                RESERVATIONS ||--o{ COMPLAINTS : "está vinculada a"
+
+                KITCHEN_TICKETS ||--|{ TICKET_ITEMS : "contiene"
+                MENU_ITEMS ||--o{ TICKET_ITEMS : "es pedido en"
+        </div>
+    </div>
+</body>
+</html>
