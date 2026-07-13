@@ -68,9 +68,10 @@ async function seedAll() {
     if (!res.error) catMap[catName] = res.data.id
   }
   
-  for (const m of MENU_ITEMS) {
+  for (let i = 0; i < MENU_ITEMS.length; i++) {
+    const m = MENU_ITEMS[i]
     const res = await supabase.from('menu_items').insert({
-      id: '00000000-0000-4000-b000-' + String(m.id).replace(/\D/g, '').padStart(12, '0'),
+      id: '00000000-0000-4000-b000-' + String(i + 1).padStart(12, '0'),
       category_id: catMap[m.category],
       name: m.name,
       price: m.price,
