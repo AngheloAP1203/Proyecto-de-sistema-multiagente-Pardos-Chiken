@@ -3,23 +3,32 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Motor de verificación anti-fraude de reclamos (M6).
  *
- * REGLA DE IDENTIDAD (decisión de negocio): DNI Y número de mesa.
+ * PRINCIPIO: la elegibilidad la decide JAVASCRIPT, nunca el LLM.
+ *
+ * REGLA DE IDENTIDAD (decisión de negocio): DNI Y número de mesa deben coincidir
+ * con quien reservó/consumió en esa mesa ese día.
  *
  * CADENA DE EVIDENCIA (Backend / Supabase):
- *   Reserva(tableId, clientDni) → Comanda(tableId) → Pago(reservationId)
+ *   Reserva(table_id, client_dni) → Comanda(table_id) → Pago(reservation_id)
+ *
+ * DISEÑO — dos capas separadas para poder testear la lógica sin backend:
+ *   · evaluarEvidencia(reclamo, datos)  → función PURA y determinista (golden set).
+ *   · verificarReclamo(reclamo)         → async: trae datos de Supabase y delega
+ *                                         en evaluarEvidencia. Es la que usa la app.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { supabase } from '../../domain/supabase'
-
 export const VEREDICTO = {
-  VERIFICADO:  'VERIFICADO',
-  RECHAZADO:   'RECHAZADO',
-  SIN_COMANDA: 'SIN_COMANDA',
-  SIN_MESA:    'SIN_MESA',
+  VERIFICADO:  'VERIFICADO',   // DNI + mesa + consumo confirmados → elegible
+  RECHAZADO:   'RECHAZADO',    // hubo consumo, pero el DNI no coincide → fraude
+  SIN_COMANDA: 'SIN_COMANDA',  // esa mesa no tuvo pedido/consumo ese día
+  SIN_MESA:    'SIN_MESA',     // el reclamo no indica mesa → no se puede verificar
 }
 
+/** Deja solo dígitos: "78 765 432" y "78-765-432" se comparan igual que "78765432". */
 const normDoc = (d) => String(d || '').replace(/\D/g, '')
+
+/** Normaliza el id de mesa: "T03", "t3", "mesa 3" → "3". */
 const normMesa = (m) => String(m || '')
   .toLowerCase()
   .replace(/[^0-9a-z]/g, '')
@@ -32,12 +41,22 @@ const CONSUMIO = ['seated', 'completed', 'approved', 'confirmed']
 const HOY = () => new Date().toISOString().split('T')[0]
 
 /**
- * verificarReclamo — Consulta segura a Supabase.
+ * evaluarEvidencia — Núcleo determinista PURO (sin efectos, testeable).
+ *
  * @param {Object} reclamo - { tableId, dni, fecha }
+ * @param {Object} datos   - { reservations, payments, kitchenTickets } ya normalizados
+ *                           a camelCase: reservations[{ id, tableId, clientDni,
+ *                           clientName, status, date }], payments[{ id, reservationId,
+ *                           tableId, amount, date }], kitchenTickets[{ tableId }]
+ * @returns {Object} { veredicto, elegible, motivo, cliente?, reservationId?, pago? }
  */
-export async function verificarReclamo(reclamo = {}) {
+export function evaluarEvidencia(reclamo = {}, datos = {}) {
   const { tableId, dni, fecha } = reclamo
+  const reservations   = datos.reservations   || []
+  const payments       = datos.payments       || []
+  const kitchenTickets = datos.kitchenTickets || []
 
+  // 1. Sin mesa no hay forma de verificar identidad.
   if (!tableId || normMesa(tableId) === '') {
     return {
       veredicto: VEREDICTO.SIN_MESA, elegible: false,
@@ -45,41 +64,22 @@ export async function verificarReclamo(reclamo = {}) {
     }
   }
 
-  const queryDate = fecha || HOY()
+  // 2. Reservas de esa mesa (ese día si se conoce la fecha).
+  const reservasMesa = reservations.filter(r =>
+    mismaMesa(r.tableId, tableId) && (!fecha || r.date === fecha))
 
-  // 1. Obtener Reservas de esa mesa y fecha
-  const { data: reservasMesa, error: resErr } = await supabase
-    .from('reservations')
-    .select('*')
-    .eq('date', queryDate)
+  const pagosMesa = payments.filter(p =>
+    (reservasMesa.some(r => r.id === p.reservationId) || (p.tableId && mismaMesa(p.tableId, tableId))) &&
+    (!fecha || !p.date || p.date === fecha))
 
-  // 2. Obtener Pagos
-  const { data: pagosMesa, error: payErr } = await supabase
-    .from('payments')
-    .select('*')
-    .eq('date', queryDate)
+  const comandaCuenta = (!fecha || fecha === HOY()) &&
+    kitchenTickets.some(t => mismaMesa(t.tableId, tableId))
 
-  // 3. Obtener Comandas (Kitchen Tickets)
-  const { data: comandasMesa, error: kitErr } = await supabase
-    .from('kitchen_tickets')
-    .select('*')
-
-  if (resErr || payErr || kitErr) {
-    console.error('Error verificando reclamo:', resErr || payErr || kitErr)
-    return { veredicto: VEREDICTO.RECHAZADO, elegible: false, motivo: 'Error interno del servidor al verificar datos.' }
-  }
-
-  // Filtrar localmente por mesa (ya que normalizamos el formato en JS)
-  const reservasFiltradas = (reservasMesa || []).filter(r => mismaMesa(r.table_id, tableId))
-  const pagosFiltrados = (pagosMesa || []).filter(p => 
-    (reservasFiltradas.some(r => r.id === p.reservation_id) || (p.table_id && mismaMesa(p.table_id, tableId)))
-  )
-  const comandaCuenta = (comandasMesa || []).some(t => mismaMesa(t.table_id, tableId))
-
+  // 3. ¿Hubo consumo real en esa mesa ese día?
   const huboConsumo =
     comandaCuenta ||
-    pagosFiltrados.length > 0 ||
-    reservasFiltradas.some(r => CONSUMIO.includes(r.status))
+    pagosMesa.length > 0 ||
+    reservasMesa.some(r => CONSUMIO.includes(r.status))
 
   if (!huboConsumo) {
     return {
@@ -88,25 +88,72 @@ export async function verificarReclamo(reclamo = {}) {
     }
   }
 
+  // 4. Identidad: el DNI del reclamo debe coincidir con quien ocupó la mesa.
+  //    Se comparan solo los dígitos, así "78 765 432" y "78-765-432" valen igual.
   const docId = normDoc(dni)
   const reservaCoincide = docId
-    ? reservasFiltradas.find(r => normDoc(r.client_dni) === docId)
+    ? reservasMesa.find(r => normDoc(r.clientDni) === docId)
     : null
 
   if (!reservaCoincide) {
     return {
       veredicto: VEREDICTO.RECHAZADO, elegible: false,
-      motivo: 'El DNI indicado no coincide con el de quien reservó y consumió en esa mesa.',
+      motivo: 'El DNI indicado no coincide con el de quien reservó y consumió en esa mesa. El reclamo no puede validarse.',
     }
   }
 
-  const pago = pagosFiltrados.find(p => p.reservation_id === reservaCoincide.id) || pagosFiltrados[0] || null
+  // 5. Verificado: mesa + DNI + consumo.
+  const pago = pagosMesa.find(p => p.reservationId === reservaCoincide.id) || pagosMesa[0] || null
   return {
-    veredicto: VEREDICTO.VERIFICADO,
-    elegible: true,
-    motivo: 'Identidad confirmada: DNI y mesa coinciden con un consumo registrado.',
-    cliente: reservaCoincide.client_name,
+    veredicto:     VEREDICTO.VERIFICADO,
+    elegible:      true,
+    motivo:        'Identidad confirmada: DNI y mesa coinciden con un consumo registrado.',
+    cliente:       reservaCoincide.clientName,
     reservationId: reservaCoincide.id,
-    pago: pago ? { id: pago.id, amount: pago.amount, fecha: pago.date } : null,
+    pago:          pago ? { id: pago.id, amount: pago.amount, fecha: pago.date } : null,
   }
+}
+
+/**
+ * verificarReclamo — Capa de datos: trae la evidencia de Supabase y delega la
+ * decisión en evaluarEvidencia. Es la que usa la app (ClaimPage → RewardAgent).
+ *
+ * @param {Object} reclamo - { tableId, dni, fecha }
+ */
+export async function verificarReclamo(reclamo = {}) {
+  const { fecha } = reclamo
+  const queryDate = fecha || HOY()
+
+  // Import dinámico: el cliente Supabase depende de import.meta.env (Vite) y solo
+  // debe cargarse en el navegador. Así la lógica pura (evaluarEvidencia) queda
+  // importable en Node para el golden set sin arrastrar el backend.
+  const { supabase } = await import('../../domain/supabase.js')
+
+  const [{ data: reservas, error: resErr },
+         { data: pagos,   error: payErr },
+         { data: comandas, error: kitErr }] = await Promise.all([
+    supabase.from('reservations').select('*').eq('date', queryDate),
+    supabase.from('payments').select('*').eq('date', queryDate),
+    supabase.from('kitchen_tickets').select('*'),
+  ])
+
+  if (resErr || payErr || kitErr) {
+    console.error('Error verificando reclamo:', resErr || payErr || kitErr)
+    return { veredicto: VEREDICTO.RECHAZADO, elegible: false, motivo: 'Error interno del servidor al verificar datos.' }
+  }
+
+  // Mapear snake_case (Supabase) → camelCase (contrato de la lógica pura).
+  const datos = {
+    reservations: (reservas || []).map(r => ({
+      id: r.id, tableId: r.table_id, clientDni: r.client_dni,
+      clientName: r.client_name, status: r.status, date: r.date,
+    })),
+    payments: (pagos || []).map(p => ({
+      id: p.id, reservationId: p.reservation_id, tableId: p.table_id,
+      amount: p.amount, date: p.date,
+    })),
+    kitchenTickets: (comandas || []).map(t => ({ tableId: t.table_id })),
+  }
+
+  return evaluarEvidencia(reclamo, datos)
 }

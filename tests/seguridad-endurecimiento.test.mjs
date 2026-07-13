@@ -1,17 +1,17 @@
 /**
  * tests/seguridad-endurecimiento.test.mjs
  * ─────────────────────────────────────────────────────────────────────────────
- * Fija al golden set los controles de seguridad añadidos tras la auditoría:
+ * Fija al golden set los controles de seguridad activos:
  *   · F-01 — guard de los proxies (allowlist de origen + rate-limit por IP)
- *   · F-03 — hashing de contraseñas (sin texto plano en el almacén de usuarios)
  *   · F-04 — throttle de intentos del lado del cliente
  * Si una regresión los debilita, el build falla.
+ *
+ * Nota: la autenticación migró a Supabase Auth (signInWithPassword), que
+ * supera al hashing de cliente anterior (F-03); por eso ya no se testea aquí.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import { verificarOrigen, rateLimit } from '../api/_guard.js'
-import { hashPassword } from '../src/domain/auth/passwordHash.js'
-import { MOCK_USERS } from '../src/data/seeds/usersSeed.js'
 import { intentoPermitido } from '../src/domain/security/rateGuard.js'
 
 let fail = 0
@@ -46,19 +46,7 @@ ok(ultimos[3] === false && ultimos[4] === false, 'la 4.ª y 5.ª se bloquean')
 ok(rateLimit(req({ 'x-forwarded-for': '5.6.7.8' }), { max: 3, windowMs: 60_000 }),
   'otra IP tiene su propio cupo (no se contamina)')
 
-console.log('\n3) F-03 — Contraseñas hasheadas, sin texto plano')
-ok(MOCK_USERS.every(u => !('password' in u) && /^[0-9a-f]{64}$/.test(u.passwordHash)),
-  'el almacén guarda solo passwordHash (SHA-256 hex), nunca password')
-const admin = MOCK_USERS.find(u => u.role === 'admin')
-ok(await hashPassword(admin.id, 'admin123') === admin.passwordHash,
-  'la contraseña correcta reproduce el hash almacenado')
-ok(await hashPassword(admin.id, 'admin124') !== admin.passwordHash,
-  'una contraseña equivocada NO reproduce el hash')
-const h1 = await hashPassword('u001', 'misma')
-const h2 = await hashPassword('u002', 'misma')
-ok(h1 !== h2, 'la sal por-usuario (id) rompe rainbow tables: misma clave → hash distinto')
-
-console.log('\n4) F-04 — Throttle de intentos del cliente')
+console.log('\n3) F-04 — Throttle de intentos del cliente')
 let res = null
 for (let i = 0; i < 8; i++) res = intentoPermitido('test.verify', { max: 6, windowMs: 300_000 })
 ok(res.ok === false && res.esperaSeg > 0, 'tras 6 intentos, el 7.º/8.º se bloquea con espera sugerida')

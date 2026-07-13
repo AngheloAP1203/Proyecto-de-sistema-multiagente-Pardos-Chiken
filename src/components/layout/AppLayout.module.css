@@ -24,7 +24,6 @@
 /* ── Sidebar ───────────────────────── */
 .sidebar {
   width: var(--sidebar-width);
-  min-height: 100vh;
   background: var(--color-bg-sidebar);
   display: flex;
   flex-direction: column;
@@ -32,7 +31,9 @@
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow-y: auto;
+  /* El sidebar completo NO scrollea: así el pie (usuario/logout) queda fijo abajo
+     y no se corta al desplazar la página. Solo la navegación scrollea (ver .nav). */
+  overflow: hidden;
   z-index: 100;
   transition: transform var(--transition-mid);
 }
@@ -107,7 +108,9 @@
 }
 
 /* ── Sidebar: Nav ──────────────────── */
-.nav { flex: 1; padding: 16px 12px; }
+/* flex:1 ocupa el alto disponible; min-height:0 permite que su propio scroll
+   funcione dentro del flex; overflow-y:auto hace que SOLO la lista scrollee. */
+.nav { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 12px; }
 
 .navList {
   list-style: none;

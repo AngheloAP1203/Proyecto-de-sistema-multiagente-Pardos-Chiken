@@ -1,4 +1,4 @@
-import { verificarReclamo, VEREDICTO } from '../src/agents/core/claimVerifier.js'
+import { evaluarEvidencia, VEREDICTO } from '../src/agents/core/claimVerifier.js'
 
 let fail = 0
 const ok = (c, l) => { console.log(`${c?'  PASS':'  FALL'}  ${l}`); if(!c) fail++ }
@@ -16,33 +16,33 @@ const datos = {
 }
 
 console.log('\n1) VERIFICADO — DNI + mesa + consumo coinciden')
-let r = verificarReclamo({ tableId:'T03', dni:'78765432', fecha:hoy }, datos)
+let r = evaluarEvidencia({ tableId:'T03', dni:'78765432', fecha:hoy }, datos)
 ok(r.veredicto===VEREDICTO.VERIFICADO && r.elegible, 'María reclama su propia mesa → elegible')
 ok(r.cliente==='María García' && r.reservationId==='R001', 'identifica al cliente y la reserva')
 ok(r.pago?.amount===110, 'adjunta el pago verificado')
 
 console.log('\n2) VERIFICADO tolerante a formato de teléfono y mesa')
-ok(verificarReclamo({ tableId:'t3',    dni:'78 765 432' }, datos).elegible, 'acepta "t3" y DNI con espacios')
-ok(verificarReclamo({ tableId:'mesa 3',dni:'78-765-432' }, datos).elegible, 'acepta "mesa 3" y guiones')
+ok(evaluarEvidencia({ tableId:'t3',    dni:'78 765 432' }, datos).elegible, 'acepta "t3" y DNI con espacios')
+ok(evaluarEvidencia({ tableId:'mesa 3',dni:'78-765-432' }, datos).elegible, 'acepta "mesa 3" y guiones')
 
 console.log('\n3) RECHAZADO — la mesa tuvo consumo pero el DNI NO coincide (fraude)')
-r = verificarReclamo({ tableId:'T03', dni:'99900011', fecha:hoy }, datos)
+r = evaluarEvidencia({ tableId:'T03', dni:'99900011', fecha:hoy }, datos)
 ok(r.veredicto===VEREDICTO.RECHAZADO && !r.elegible, 'un extraño reclama la mesa de María → rechazado')
-r = verificarReclamo({ tableId:'T01', dni:'78765432', fecha:hoy }, datos)
+r = evaluarEvidencia({ tableId:'T01', dni:'78765432', fecha:hoy }, datos)
 ok(r.veredicto===VEREDICTO.RECHAZADO && !r.elegible, 'María reclama la mesa de Roberto con su propio DNI → rechazado')
 
 console.log('\n4) SIN_COMANDA — mesa sin ningún consumo ese día')
-r = verificarReclamo({ tableId:'T09', dni:'78765432', fecha:hoy }, datos)
+r = evaluarEvidencia({ tableId:'T09', dni:'78765432', fecha:hoy }, datos)
 ok(r.veredicto===VEREDICTO.SIN_COMANDA && !r.elegible, 'mesa que nadie ocupó → sin recompensa')
-r = verificarReclamo({ tableId:'T03', dni:'78765432', fecha:'2020-01-01' }, datos)
+r = evaluarEvidencia({ tableId:'T03', dni:'78765432', fecha:'2020-01-01' }, datos)
 ok(r.veredicto===VEREDICTO.SIN_COMANDA && !r.elegible, 'mesa correcta pero otro día → sin consumo ese día')
 
 console.log('\n5) SIN_MESA — el reclamo no indica mesa')
-r = verificarReclamo({ dni:'78765432', fecha:hoy }, datos)
+r = evaluarEvidencia({ dni:'78765432', fecha:hoy }, datos)
 ok(r.veredicto===VEREDICTO.SIN_MESA && !r.elegible, 'sin número de mesa no se puede verificar')
 
 console.log('\n6) La identidad NUNCA depende solo del nombre')
-r = verificarReclamo({ tableId:'T03', dni:'000', fecha:hoy }, datos)   // tel falso
+r = evaluarEvidencia({ tableId:'T03', dni:'000', fecha:hoy }, datos)   // tel falso
 ok(!r.elegible, 'nombre correcto no basta: sin DNI válido → no elegible')
 
 console.log(`\n${fail===0?'TODO OK':fail+' FALLOS'}\n`); process.exit(fail?1:0)

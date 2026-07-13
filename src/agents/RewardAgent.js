@@ -17,7 +17,7 @@
  */
 
 import { complete, llmMode } from './core/llmClient.js'
-import { verificarReclamo, VEREDICTO } from './core/claimVerifier.js'
+import { verificarReclamo, evaluarEvidencia, VEREDICTO } from './core/claimVerifier.js'
 import { auditLogger } from './core/auditLogger.js'
 import { PROMPT_RECOMPENSA } from './prompts.js'
 
@@ -67,7 +67,11 @@ class RewardAgentClass {
     const fecha = reclamo.fecha || new Date().toISOString().split('T')[0]
 
     // 1. VERIFICACIÓN ANTI-FRAUDE (determinista, antes que cualquier LLM).
-    const verif = await verificarReclamo({ tableId: reclamo.tableId, dni: reclamo.dni, fecha })
+    //    Si el llamador ya trae la evidencia (datos.reservations), se evalúa con la
+    //    lógica pura; si no, se consulta el backend (Supabase) dentro de verificarReclamo.
+    const verif = Array.isArray(datos?.reservations)
+      ? evaluarEvidencia({ tableId: reclamo.tableId, dni: reclamo.dni, fecha }, datos)
+      : await verificarReclamo({ tableId: reclamo.tableId, dni: reclamo.dni, fecha })
 
     if (!verif.elegible) {
       const res = {
