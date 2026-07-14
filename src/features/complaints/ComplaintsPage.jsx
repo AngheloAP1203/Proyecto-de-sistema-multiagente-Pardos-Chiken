@@ -80,14 +80,19 @@ export default function ComplaintsPage() {
       - Correo registrado: ${c.email || 'No proporcionado'}
       `
 
-      const prompt = `Actúa como analista de atención al cliente de Pardos Chicken. Usa el modelo L.E.A.R.N. (Listen, Empathize, Apologize, Resolve, Notify) para resolver esta queja del cliente ${c.cliente}: "${c.mensaje}". 
+      const prompt = `Actúa como analista de atención al cliente de Pardos Chicken. Usa el modelo L.E.A.R.N. para resolver esta queja del cliente ${c.cliente}: "${c.mensaje}". 
       ${contextData}
+      - Resolución/Compensación previa del sistema: "${c.respuesta_cliente || 'Ninguna'}"
+
       Instrucciones estrictas:
-      1. Sé empático, profesional y resolutivo. Usa los datos del consumo para personalizar tu respuesta si es relevante (ej. "Lamento que su ${ticket?.items?.[0]?.name || 'plato'} no haya estado a la altura...").
-      2. Ofrece una solución o compensación justa basada en la gravedad del problema. Si el caso es muy crítico (ej. problemas de salubridad o servicio inaceptable), puedes ofrecer hasta un 30% de descuento en su próxima visita. Si es leve, reduce la compensación (ej. 10%, cortesía, o solo disculpas). Evalúa como un verdadero gerente de tienda.
-      3. Si ofreces un descuento, debes incluir OBLIGATORIAMENTE un CUPÓN ÚNICO con el formato exacto: PARDOS-[PORCENTAJE]-[LETRAS_ALAZAR] (Ejemplo: PARDOS-30-XDF). Indica al cliente que puede ingresarlo al hacer su reserva web o dictarlo en caja.
-      4. Prioriza disculpas genuinas, explicaciones operativas y compromisos de mejora.
-      4. Tu respuesta debe ser el correo exacto que se le enviará al cliente. ¡IMPORTANTE!: ESCRIBE EN TEXTO PLANO LIMPIO. NO uses símbolos de Markdown (nada de asteriscos **, ni numerales #). Haz que luzca como un correo corporativo formal. FIRMA EL CORREO como "El Equipo de Pardos Chicken" (NUNCA uses placeholders como [Tu Nombre]).`
+      1. Sé empático, profesional y resolutivo. Personaliza tu respuesta si es relevante (ej. "Lamento que su ${ticket?.items?.[0]?.name || 'plato'}...").
+      2. MUY IMPORTANTE: Si en "Resolución/Compensación previa del sistema" ya se le otorgó algo (ej. Vale S/30), DEBES MANTENER EXACTAMENTE ESA COMPENSACIÓN. NO inventes descuentos nuevos como "25%" si ya se le dio otra cosa.
+      3. Si no tenía compensación previa, puedes ofrecer un descuento. Si incluyes un código de cupón (ej. PARDOS-30-XDF), escríbelo en una LÍNEA SEPARADA, en MAYÚSCULAS para que resalte claramente del resto del texto.
+      4. Tu respuesta será insertada DIRECTAMENTE en el cuerpo de una plantilla de correo que YA TIENE saludo inicial y despedida final. POR LO TANTO:
+         - NO escribas "Estimado cliente" ni "Hola".
+         - NO escribas despedidas como "Atentamente", "Saludos", ni "El Equipo de Pardos Chicken".
+         - Escribe ÚNICAMENTE los párrafos centrales del correo.
+         - ESCRIBE EN TEXTO PLANO LIMPIO. NO uses símbolos de Markdown (nada de asteriscos **, ni numerales #).`
       const res = await askLeaderQuery(prompt)
       if (res.success) {
         // Ejecución autónoma: resolvemos inmediatamente sin ventana modal.
