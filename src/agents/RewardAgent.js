@@ -48,17 +48,6 @@ class RewardAgentClass {
   /** Elige la promoción a otorgar: genera un cupón dinámico basado en la severidad. */
   _recompensa({ puntosCriticos, prioridad }, { policies = [], promotions = [] }) {
     const politica = this._politica(puntosCriticos, policies)
-    
-    // Si la política exige una promoción específica y existe, la priorizamos (opcional, pero útil si se quiere dar un producto gratis)
-    const promoId = politica?.requiere_promo && politica.promo_sugerida
-    let promoPredefinida = null
-    if (promoId) {
-      promoPredefinida = promotions.find(p => p.id === promoId && p.activa)
-    }
-
-    if (promoPredefinida && promoPredefinida.tipo !== 'descuento_porcentaje' && promoPredefinida.tipo !== 'descuento_monto') {
-       return { politica, promo: promoPredefinida }
-    }
 
     // Calcular el porcentaje dinámico de descuento
     const porcentaje = DESCUENTO_POR_SEVERIDAD[prioridad] || 5
