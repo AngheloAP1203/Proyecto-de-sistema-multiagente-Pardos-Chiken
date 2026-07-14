@@ -1,19 +1,21 @@
 import { createClient } from '@supabase/supabase-js'
 
-const getEnv = (key) => {
-  if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key]
-  try {
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      return import.meta.env[key]
-    }
-  } catch (e) { /* ignore */ }
-  return null
+// Vite reemplaza de forma estática `import.meta.env.VARIABLE`, por lo que NO se puede usar acceso dinámico `[key]`.
+// Para soportar tanto Vite (App) como Node (Tests), leemos de ambas fuentes explícitamente.
+const getEnvSupabaseUrl = () => {
+  if (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_URL) return process.env.VITE_SUPABASE_URL
+  try { return import.meta.env.VITE_SUPABASE_URL } catch (e) { return null }
 }
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL') || 'https://mock.supabase.co'
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || 'mock-key'
+const getEnvSupabaseKey = () => {
+  if (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_ANON_KEY) return process.env.VITE_SUPABASE_ANON_KEY
+  try { return import.meta.env.VITE_SUPABASE_ANON_KEY } catch (e) { return null }
+}
 
-if (!getEnv('VITE_SUPABASE_URL') || !getEnv('VITE_SUPABASE_ANON_KEY')) {
+const supabaseUrl = getEnvSupabaseUrl() || 'https://mock.supabase.co'
+const supabaseAnonKey = getEnvSupabaseKey() || 'mock-key'
+
+if (!getEnvSupabaseUrl() || !getEnvSupabaseKey()) {
   console.warn('Faltan credenciales de Supabase en el entorno')
 }
 
