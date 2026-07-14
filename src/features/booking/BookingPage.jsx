@@ -354,7 +354,7 @@ export default function BookingPage() {
                 <div className={styles.inputWrap}>
                   <input className={styles.input}
                     type="text" name="coupon" id="booking-coupon"
-                    placeholder="Ej. PARDOS-30-XYZ"
+                    placeholder="Ej. PRD-30-X4KL"
                     style={{ textTransform: 'uppercase' }}
                     value={form.coupon} onChange={handleChange} />
                 </div>

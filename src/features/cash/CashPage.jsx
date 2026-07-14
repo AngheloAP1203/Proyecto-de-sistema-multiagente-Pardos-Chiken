@@ -243,11 +243,11 @@ export default function CashPage() {
     [getReservationsByDate, filterDate]
   )
 
-  // Calcular el descuento desde las notas (ej. [CUPÓN: PARDOS-30-XYZ])
+  // Calcular el descuento desde las notas (ej. [CUPÓN: PRD-30-XYZ])
   let discountPct = 0
   let couponCode = ''
   if (form.notes) {
-    const match = form.notes.match(/CUPÓN:\s*PARDOS-(\d+)-/i)
+    const match = form.notes.match(/CUPÓN:\s*(?:PARDOS|PRD)-(\d+)-/i)
     if (match) {
       discountPct = parseInt(match[1], 10) / 100
       couponCode = match[0].split(']')[0] // aprox
@@ -557,7 +557,7 @@ export default function CashPage() {
                   if (val) {
                     const res = reservasDelDia.find(r => r.id === val)
                     if (res) {
-                      setForm(f => ({...f, clientName: res.clientName, guests: res.guests, reservationId: val}))
+                      setForm(f => ({...f, clientName: res.clientName, guests: res.guests, reservationId: val, notes: res.notes || ''}))
                       const items = allItemsFor(res.id)
                       setOrderItems(items)
                       if (items.length === 0) {
@@ -565,7 +565,7 @@ export default function CashPage() {
                       }
                     }
                   } else {
-                    setForm(f => ({...f, clientName: '', guests: '', reservationId: ''}))
+                    setForm(f => ({...f, clientName: '', guests: '', reservationId: '', notes: ''}))
                     setOrderItems([])
                   }
                 }}>
