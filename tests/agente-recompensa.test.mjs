@@ -25,7 +25,7 @@ let r = await rewardAgent.evaluar(
   { codigo:'R001', cliente:'María García', puntos_criticos:['Pollo frío'], prioridad:'Alta', mensaje:'el pollo llegó frío' },
   datos)
 ok(r.elegible===true, 'María (verificada) es elegible')
-ok(r.recompensa?.id==='P001', `recompensa = política del pollo frío (P001), obtenido ${r.recompensa?.id}`)
+ok(r.recompensa?.id?.startsWith('PRD-20-'), `recompensa = política del pollo frío (20%), obtenido ${r.recompensa?.id}`)
 ok(r.mensaje.includes('20%') || r.mensaje.includes('Vale'), 'el mensaje nombra la recompensa real')
 ok(!r.mensaje.includes('S/30'), 'no menciona un cupón distinto al asignado')
 
@@ -42,6 +42,6 @@ ok(r.elegible===false && r.veredicto==='SIN_RESERVA', 'codigo inexistente → no
 console.log('\n5) Severidad sin política específica → default por prioridad')
 r = await rewardAgent.evaluar(
   { codigo:'R001', puntos_criticos:['algo raro'], prioridad:'Crítica' }, datos)
-ok(r.elegible && r.recompensa?.id==='P002', `Crítica sin política → P002 (S/30), obtenido ${r.recompensa?.id}`)
+ok(r.elegible && r.recompensa?.id?.startsWith('PRD-30-'), `Crítica sin política → 30%, obtenido ${r.recompensa?.id}`)
 
 console.log(`\n${fail===0?'TODO OK':fail+' FALLOS'}\n`); process.exit(fail?1:0)

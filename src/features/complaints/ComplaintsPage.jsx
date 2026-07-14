@@ -87,7 +87,9 @@ export default function ComplaintsPage() {
       Instrucciones estrictas:
       1. Sé empático, profesional y resolutivo. Personaliza tu respuesta si es relevante (ej. "Lamento que su ${ticket?.items?.[0]?.name || 'plato'}...").
       2. MUY IMPORTANTE: Si en "Resolución/Compensación previa del sistema" ya se le otorgó algo (ej. Vale S/30), DEBES MANTENER EXACTAMENTE ESA COMPENSACIÓN. NO inventes descuentos nuevos como "25%" si ya se le dio otra cosa.
-      3. Si no tenía compensación previa, puedes ofrecer un descuento. Si incluyes un código de cupón (ej. PARDOS-30-XDF), escríbelo en una LÍNEA SEPARADA, en MAYÚSCULAS para que resalte claramente del resto del texto.
+      3. Si no tenía compensación previa, debes asignar un porcentaje de descuento dinámico según la gravedad: si es un problema muy crítico ofrece un máximo de 30%, y si es sencillo o leve reduce la compensación hasta un 5%. 
+         - Debes incluir un código de cupón único con el formato: PRD-[PORCENTAJE]-[4-LETRAS/NUMEROS] (ej. PRD-30-X4KL, PRD-5-B9R2).
+         - Escríbelo en una LÍNEA SEPARADA, en MAYÚSCULAS para que resalte claramente del resto del texto.
       4. Tu respuesta será insertada DIRECTAMENTE en el cuerpo de una plantilla de correo que YA TIENE saludo inicial y despedida final. POR LO TANTO:
          - NO escribas "Estimado cliente" ni "Hola".
          - NO escribas despedidas como "Atentamente", "Saludos", ni "El Equipo de Pardos Chicken".

@@ -20,13 +20,14 @@ import { complete, llmMode } from './core/llmClient.js'
 import { verificarReclamo, evaluarEvidencia, VEREDICTO } from './core/claimVerifier.js'
 import { auditLogger } from './core/auditLogger.js'
 import { PROMPT_RECOMPENSA } from './prompts.js'
+import { generateCouponCode } from '../utils/couponGenerator.js'
 
-// Recompensa por defecto según severidad, cuando ninguna política matchea el problema.
-const PROMO_POR_SEVERIDAD = {
-  'Crítica': 'P002',   // Vale S/30
-  'Alta':    'P001',   // Vale 20%
-  'Media':   'P004',   // 1/4 pollo de cortesía
-  'Baja':    'P003',   // Delivery gratis
+// Porcentaje de descuento dinámico según severidad
+const DESCUENTO_POR_SEVERIDAD = {
+  'Crítica': 30,
+  'Alta':    20,
+  'Media':   10,
+  'Baja':    5,
 }
 
 class RewardAgentClass {
@@ -44,13 +45,36 @@ class RewardAgentClass {
     ) || null
   }
 
-  /** Elige la promoción a otorgar: la de la política, o la default por severidad. */
+  /** Elige la promoción a otorgar: genera un cupón dinámico basado en la severidad. */
   _recompensa({ puntosCriticos, prioridad }, { policies = [], promotions = [] }) {
     const politica = this._politica(puntosCriticos, policies)
-    const promoId = (politica?.requiere_promo && politica.promo_sugerida) || PROMO_POR_SEVERIDAD[prioridad] || 'P001'
-    const promo = promotions.find(p => p.id === promoId && p.activa)
-      || promotions.find(p => p.activa)
-      || null
+    
+    // Si la política exige una promoción específica y existe, la priorizamos (opcional, pero útil si se quiere dar un producto gratis)
+    const promoId = politica?.requiere_promo && politica.promo_sugerida
+    let promoPredefinida = null
+    if (promoId) {
+      promoPredefinida = promotions.find(p => p.id === promoId && p.activa)
+    }
+
+    if (promoPredefinida && promoPredefinida.tipo !== 'descuento_porcentaje' && promoPredefinida.tipo !== 'descuento_monto') {
+       return { politica, promo: promoPredefinida }
+    }
+
+    // Calcular el porcentaje dinámico de descuento
+    const porcentaje = DESCUENTO_POR_SEVERIDAD[prioridad] || 5
+    const codigo = generateCouponCode(porcentaje)
+
+    const promo = {
+      id: codigo,
+      nombre: `Vale de ${porcentaje}% de descuento`,
+      tipo: 'descuento_porcentaje',
+      valor: porcentaje,
+      codigo: codigo,
+      condiciones: 'Aplica en tu próximo consumo en cualquier sede de Pardos Chicken. Una sola vez por cliente.',
+      vigencia_dias: 30,
+      activa: true
+    }
+
     return { politica, promo }
   }
 
