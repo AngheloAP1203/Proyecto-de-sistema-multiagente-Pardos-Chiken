@@ -83,7 +83,7 @@ export default function ComplaintsPage() {
       1. Sé empático, profesional y resolutivo. Usa los datos del consumo para personalizar tu respuesta si es relevante (ej. "Lamento que su ${ticket?.items?.[0]?.name || 'plato'} no haya estado a la altura...").
       2. Ofrece una solución o compensación justa basada en la gravedad del problema. Si el caso es muy crítico (ej. problemas de salubridad o servicio inaceptable), puedes ofrecer hasta un 30% de descuento en su próxima visita. Si es leve, reduce la compensación (ej. 10%, cortesía, o solo disculpas). Evalúa como un verdadero gerente de tienda.
       3. Prioriza disculpas genuinas, explicaciones operativas y compromisos de mejora.
-      4. Tu respuesta debe ser el correo exacto que se le enviará al cliente. ¡IMPORTANTE!: ESCRIBE EN TEXTO PLANO LIMPIO. NO uses símbolos de Markdown (nada de asteriscos **, ni numerales #). Haz que luzca como un correo corporativo formal.`
+      4. Tu respuesta debe ser el correo exacto que se le enviará al cliente. ¡IMPORTANTE!: ESCRIBE EN TEXTO PLANO LIMPIO. NO uses símbolos de Markdown (nada de asteriscos **, ni numerales #). Haz que luzca como un correo corporativo formal. FIRMA EL CORREO como "El Equipo de Pardos Chicken" (NUNCA uses placeholders como [Tu Nombre]).`
       const res = await askLeaderQuery(prompt)
       if (res.success) {
         // Ejecución autónoma: resolvemos inmediatamente sin ventana modal.
@@ -125,12 +125,19 @@ export default function ComplaintsPage() {
   // ── Auto-resolución en tiempo real ──
   // Si entra una nueva queja a la bandeja y el agente no está resolviéndola, la procesa.
   useEffect(() => {
-    const nuevas = complaints.filter(c => c.estado === 'nueva')
-    nuevas.forEach(c => {
-      if (!resolvingIds[c.id]) {
-        handleAutoResolve(c)
+    const procesarCola = async () => {
+      // Ordenamos por ID ascendente para garantizar FIFO (el primero que entra, se procesa primero)
+      const nuevas = [...complaints]
+        .filter(c => c.estado === 'nueva')
+        .sort((a, b) => a.id - b.id)
+      
+      for (const c of nuevas) {
+        if (!resolvingIds[c.id]) {
+          await handleAutoResolve(c)
+        }
       }
-    })
+    }
+    procesarCola()
   }, [complaints])
 
   const confirmResolution = async () => {
