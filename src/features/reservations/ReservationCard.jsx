@@ -139,7 +139,7 @@ export default function ReservationCard({ reservation: r, onEdit, onSeat, onCanc
           <p className={styles.notes}>{r.notes}</p>
         )}
 
-        <div className={styles.reservationId}>#{r.id}</div>
+
 
         {isActive && !showCancelInput && (
           <div className={styles.actions}>
