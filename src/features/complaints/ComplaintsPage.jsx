@@ -264,6 +264,7 @@ export default function ComplaintsPage() {
                     <span className={`${styles.badge} ${PRIORIDAD_CLASS[c.prioridad] || ''}`}>
                       {c.prioridad}
                     </span>
+                    <span className={styles.sede} style={{ fontWeight: 'bold' }}>#{c.id}</span>
                     <span className={styles.sede}>{c.sede}</span>
                     <span className={styles.estado} data-estado={c.estado}>{c.estado}</span>
                     {c.estado !== 'resuelta' && (

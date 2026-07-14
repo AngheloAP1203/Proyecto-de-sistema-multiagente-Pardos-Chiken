@@ -20,6 +20,7 @@
 import { eventBus } from './EventBus.js'
 import { sharedMemory } from './SharedMemory.js'
 import { EVENT_TYPES } from './EventBus.js'
+import { supabase } from '../../domain/supabase.js'
 
 export class AgentBase {
   /**
@@ -171,7 +172,7 @@ export class AgentBase {
    * para persistencia entre recargas de página — cumpliendo con el criterio
    * de "historial de conversación preservado correctamente entre turnos y agentes".
    */
-  _addToHistory(role, content, data = null) {
+  async _addToHistory(role, content, data = null) {
     const entry = {
       role,
       content,
@@ -181,33 +182,33 @@ export class AgentBase {
     }
     this._conversationHistory.push(entry)
 
-    // Persistir en localStorage para sobrevivir recargas de página
-    try {
-      const storageKey = `agent_history_${this.name}`
-      const stored = JSON.parse(localStorage.getItem(storageKey) || '[]')
-      stored.push(entry)
-      // Mantener máximo 50 entradas persistidas
-      const trimmed = stored.slice(-50)
-      localStorage.setItem(storageKey, JSON.stringify(trimmed))
-    } catch (_) { /* localStorage puede no estar disponible en todos los entornos */ }
-
     // Mantener historial en memoria de máximo 100 entradas
     if (this._conversationHistory.length > 100) {
       this._conversationHistory.shift()
     }
+
+    // Persistir en Supabase de forma asíncrona (fire and forget)
+    try {
+      // Limitar a las últimas 50 entradas para no explotar el storage
+      const trimmed = this._conversationHistory.slice(-50)
+      await supabase.from('agent_history').upsert({
+        agent_name: this.name,
+        history: trimmed,
+        updated_at: new Date().toISOString()
+      })
+    } catch (_) { /* ignore network errors */ }
   }
 
   /**
    * _loadHistoryFromStorage — Recupera el historial persistido de sesiones anteriores.
    * Llama esto al final del constructor de la subclase para restaurar el estado.
    */
-  _loadHistoryFromStorage() {
+  async _loadHistoryFromStorage() {
     try {
-      const storageKey = `agent_history_${this.name}`
-      const stored = JSON.parse(localStorage.getItem(storageKey) || '[]')
-      if (stored.length > 0) {
-        this._conversationHistory = stored
-        console.log(`[${this.name}] Historial restaurado desde localStorage: ${stored.length} entradas`)
+      const { data, error } = await supabase.from('agent_history').select('history').eq('agent_name', this.name).single()
+      if (!error && data?.history?.length > 0) {
+        this._conversationHistory = data.history
+        console.log(`[${this.name}] Historial restaurado desde Supabase: ${data.history.length} entradas`)
       }
     } catch (_) { /* silently fail */ }
   }
@@ -215,10 +216,10 @@ export class AgentBase {
   /**
    * clearHistory — Limpia el historial del agente (útil para tests).
    */
-  clearHistory() {
+  async clearHistory() {
     this._conversationHistory = []
     try {
-      localStorage.removeItem(`agent_history_${this.name}`)
+      await supabase.from('agent_history').delete().eq('agent_name', this.name)
     } catch (_) { /* silently fail */ }
   }
 

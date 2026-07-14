@@ -7,24 +7,42 @@ import { createContext, useContext, useState, useRef, useCallback, useEffect } f
 import { RESOLUTION_POLICIES } from '../data/seeds/resolutionPoliciesSeed.js'
 import { PROMOTIONS } from '../data/seeds/promotionsSeed.js'
 
+import { supabase } from '../domain/supabase'
+
 const ResolutionContext = createContext(null)
-const STORAGE_KEY = 'pardos_resolutions'
 
 export function ResolutionProvider({ children }) {
-  const [resolutions, setResolutions] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      return saved ? JSON.parse(saved) : []
-    } catch { return [] }
-  })
+  const [resolutions, setResolutions] = useState([])
   const [policies] = useState(RESOLUTION_POLICIES)
   const [promotions] = useState(PROMOTIONS)
   const resolutionsRef = useRef(resolutions)
 
   useEffect(() => {
     resolutionsRef.current = resolutions
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(resolutions)) } catch {}
   }, [resolutions])
+
+  // Cargar resoluciones desde Supabase
+  useEffect(() => {
+    async function load() {
+      const { data, error } = await supabase.from('resolutions').select('*')
+      if (!error && data) {
+        setResolutions(data.map(d => ({
+          ...d.metadata,
+          id: d.id,
+          status: d.status,
+          timestamp: d.timestamp,
+        })))
+      }
+    }
+    load()
+  }, [])
+
+  const saveToDb = async (res) => {
+    const { id, status, timestamp, ...metadata } = res
+    await supabase.from('resolutions').upsert({
+      id, status, timestamp, metadata
+    })
+  }
 
   const addResolution = useCallback((resolution) => {
     const r = {
@@ -34,13 +52,17 @@ export function ResolutionProvider({ children }) {
       status: resolution.status || 'pendiente',
     }
     setResolutions((prev) => [r, ...prev])
+    saveToDb(r)
     return r
   }, [])
 
   const updateResolution = useCallback((id, updates) => {
-    setResolutions((prev) =>
-      prev.map((r) => r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r)
-    )
+    setResolutions((prev) => {
+      const mapped = prev.map((r) => r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r)
+      const updated = mapped.find(r => r.id === id)
+      if (updated) saveToDb(updated)
+      return mapped
+    })
   }, [])
 
   const getResolution = useCallback((id) => {

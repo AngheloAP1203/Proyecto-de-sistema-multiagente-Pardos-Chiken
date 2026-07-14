@@ -10,7 +10,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { MENU_ITEMS as SEED_MENU } from '../domain/kitchen/menu'
-import { readJSON, writeJSON } from '../data/storage/localStorage'
+import { supabase } from '../domain/supabase'
 import toast from 'react-hot-toast'
 
 const MenuContext = createContext(null)
@@ -19,16 +19,28 @@ export function MenuProvider({ children }) {
   const [menuItems, setMenuItems] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Cargar menú desde localStorage (semilla inicial si no hay nada guardado)
+  // Cargar menú desde Supabase (app_settings) (semilla inicial si no hay nada guardado)
   useEffect(() => {
-    const saved = readJSON('pardos_menu', null)
-    setMenuItems(saved || SEED_MENU)
-    setIsLoading(false)
+    async function load() {
+      const { data, error } = await supabase.from('app_settings').select('value').eq('key', 'pardos_menu').single()
+      if (!error && data?.value) {
+        setMenuItems(data.value)
+      } else {
+        setMenuItems(SEED_MENU)
+      }
+      setIsLoading(false)
+    }
+    load()
   }, [])
 
   // Persistir cambios
   useEffect(() => {
-    if (!isLoading) writeJSON('pardos_menu', menuItems)
+    async function save() {
+      if (!isLoading) {
+        await supabase.from('app_settings').upsert({ key: 'pardos_menu', value: menuItems })
+      }
+    }
+    save()
   }, [menuItems, isLoading])
 
   const generateId = () => `M${Date.now().toString().slice(-6)}`

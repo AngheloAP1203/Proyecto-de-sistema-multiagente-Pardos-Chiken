@@ -14,9 +14,9 @@
  */
 
 import { eventBus, EVENT_TYPES } from './EventBus.js'
+import { supabase } from '../../domain/supabase.js'
 
 const MAX_ENTRIES = 200
-const STORAGE_KEY = 'pardos_audit_log'
 
 /** Redacta teléfonos: "987654321" → "987****21". No guardamos PII en claro. */
 function redactar(valor) {
@@ -42,18 +42,31 @@ class AuditLoggerClass {
     this._loaded = false
   }
 
-  _load() {
+  async _load() {
     if (this._loaded) return
     this._loaded = true
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-      if (Array.isArray(saved)) this._entries = saved.slice(-MAX_ENTRIES)
-    } catch { /* localStorage puede no existir (Node/tests) */ }
+      const { data } = await supabase.from('audit_logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(MAX_ENTRIES)
+      if (data) {
+        this._entries = data.map(d => ({
+          ts: d.timestamp,
+          actor: d.actor,
+          tipoActor: d.tipo_actor,
+          accion: d.accion,
+          nivel: d.nivel,
+          detalle: d.detalle
+        })).reverse()
+      }
+    } catch { /* ignorar error de BD localmente */ }
   }
 
-  _persist() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(this._entries.slice(-MAX_ENTRIES))) }
-    catch { /* sin localStorage: solo memoria */ }
+  async _persist(entryDB) {
+    try {
+      await supabase.from('audit_logs').insert([entryDB])
+    } catch { /* ignora fallos de red */ }
   }
 
   /**
@@ -82,7 +95,15 @@ class AuditLoggerClass {
     }
     this._entries.push(entry)
     if (this._entries.length > MAX_ENTRIES) this._entries = this._entries.slice(-MAX_ENTRIES)
-    this._persist()
+    const entryDB = {
+      timestamp: entry.ts,
+      actor: entry.actor,
+      tipo_actor: entry.tipoActor,
+      accion: entry.accion,
+      nivel: entry.nivel,
+      detalle: entry.detalle
+    }
+    this._persist(entryDB)
     this._subs.forEach(fn => { try { fn(entry) } catch { /* un suscriptor no debe romper el logger */ } })
     return entry
   }
