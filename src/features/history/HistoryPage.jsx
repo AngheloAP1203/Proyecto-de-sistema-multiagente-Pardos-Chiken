@@ -186,9 +186,12 @@ export default function HistoryPage() {
                           </span>
                         </td>
                         <td>
+                          <div style={{fontWeight: 600, color: 'var(--color-primary)', fontSize: '13px', marginBottom: '6px'}}>
+                            Cód: {r.id.split('-').pop().slice(-6).toUpperCase()}
+                          </div>
                           {linkedComplaint ? (
                             <span className={styles.complaintBadge}>
-                              # Cód. Reclamo: {linkedComplaint.id.slice(0, 6).toUpperCase()}
+                              Queja Registrada
                             </span>
                           ) : (
                             <span className={styles.noComplaint}>Sin reclamos</span>
