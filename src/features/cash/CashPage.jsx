@@ -19,6 +19,7 @@ import { format } from 'date-fns'
 import { CreditCard, DollarSign, Plus, Clock, CheckCircle, X, Printer, Receipt, ChevronDown, ChevronUp, Trash2, Search, Calendar, AlertCircle, MessageSquare, Utensils } from 'lucide-react'
 import { useCash, PAYMENT_METHODS } from '../../context/CashContext'
 import { useReservations, RESERVATION_STATUS } from '../../context/ReservationContext'
+import { useComplaints } from '../../context/ComplaintContext'
 import { useAuth } from '../../context/AuthContext'
 import { MENU_ITEMS, useKitchen } from '../../context/KitchenContext'
 import { platosServidosDeTickets } from '../../domain/kitchen/servedItems'
@@ -45,6 +46,7 @@ const EMPTY_PAYMENT = {
   method: 'efectivo',
   guests: '',
   notes: '',
+  coupon: '',
   items: [],
 }
 
@@ -208,6 +210,7 @@ export default function CashPage() {
   const { payments, todayPayments, todayTotal, todayByMethod, shift, openShift, closeShift, addPayment } = useCash()
   const { updateReservation, completeReservation, getReservationsByDate } = useReservations()
   const { tickets, syncTicketItems } = useKitchen()
+  const { complaints } = useComplaints()
 
   // Platos de una reserva → listos para cobrar (todos, servidos y pendientes).
   const allItemsFor = (reservationId) => {
@@ -243,14 +246,45 @@ export default function CashPage() {
     [getReservationsByDate, filterDate]
   )
 
-  // Calcular el descuento desde las notas (ej. [CUPÓN: PRD-30-XYZ])
+  // Detectar cupones activos del cliente desde sus quejas resueltas
+  const cuponesDelCliente = useMemo(() => {
+    if (!form.clientName || form.clientName.trim().length < 3) return null
+    const nombreNormalizado = form.clientName.trim().toLowerCase()
+    
+    // Buscar quejas de este cliente
+    const quejaConCupon = complaints.find(c => {
+      if (c.cliente.toLowerCase().includes(nombreNormalizado)) {
+        // Extraer cupón si existe en la respuesta
+        const match = c.respuesta_cliente?.match(/(?:PARDOS|PRD)-\d+-[A-Z0-9]+/i)
+        return match ? match[0] : null
+      }
+      return false
+    })
+
+    if (quejaConCupon) {
+      const match = quejaConCupon.respuesta_cliente.match(/(?:PARDOS|PRD)-\d+-[A-Z0-9]+/i)
+      return match ? match[0].toUpperCase() : null
+    }
+    return null
+  }, [form.clientName, complaints])
+
+  // Calcular el descuento desde form.coupon o form.notes
   let discountPct = 0
   let couponCode = ''
-  if (form.notes) {
-    const match = form.notes.match(/CUPÓN:\s*(?:PARDOS|PRD)-(\d+)-/i)
+  
+  // Buscar descuento en form.coupon primero
+  if (form.coupon) {
+    const match = form.coupon.match(/(?:PARDOS|PRD)-(\d+)-/i)
     if (match) {
       discountPct = parseInt(match[1], 10) / 100
-      couponCode = match[0].split(']')[0] // aprox
+      couponCode = form.coupon.toUpperCase()
+    }
+  } else if (form.notes) {
+    // Si no hay en form.coupon, buscar en las notas
+    const match = form.notes.match(/CUPÓN:\s*((?:PARDOS|PRD)-(\d+)-[A-Z0-9]+)/i)
+    if (match) {
+      discountPct = parseInt(match[2], 10) / 100
+      couponCode = match[1].toUpperCase()
     }
   }
 
@@ -593,6 +627,24 @@ export default function CashPage() {
                 <option key={m.id} value={m.id}>{m.icon} {m.label}</option>
               ))}
             </Select>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <Input label="Cupón de descuento (Opcional)" name="coupon" id="pay-coupon"
+              placeholder="Ej. PRD-30-X4KL" style={{ textTransform: 'uppercase' }}
+              value={form.coupon} onChange={handleChange} />
+            {cuponesDelCliente && !form.coupon && (
+              <div style={{
+                marginTop: 8, padding: '8px 12px', background: '#ecfdf5', border: '1px solid #10b981', 
+                borderRadius: 6, fontSize: '0.85rem', color: '#065f46', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}>
+                <span>💡 Cupón detectado: <strong>{cuponesDelCliente}</strong></span>
+                <button type="button" onClick={() => setForm(f => ({ ...f, coupon: cuponesDelCliente }))}
+                  style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                  Aplicar
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Resumen del pedido + botón para abrir selector de platos */}
