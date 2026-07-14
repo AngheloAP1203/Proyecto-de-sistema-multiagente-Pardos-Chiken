@@ -57,6 +57,7 @@ const INITIAL_FORM = {
   guests:      2,
   occasion:    '',
   notes:       '',
+  coupon:      '',
 }
 
 // ── Componente Input local ────────────────────────────────────────────────────
@@ -124,7 +125,7 @@ export default function BookingPage() {
       time:        form.time,
       guests:      Number(form.guests),
       occasion:    form.occasion,
-      notes:       form.notes.trim(),
+      notes:       form.notes.trim() + (form.coupon.trim() ? `\n[CUPÓN: ${form.coupon.trim()}]` : ''),
       tableId:     null, // asignada al aprobar
       source:      'public',
     })
@@ -346,6 +347,17 @@ export default function BookingPage() {
                   name="notes" id="booking-notes"
                   placeholder="Alergias, preferencias de mesa, solicitudes especiales..."
                   value={form.notes} onChange={handleChange} rows={3} />
+              </Field>
+
+              {/* Cupón */}
+              <Field label="Cupón de descuento (Opcional)">
+                <div className={styles.inputWrap}>
+                  <input className={styles.input}
+                    type="text" name="coupon" id="booking-coupon"
+                    placeholder="Ej. PARDOS-30-XYZ"
+                    style={{ textTransform: 'uppercase' }}
+                    value={form.coupon} onChange={handleChange} />
+                </div>
               </Field>
             </div>
 

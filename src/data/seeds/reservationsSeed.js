@@ -20,7 +20,7 @@ export const SAMPLE_RESERVATIONS = [
     clientDni: '78765432', clientEmail: 'maria@email.com',
     date: today, time: '13:00', guests: 4, tableId: 'T03',
     status: RESERVATION_STATUS.PENDING,
-    notes: 'Cumpleaños, pedir torta de chocolate', createdAt: new Date().toISOString(),
+    notes: 'Cumpleaños, pedir torta de chocolate\n[CUPÓN: PARDOS-30-DEMO]', createdAt: new Date().toISOString(),
     createdBy: 'u004', occasion: 'Cumpleaños',
   },
   {
@@ -55,7 +55,8 @@ export const SAMPLE_RESERVATIONS = [
     clientName: 'Lucia Mendoza', clientPhone: '99988877',
     clientDni: '79988877', clientEmail: 'lucia_m@email.com',
     date: today, time: '21:00', guests: 4, tableId: 'T15',
-    status: RESERVATION_STATUS.PENDING,
+    status: RESERVATION_STATUS.CANCELLED,
+    cancelReason: 'No llegó a la hora indicada (No-show)',
     notes: 'Mesa VIP solicitada', createdAt: new Date().toISOString(),
     createdBy: 'u004', occasion: '',
   },

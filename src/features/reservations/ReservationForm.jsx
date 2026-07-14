@@ -42,8 +42,8 @@ const EMPTY_FORM = {
   guests:      2,
   tableId:     '',
   occasion:    '',
-
   notes:       '',
+  coupon:      '',
   items:       [],
 }
 
@@ -174,7 +174,8 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
     }
 
     // Preserve items array correctly
-    onSubmit({ ...form, clientId: finalClientId, items: form.items || [] })
+    const finalNotes = form.notes.trim() + (form.coupon.trim() ? `\n[CUPÓN: ${form.coupon.trim()}]` : '')
+    onSubmit({ ...form, clientId: finalClientId, notes: finalNotes, items: form.items || [] })
     setSubmit(false)
     toast.success(initialData ? 'Reserva actualizada' : 'Reserva creada correctamente')
   }
@@ -332,6 +333,17 @@ export default function ReservationForm({ initialData, onSubmit, onCancel }) {
           name="notes"
           placeholder="Preferencias, alergias, solicitudes especiales..."
           value={form.notes}
+          onChange={handleChange}
+        />
+
+        <Input
+          label="Cupón de descuento (Opcional)"
+          id="res-coupon"
+          name="coupon"
+          type="text"
+          placeholder="Ej. PARDOS-30-XYZ"
+          style={{ textTransform: 'uppercase' }}
+          value={form.coupon}
           onChange={handleChange}
         />
       </div>

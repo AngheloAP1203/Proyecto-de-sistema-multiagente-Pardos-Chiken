@@ -43,13 +43,16 @@ const PRIORIDAD_CLASS = {
 export default function ComplaintsPage() {
   const { complaints, totalComplaints, criticasCount, deleteComplaint } = useComplaints()
   const { triageComplaint, askLeaderQuery } = useAgents()
-  const { hasPermission } = useAuth()
+  const { user, hasPermission } = useAuth()
   const { reservations } = useReservations()
   const { tickets } = useKitchen()
   const { payments } = useCash()
-  const canDelete = hasPermission('canDeleteClients')
+  const canDelete = hasPermission('delete_complaints')
 
   const [estadoFilter, setEstadoFilter] = useState('Todas')
+  const [search, setSearch] = useState('')
+  const [expandedSols, setExpandedSols] = useState({})
+  
   const displayed = complaints.filter(c => 
     estadoFilter === 'Todas' || (estadoFilter === 'Resueltas' ? c.estado === 'resuelta' : c.estado !== 'resuelta')
   )
@@ -82,7 +85,8 @@ export default function ComplaintsPage() {
       Instrucciones estrictas:
       1. Sé empático, profesional y resolutivo. Usa los datos del consumo para personalizar tu respuesta si es relevante (ej. "Lamento que su ${ticket?.items?.[0]?.name || 'plato'} no haya estado a la altura...").
       2. Ofrece una solución o compensación justa basada en la gravedad del problema. Si el caso es muy crítico (ej. problemas de salubridad o servicio inaceptable), puedes ofrecer hasta un 30% de descuento en su próxima visita. Si es leve, reduce la compensación (ej. 10%, cortesía, o solo disculpas). Evalúa como un verdadero gerente de tienda.
-      3. Prioriza disculpas genuinas, explicaciones operativas y compromisos de mejora.
+      3. Si ofreces un descuento, debes incluir OBLIGATORIAMENTE un CUPÓN ÚNICO con el formato exacto: PARDOS-[PORCENTAJE]-[LETRAS_ALAZAR] (Ejemplo: PARDOS-30-XDF). Indica al cliente que puede ingresarlo al hacer su reserva web o dictarlo en caja.
+      4. Prioriza disculpas genuinas, explicaciones operativas y compromisos de mejora.
       4. Tu respuesta debe ser el correo exacto que se le enviará al cliente. ¡IMPORTANTE!: ESCRIBE EN TEXTO PLANO LIMPIO. NO uses símbolos de Markdown (nada de asteriscos **, ni numerales #). Haz que luzca como un correo corporativo formal. FIRMA EL CORREO como "El Equipo de Pardos Chicken" (NUNCA uses placeholders como [Tu Nombre]).`
       const res = await askLeaderQuery(prompt)
       if (res.success) {
@@ -283,7 +287,20 @@ export default function ComplaintsPage() {
                   <p className={styles.mensaje}>{c.mensaje}</p>
                   {c.estado === 'resuelta' && c.resolution?.respuesta_cliente && (
                     <div style={{ marginTop: 8, padding: 8, background: '#f8fafc', borderRadius: 6, fontSize: '0.85em', borderLeft: '3px solid var(--color-success)' }}>
-                      <strong>Solución de IA:</strong> <ReactMarkdown>{c.resolution.respuesta_cliente}</ReactMarkdown>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong>Solución de IA (Enviada al correo):</strong>
+                        <button 
+                          onClick={() => setExpandedSols(p => ({ ...p, [c.id]: !p[c.id] }))}
+                          style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.9em', textDecoration: 'underline' }}
+                        >
+                          {expandedSols[c.id] ? 'Ocultar detalle' : 'Ver solución completa'}
+                        </button>
+                      </div>
+                      {expandedSols[c.id] && (
+                        <div style={{ marginTop: 8 }}>
+                          <ReactMarkdown>{c.resolution.respuesta_cliente}</ReactMarkdown>
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className={styles.puntos}>

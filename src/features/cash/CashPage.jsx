@@ -243,8 +243,20 @@ export default function CashPage() {
     [getReservationsByDate, filterDate]
   )
 
-  const orderTotal = orderItems.reduce((s, i) => s + i.price * i.qty, 0)
+  // Calcular el descuento desde las notas (ej. [CUPÓN: PARDOS-30-XYZ])
+  let discountPct = 0
+  let couponCode = ''
+  if (form.notes) {
+    const match = form.notes.match(/CUPÓN:\s*PARDOS-(\d+)-/i)
+    if (match) {
+      discountPct = parseInt(match[1], 10) / 100
+      couponCode = match[0].split(']')[0] // aprox
+    }
+  }
 
+  const subtotalItems = orderItems.reduce((s, i) => s + i.price * i.qty, 0)
+  const discountAmt = subtotalItems * discountPct
+  const orderTotal = subtotalItems - discountAmt
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm(f => ({ ...f, [name]: value }))
@@ -452,6 +464,7 @@ export default function CashPage() {
                         reservationId: r.id,
                         clientName: r.clientName,
                         guests: r.guests,
+                        notes: r.notes || '',
                       }))
                       const items = allItemsFor(r.id)
                       setOrderItems(items)
@@ -589,6 +602,12 @@ export default function CashPage() {
             {/* Vista compacta del pedido actual */}
             {orderItems.length > 0 && (
               <div className={styles.orderSummaryCompact}>
+                  {discountPct > 0 && (
+                    <div className={styles.orderTotalCompact} style={{ color: 'var(--color-success)' }}>
+                      <span>Descuento aplicado ({discountPct * 100}%):</span>
+                      <span>- S/ {discountAmt.toFixed(2)}</span>
+                    </div>
+                  )}
                 <div className={styles.servedHint}>
                   <Utensils size={12} /> Platos servidos por cocina · puedes ajustar antes de cobrar
                 </div>
