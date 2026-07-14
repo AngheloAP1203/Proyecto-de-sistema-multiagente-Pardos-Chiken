@@ -109,6 +109,8 @@ export class LeaderAnalystAgent extends AgentBase {
       quejas: quejas.map((c) => ({
         id: c.id, fecha: c.fecha, sede: c.sede, prioridad: c.prioridad,
         puntos_criticos: c.puntos_criticos, estado: c.estado,
+        mensaje_cliente: c.mensaje,
+        solucion_enviada: c.resolution?.respuesta_cliente || 'Aún no resuelta',
       })),
     }
   }
@@ -122,6 +124,8 @@ export class LeaderAnalystAgent extends AgentBase {
         quejas: similares.map((s) => ({
           id: s.id, sede: s.sede, prioridad: s.prioridad,
           puntos_criticos: s.puntos_criticos, sentimiento: s.sentimiento,
+          mensaje_cliente: s.mensaje,
+          solucion_enviada: s.resolution?.respuesta_cliente || 'Aún no resuelta',
           similitud: s.score || null,
         })),
       }

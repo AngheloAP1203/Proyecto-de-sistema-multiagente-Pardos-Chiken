@@ -12,7 +12,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   Send, Sparkles, Shield, AlertTriangle, Filter, Trash2, Bot, MessageSquare,
   ShieldAlert, ShieldCheck, CheckCircle2, Activity, Zap
@@ -49,16 +49,9 @@ export default function ComplaintsPage() {
   const { payments } = useCash()
   const canDelete = hasPermission('canDeleteClients')
 
-  // ── Filtro de bandeja ──
-  const [sedeFilter, setSedeFilter] = useState('Todas')
   const [estadoFilter, setEstadoFilter] = useState('Todas')
-  const sedes = useMemo(
-    () => ['Todas', ...Array.from(new Set(complaints.map(c => c.sede).filter(Boolean)))],
-    [complaints]
-  )
   const displayed = complaints.filter(c => 
-    (sedeFilter === 'Todas' || c.sede === sedeFilter) &&
-    (estadoFilter === 'Todas' || (estadoFilter === 'Resueltas' ? c.estado === 'resuelta' : c.estado !== 'resuelta'))
+    estadoFilter === 'Todas' || (estadoFilter === 'Resueltas' ? c.estado === 'resuelta' : c.estado !== 'resuelta')
   )
 
   const [resolvingIds, setResolvingIds] = useState({})
@@ -88,15 +81,15 @@ export default function ComplaintsPage() {
       ${contextData}
       Instrucciones estrictas:
       1. Sé empático, profesional y resolutivo. Usa los datos del consumo para personalizar tu respuesta si es relevante (ej. "Lamento que su ${ticket?.items?.[0]?.name || 'plato'} no haya estado a la altura...").
-      2. NO ofrezcas descuentos monetarios ni cupones a menos que la queja sea un problema grave o de salubridad. 
-      3. Prioriza disculpas genuinas, explicaciones operativas y compromisos de capacitación al personal o revisión de procesos.
-      4. Tu respuesta debe ser el correo exacto que se le enviará al cliente (formato markdown, claro y directo).`
+      2. Ofrece una solución o compensación justa basada en la gravedad del problema. Si el caso es muy crítico (ej. problemas de salubridad o servicio inaceptable), puedes ofrecer hasta un 30% de descuento en su próxima visita. Si es leve, reduce la compensación (ej. 10%, cortesía, o solo disculpas). Evalúa como un verdadero gerente de tienda.
+      3. Prioriza disculpas genuinas, explicaciones operativas y compromisos de mejora.
+      4. Tu respuesta debe ser el correo exacto que se le enviará al cliente. ¡IMPORTANTE!: ESCRIBE EN TEXTO PLANO LIMPIO. NO uses símbolos de Markdown (nada de asteriscos **, ni numerales #). Haz que luzca como un correo corporativo formal.`
       const res = await askLeaderQuery(prompt)
       if (res.success) {
-        // En lugar de window.confirm, abrimos el modal
-        setPendingResolution({ complaint: c, result: res.result })
+        // Ejecución autónoma: resolvemos inmediatamente sin ventana modal.
+        await updateAndSendEmail(c, res.result)
       } else {
-        toast.error('No se pudo generar solución')
+        toast.error('No se pudo generar solución para la queja de ' + c.cliente)
       }
     } catch (err) {
       toast.error('Error al resolver: ' + err.message)
@@ -104,6 +97,41 @@ export default function ComplaintsPage() {
       setResolvingIds(prev => ({ ...prev, [c.id]: false }))
     }
   }
+
+  // Lógica de auto-resolución aislada
+  const updateAndSendEmail = async (c, result) => {
+    try {
+      await updateComplaint(c.id, {
+        estado: 'resuelta',
+        resolution: { respuesta_cliente: result }
+      })
+      
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
+      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+
+      if (serviceId && templateId && publicKey && c.email) {
+        await emailjs.send(serviceId, templateId, {
+          to_email: c.email, 
+          message: result
+        }, publicKey)
+        toast.success(`La IA resolvió automáticamente la queja de ${c.cliente} y envió el correo.`)
+      }
+    } catch (err) {
+      console.error('Error al enviar correo automático', err)
+    }
+  }
+
+  // ── Auto-resolución en tiempo real ──
+  // Si entra una nueva queja a la bandeja y el agente no está resolviéndola, la procesa.
+  useEffect(() => {
+    const nuevas = complaints.filter(c => c.estado === 'nueva')
+    nuevas.forEach(c => {
+      if (!resolvingIds[c.id]) {
+        handleAutoResolve(c)
+      }
+    })
+  }, [complaints])
 
   const confirmResolution = async () => {
     if (!pendingResolution) return
@@ -208,13 +236,6 @@ export default function ComplaintsPage() {
                 <option value="Todas">Todos los estados</option>
                 <option value="Pendientes">Pendientes</option>
                 <option value="Resueltas">Resueltas</option>
-              </select>
-              <select
-                className={styles.select}
-                value={sedeFilter}
-                onChange={e => setSedeFilter(e.target.value)}
-              >
-                {sedes.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
