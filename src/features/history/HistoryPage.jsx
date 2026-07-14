@@ -162,7 +162,7 @@ export default function HistoryPage() {
                 </thead>
                 <tbody>
                   {paginated.map(r => {
-                    const linkedComplaint = complaints.find(c => c.reservation_id === r.id)
+                    const linkedComplaint = complaints.find(c => c.reservationId === r.id || c.reservation_id === r.id)
                     const consumoText = r.items?.length 
                       ? r.items.map(i => `${i.qty}x ${i.name}`).join(', ')
                       : 'Sin consumo'
@@ -188,7 +188,7 @@ export default function HistoryPage() {
                         <td>
                           {linkedComplaint ? (
                             <span className={styles.complaintBadge}>
-                              Queja #{linkedComplaint.id.slice(0, 5).toUpperCase()}
+                              # Cód. Reclamo: {linkedComplaint.id.slice(0, 6).toUpperCase()}
                             </span>
                           ) : (
                             <span className={styles.noComplaint}>Sin reclamos</span>

@@ -29,6 +29,7 @@ import ReservationCard from './ReservationCard'
 import styles from './ReservationsPage.module.css'
 
 const STATUS_FILTERS = [
+  { value: 'active',                           label: 'Activas' },
   { value: 'all',                              label: 'Todas' },
   { value: RESERVATION_STATUS.PENDING,         label: 'Pendientes' },
   { value: RESERVATION_STATUS.SEATED,          label: 'En mesa' },
@@ -165,7 +166,7 @@ export default function ReservationsPage() {
   const { tickets, addTicket, syncTicketItems } = useKitchen()
 
   const [search,       setSearch]     = useState('')
-  const [statusFilter, setStatus]     = useState('all')
+  const [statusFilter, setStatus]     = useState('active')
   const [dateFilter,   setDate]       = useState('today')
   const [isModalOpen,  setModalOpen]  = useState(false)
   const [editReservation, setEdit]    = useState(null)
@@ -175,7 +176,11 @@ export default function ReservationsPage() {
   )
 
   const filtered = baseList.filter(r => {
-    const matchStatus = statusFilter === 'all' || r.status === statusFilter
+    const matchStatus = statusFilter === 'all' 
+      ? true 
+      : statusFilter === 'active'
+        ? (r.status === RESERVATION_STATUS.PENDING || r.status === RESERVATION_STATUS.SEATED)
+        : r.status === statusFilter
     const matchSearch = !search ||
       r.clientName.toLowerCase().includes(search.toLowerCase()) ||
       r.clientDni?.includes(search) || r.id.includes(search)
