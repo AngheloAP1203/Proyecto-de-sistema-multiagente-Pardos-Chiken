@@ -24,10 +24,10 @@ import { generateCouponCode } from '../utils/couponGenerator.js'
 
 // Porcentaje de descuento dinámico según severidad
 const DESCUENTO_POR_SEVERIDAD = {
-  'Crítica': 30,
-  'Alta':    20,
-  'Media':   10,
-  'Baja':    5,
+  'Crítica': { tipo: 'descuento_porcentaje', valor: 30, nombre: 'Vale de 30% de descuento', codigoVal: 30 },
+  'Alta':    { tipo: 'descuento_porcentaje', valor: 20, nombre: 'Vale de 20% de descuento', codigoVal: 20 },
+  'Media':   { tipo: 'producto_gratis', valor: 'POSTRE', nombre: 'Postre Gratis', codigoVal: 'POSTRE', condiciones: 'Válido por un postre (Picarones o Crema Volteada) en tu próximo consumo.' },
+  'Baja':    { tipo: 'producto_gratis', valor: 'BEBIDA', nombre: 'Bebida Gratis', codigoVal: 'BEBIDA', condiciones: 'Válido por una bebida (Chicha, Limonada o Gaseosa) en tu próximo consumo.' },
 }
 
 class RewardAgentClass {
@@ -49,17 +49,17 @@ class RewardAgentClass {
   _recompensa({ puntosCriticos, prioridad }, { policies = [], promotions = [] }) {
     const politica = this._politica(puntosCriticos, policies)
 
-    // Calcular el porcentaje dinámico de descuento
-    const porcentaje = DESCUENTO_POR_SEVERIDAD[prioridad] || 5
-    const codigo = generateCouponCode(porcentaje)
+    // Calcular la recompensa dinámica
+    const conf = DESCUENTO_POR_SEVERIDAD[prioridad] || DESCUENTO_POR_SEVERIDAD['Baja']
+    const codigo = generateCouponCode(conf.codigoVal)
 
     const promo = {
       id: codigo,
-      nombre: `Vale de ${porcentaje}% de descuento`,
-      tipo: 'descuento_porcentaje',
-      valor: porcentaje,
+      nombre: conf.nombre,
+      tipo: conf.tipo,
+      valor: conf.valor,
       codigo: codigo,
-      condiciones: 'Aplica en tu próximo consumo en cualquier sede de Pardos Chicken. Una sola vez por cliente.',
+      condiciones: conf.condiciones || 'Aplica en tu próximo consumo en cualquier sede de Pardos Chicken. Una sola vez por cliente.',
       vigencia_dias: 30,
       activa: true
     }
@@ -130,7 +130,7 @@ class RewardAgentClass {
       pagoVerificado: verif.pago,
       recompensa:    promo ? {
         id: promo.id, nombre: promo.nombre, tipo: promo.tipo,
-        valor: promo.valor, condiciones: promo.condiciones, vigencia_dias: promo.vigencia_dias,
+        valor: promo.valor, codigo: promo.codigo, condiciones: promo.condiciones, vigencia_dias: promo.vigencia_dias,
       } : null,
       politica:   politica?.id || null,
       mensaje,

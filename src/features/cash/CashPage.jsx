@@ -255,9 +255,9 @@ export default function CashPage() {
     complaints.forEach(c => {
       if (c.cliente && c.cliente.toLowerCase().includes(nombreNormalizado)) {
         // Extraer cupón si existe en la respuesta
-        const match = c.respuesta_cliente?.match(/(?:PARDOS|PRD)-(\d+)-[A-Z0-9]+/i)
+        const match = c.respuesta_cliente?.match(/(?:PARDOS|PRD)-(\d+|BEBIDA|POSTRE)-[A-Z0-9]+/i)
         if (match) {
-          cupones.push({ codigo: match[0].toUpperCase(), dcto: match[1] })
+          cupones.push({ codigo: match[0].toUpperCase(), dcto: match[1].toUpperCase() })
         }
       }
     })
@@ -266,27 +266,35 @@ export default function CashPage() {
 
   // Calcular el descuento desde form.coupon o form.notes
   let discountPct = 0
+  let fixedDiscount = 0
   let couponCode = ''
   
+  const applyCouponMatch = (val, code) => {
+    if (val === 'BEBIDA') {
+      const bebida = orderItems.find(i => /chicha|limonada|gaseosa|bebida|agua/i.test(i.name))
+      if (bebida) fixedDiscount = bebida.price
+    } else if (val === 'POSTRE') {
+      const postre = orderItems.find(i => /picarones|crema|torta|helado/i.test(i.name))
+      if (postre) fixedDiscount = postre.price
+    } else {
+      discountPct = parseInt(val, 10) / 100
+    }
+    couponCode = code.toUpperCase()
+  }
+
   // Buscar descuento en form.coupon primero
   if (form.coupon) {
-    const match = form.coupon.match(/(?:PARDOS|PRD)-(\d+)-/i)
-    if (match) {
-      discountPct = parseInt(match[1], 10) / 100
-      couponCode = form.coupon.toUpperCase()
-    }
+    const match = form.coupon.match(/(?:PARDOS|PRD)-(\d+|BEBIDA|POSTRE)-/i)
+    if (match) applyCouponMatch(match[1].toUpperCase(), form.coupon)
   } else if (form.notes) {
     // Si no hay en form.coupon, buscar en las notas
-    const match = form.notes.match(/CUPÓN:\s*((?:PARDOS|PRD)-(\d+)-[A-Z0-9]+)/i)
-    if (match) {
-      discountPct = parseInt(match[2], 10) / 100
-      couponCode = match[1].toUpperCase()
-    }
+    const match = form.notes.match(/CUPÓN:\s*((?:PARDOS|PRD)-(\d+|BEBIDA|POSTRE)-[A-Z0-9]+)/i)
+    if (match) applyCouponMatch(match[2].toUpperCase(), match[1])
   }
 
   const subtotalItems = orderItems.reduce((s, i) => s + i.price * i.qty, 0)
-  const discountAmt = subtotalItems * discountPct
-  const orderTotal = subtotalItems - discountAmt
+  const discountAmt = (subtotalItems * discountPct) + fixedDiscount
+  const orderTotal = Math.max(0, subtotalItems - discountAmt)
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm(f => ({ ...f, [name]: value }))
@@ -669,7 +677,7 @@ export default function CashPage() {
                         borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: '0.8rem',
                         display: 'flex', alignItems: 'center', gap: '4px'
                       }}>
-                      {cup.codigo} <strong>(-{cup.dcto}%)</strong>
+                      {cup.codigo} <strong>({isNaN(cup.dcto) ? cup.dcto : `-${cup.dcto}%`})</strong>
                     </button>
                   ))}
                 </div>
