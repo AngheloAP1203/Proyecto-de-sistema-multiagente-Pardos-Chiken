@@ -27,7 +27,7 @@ const DESCUENTO_POR_SEVERIDAD = {
   'Crítica': { tipo: 'descuento_porcentaje', valor: 30, nombre: 'Vale de 30% de descuento', codigoVal: 30 },
   'Alta':    { tipo: 'descuento_porcentaje', valor: 20, nombre: 'Vale de 20% de descuento', codigoVal: 20 },
   'Media':   { tipo: 'producto_gratis', valor: 'POSTRE', nombre: 'Postre Gratis', codigoVal: 'POSTRE', condiciones: 'Válido por un postre (Picarones o Crema Volteada) en tu próximo consumo.' },
-  'Baja':    { tipo: 'producto_gratis', valor: 'BEBIDA', nombre: 'Bebida Gratis', codigoVal: 'BEBIDA', condiciones: 'Válido por una bebida (Chicha, Limonada o Gaseosa) en tu próximo consumo.' },
+  'Baja':    { tipo: 'producto_gratis', valor: 'JARRA_CHICHA', nombre: 'Jarra de Chicha Gratis', codigoVal: 'JARRA_CHICHA', condiciones: 'Válido por una Jarra de Chicha (1.5L) en tu próximo consumo.' },
 }
 
 class RewardAgentClass {
@@ -51,7 +51,7 @@ class RewardAgentClass {
 
     // Calcular la recompensa dinámica
     const conf = DESCUENTO_POR_SEVERIDAD[prioridad] || DESCUENTO_POR_SEVERIDAD['Baja']
-    const codigo = generateCouponCode(conf.codigoVal)
+    const codigo = generateCouponCode()
 
     const promo = {
       id: codigo,

@@ -254,10 +254,14 @@ export default function CashPage() {
     const cupones = []
     complaints.forEach(c => {
       if (c.cliente && c.cliente.toLowerCase().includes(nombreNormalizado)) {
-        // Extraer cupón si existe en la respuesta
-        const match = c.respuesta_cliente?.match(/(?:PARDOS|PRD)-(\d+|BEBIDA|POSTRE)-[A-Z0-9]+/i)
-        if (match) {
-          cupones.push({ codigo: match[0].toUpperCase(), dcto: match[1].toUpperCase() })
+        if (c.recompensa && c.recompensa.codigo) {
+          cupones.push({ codigo: c.recompensa.codigo.toUpperCase(), dcto: c.recompensa.valor.toString().toUpperCase() })
+        } else {
+          // Extraer cupón si existe en la respuesta (legado)
+          const match = c.respuesta_cliente?.match(/(?:PARDOS|PRD)-(\d+|BEBIDA|POSTRE)-[A-Z0-9]+/i)
+          if (match) {
+            cupones.push({ codigo: match[0].toUpperCase(), dcto: match[1].toUpperCase() })
+          }
         }
       }
     })
@@ -273,8 +277,11 @@ export default function CashPage() {
     if (val === 'BEBIDA') {
       const bebida = orderItems.find(i => /chicha|limonada|gaseosa|bebida|agua/i.test(i.name))
       if (bebida) fixedDiscount = bebida.price
+    } else if (val === 'JARRA_CHICHA' || val === 'JARRA') {
+      const jarra = orderItems.find(i => /chicha.*1\.5/i.test(i.name) || /jarra/i.test(i.name))
+      if (jarra) fixedDiscount = jarra.price
     } else if (val === 'POSTRE') {
-      const postre = orderItems.find(i => /picarones|crema|torta|helado/i.test(i.name))
+      const postre = orderItems.find(i => /picarones|crema|torta|helado|leches|pie|cheesecake/i.test(i.name))
       if (postre) fixedDiscount = postre.price
     } else {
       discountPct = parseInt(val, 10) / 100
@@ -284,12 +291,27 @@ export default function CashPage() {
 
   // Buscar descuento en form.coupon primero
   if (form.coupon) {
-    const match = form.coupon.match(/(?:PARDOS|PRD)-(\d+|BEBIDA|POSTRE)-/i)
-    if (match) applyCouponMatch(match[1].toUpperCase(), form.coupon)
+    const code = form.coupon.trim().toUpperCase()
+    const foundComplaint = complaints.find(c => c.recompensa?.codigo?.toUpperCase() === code)
+    if (foundComplaint) {
+      applyCouponMatch(foundComplaint.recompensa.valor.toString().toUpperCase(), code)
+    } else {
+      const match = code.match(/(?:PARDOS|PRD)-(\d+|BEBIDA|POSTRE)-/i)
+      if (match) applyCouponMatch(match[1].toUpperCase(), code)
+    }
   } else if (form.notes) {
     // Si no hay en form.coupon, buscar en las notas
-    const match = form.notes.match(/CUPÓN:\s*((?:PARDOS|PRD)-(\d+|BEBIDA|POSTRE)-[A-Z0-9]+)/i)
-    if (match) applyCouponMatch(match[2].toUpperCase(), match[1])
+    const match = form.notes.match(/CUPÓN:\s*([A-Z0-9\-]+)/i)
+    if (match) {
+      const code = match[1].toUpperCase()
+      const foundComplaint = complaints.find(c => c.recompensa?.codigo?.toUpperCase() === code)
+      if (foundComplaint) {
+        applyCouponMatch(foundComplaint.recompensa.valor.toString().toUpperCase(), code)
+      } else {
+        const fallbackMatch = code.match(/(?:PARDOS|PRD)-(\d+|BEBIDA|POSTRE)-/i)
+        if (fallbackMatch) applyCouponMatch(fallbackMatch[1].toUpperCase(), code)
+      }
+    }
   }
 
   const subtotalItems = orderItems.reduce((s, i) => s + i.price * i.qty, 0)

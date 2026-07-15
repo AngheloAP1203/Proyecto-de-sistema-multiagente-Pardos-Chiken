@@ -94,7 +94,27 @@ export function KitchenProvider({ children }) {
       return menuMapRef.current
     }
     
-    const { data, error } = await supabase.from('menu_items').select('id, name')
+    let { data, error } = await supabase.from('menu_items').select('id, name')
+    
+    // Auto-sync missing items (postres, bebidas, etc.)
+    if (!error && data) {
+      const existingNames = new Set(data.map(d => d.name))
+      const missingItems = MENU_ITEMS.filter(m => !existingNames.has(m.name))
+      
+      if (missingItems.length > 0) {
+        console.log('[kitchen] Sincronizando items faltantes en Supabase...', missingItems.length)
+        const toInsert = missingItems.map(m => ({
+          name: m.name,
+          price: m.price,
+          is_available: true
+        }))
+        const { data: inserted } = await supabase.from('menu_items').insert(toInsert).select('id, name')
+        if (inserted) {
+          data = [...data, ...inserted]
+        }
+      }
+    }
+
     if (error || !data || data.length === 0) {
       console.warn('[kitchen] Error al cargar menu_items o está vacío', error)
       // Si falla, devolvemos un mapa vacío temporalmente, pero NO lo cacheamos

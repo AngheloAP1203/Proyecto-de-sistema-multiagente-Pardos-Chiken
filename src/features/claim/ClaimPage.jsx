@@ -109,7 +109,7 @@ export default function ClaimPage() {
               mensaje, puntos_criticos, sentimiento: 'negativo',
               razonamiento: 'Cuestionario guiado del cliente + Auto-resolución',
               respuesta_cliente: respuesta_cliente, respuestas,
-              resolution: { respuesta_cliente: respuesta_cliente }
+              resolution: { respuesta_cliente: respuesta_cliente, recompensa: res.recompensa }
             })
 
             // Enviar correo al cliente

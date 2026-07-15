@@ -49,6 +49,7 @@ export function ComplaintProvider({ children }) {
             sede: resObj.sede || 'San Isidro',
             puntos_criticos: resObj.puntos_criticos || null,
             respuesta_cliente: resObj.respuesta_cliente || '',
+            recompensa: resObj.recompensa || null,
             estado: c.estado,
             createdAt: c.created_at
           }
@@ -82,6 +83,7 @@ export function ComplaintProvider({ children }) {
       respuesta_cliente: complaint.respuesta_cliente || '',
       // Respuestas del cuestionario guiado (preguntas cerradas + abierta), si las hay.
       respuestas: complaint.respuestas || null,
+      recompensa: complaint.resolution?.recompensa || complaint.recompensa || null,
     }
 
     const record = {
