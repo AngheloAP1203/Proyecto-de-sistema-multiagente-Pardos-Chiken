@@ -505,6 +505,28 @@ export default function CashPage() {
                       if (items.length === 0) {
                         toast('Esta reserva aún no tiene platos registrados', { icon: '🍽️' })
                       }
+                      
+                      // Check for coupons automatically and warn the cashier
+                      if (r.clientName && r.clientName.trim().length >= 3) {
+                        const nombreNormalizado = r.clientName.trim().toLowerCase()
+                        const quejaConCupon = complaints.find(c => {
+                          if (c.cliente && c.cliente.toLowerCase().includes(nombreNormalizado)) {
+                            return c.respuesta_cliente?.match(/(?:PARDOS|PRD)-\d+-[A-Z0-9]+/i)
+                          }
+                          return false
+                        })
+                        if (quejaConCupon) {
+                          const match = quejaConCupon.respuesta_cliente.match(/(?:PARDOS|PRD)-(\d+)-[A-Z0-9]+/i)
+                          if (match) {
+                            toast(`¡Atención! Este cliente tiene un cupón de ${match[1]}% disponible. Pregúntale si desea usarlo.`, {
+                              icon: '🎁',
+                              duration: 6000,
+                              style: { border: '2px solid var(--color-success)', padding: '16px', fontWeight: 'bold' }
+                            })
+                          }
+                        }
+                      }
+
                       setPaymentOpen(true)
                     }}
                     id={`btn-cobrar-${r.id}`}
