@@ -290,9 +290,10 @@ function Resultado({ res }) {
       <div className={`${styles.result} ${styles.resultOk}`}>
         <div className={`${styles.resultIcon} ${styles.iconReward}`}><Gift size={22} /></div>
         <h3 className={styles.resultTitle}>¡Tu reclamo fue aceptado!</h3>
-        <p className={styles.resultText}>{res.mensaje}</p>
-        <p style={{ marginTop: '12px', fontWeight: 'bold', color: '#166534', textAlign: 'center' }}>
-          Revisa tu bandeja de correo electrónico, te hemos enviado los detalles de tu cupón.
+        <p className={styles.resultText}>
+          {res.mensaje}
+          <br /><br />
+          <strong>📩 Por favor, revisa tu bandeja de correo electrónico</strong>, te hemos enviado los detalles de tu cupón para que puedas usarlo en tu próxima visita.
         </p>
         {res.recompensa && (
           <div className={styles.coupon}>
