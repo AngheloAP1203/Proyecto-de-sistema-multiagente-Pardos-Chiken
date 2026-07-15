@@ -248,24 +248,20 @@ export default function CashPage() {
 
   // Detectar cupones activos del cliente desde sus quejas resueltas
   const cuponesDelCliente = useMemo(() => {
-    if (!form.clientName || form.clientName.trim().length < 3) return null
+    if (!form.clientName || form.clientName.trim().length < 3) return []
     const nombreNormalizado = form.clientName.trim().toLowerCase()
     
-    // Buscar quejas de este cliente
-    const quejaConCupon = complaints.find(c => {
-      if (c.cliente.toLowerCase().includes(nombreNormalizado)) {
+    const cupones = []
+    complaints.forEach(c => {
+      if (c.cliente && c.cliente.toLowerCase().includes(nombreNormalizado)) {
         // Extraer cupón si existe en la respuesta
-        const match = c.respuesta_cliente?.match(/(?:PARDOS|PRD)-\d+-[A-Z0-9]+/i)
-        return match ? match[0] : null
+        const match = c.respuesta_cliente?.match(/(?:PARDOS|PRD)-(\d+)-[A-Z0-9]+/i)
+        if (match) {
+          cupones.push({ codigo: match[0].toUpperCase(), dcto: match[1] })
+        }
       }
-      return false
     })
-
-    if (quejaConCupon) {
-      const match = quejaConCupon.respuesta_cliente.match(/(?:PARDOS|PRD)-\d+-[A-Z0-9]+/i)
-      return match ? match[0].toUpperCase() : null
-    }
-    return null
+    return cupones
   }, [form.clientName, complaints])
 
   // Calcular el descuento desde form.coupon o form.notes
@@ -509,21 +505,23 @@ export default function CashPage() {
                       // Check for coupons automatically and warn the cashier
                       if (r.clientName && r.clientName.trim().length >= 3) {
                         const nombreNormalizado = r.clientName.trim().toLowerCase()
-                        const quejaConCupon = complaints.find(c => {
+                        const cuponesDetectados = []
+                        complaints.forEach(c => {
                           if (c.cliente && c.cliente.toLowerCase().includes(nombreNormalizado)) {
-                            return c.respuesta_cliente?.match(/(?:PARDOS|PRD)-\d+-[A-Z0-9]+/i)
+                            const match = c.respuesta_cliente?.match(/(?:PARDOS|PRD)-(\d+)-[A-Z0-9]+/i)
+                            if (match) cuponesDetectados.push(match[1])
                           }
-                          return false
                         })
-                        if (quejaConCupon) {
-                          const match = quejaConCupon.respuesta_cliente.match(/(?:PARDOS|PRD)-(\d+)-[A-Z0-9]+/i)
-                          if (match) {
-                            toast(`¡Atención! Este cliente tiene un cupón de ${match[1]}% disponible. Pregúntale si desea usarlo.`, {
-                              icon: '🎁',
-                              duration: 6000,
-                              style: { border: '2px solid var(--color-success)', padding: '16px', fontWeight: 'bold' }
-                            })
-                          }
+                        if (cuponesDetectados.length > 0) {
+                          const dctos = cuponesDetectados.map(d => `${d}%`).join(', ')
+                          const txt = cuponesDetectados.length === 1 
+                            ? `¡Atención! Este cliente tiene un cupón de ${dctos} disponible.` 
+                            : `¡Atención! Este cliente tiene ${cuponesDetectados.length} cupones disponibles (${dctos}).`
+                          toast(`${txt} Pregúntale si desea usar alguno.`, {
+                            icon: '🎁',
+                            duration: 6000,
+                            style: { border: '2px solid var(--color-success)', padding: '16px', fontWeight: 'bold' }
+                          })
                         }
                       }
 
@@ -655,16 +653,26 @@ export default function CashPage() {
             <Input label="Cupón de descuento (Opcional)" name="coupon" id="pay-coupon"
               placeholder="Ej. PRD-30-X4KL" style={{ textTransform: 'uppercase' }}
               value={form.coupon} onChange={handleChange} />
-            {cuponesDelCliente && !form.coupon && (
+            {cuponesDelCliente.length > 0 && !form.coupon && (
               <div style={{
                 marginTop: 8, padding: '8px 12px', background: '#ecfdf5', border: '1px solid #10b981', 
-                borderRadius: 6, fontSize: '0.85rem', color: '#065f46', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                borderRadius: 6, fontSize: '0.85rem', color: '#065f46'
               }}>
-                <span>💡 Cupón detectado: <strong>{cuponesDelCliente}</strong></span>
-                <button type="button" onClick={() => setForm(f => ({ ...f, coupon: cuponesDelCliente }))}
-                  style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem' }}>
-                  Aplicar
-                </button>
+                <div style={{ marginBottom: 6 }}>💡 <strong>Cupones detectados ({cuponesDelCliente.length}):</strong> Selecciona uno para aplicarlo</div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {cuponesDelCliente.map((cup, idx) => (
+                    <button 
+                      key={idx} type="button" 
+                      onClick={() => setForm(f => ({ ...f, coupon: cup.codigo }))}
+                      style={{ 
+                        background: '#10b981', color: 'white', border: 'none', 
+                        borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: '0.8rem',
+                        display: 'flex', alignItems: 'center', gap: '4px'
+                      }}>
+                      {cup.codigo} <strong>(-{cup.dcto}%)</strong>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
