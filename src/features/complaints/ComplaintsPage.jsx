@@ -50,12 +50,19 @@ export default function ComplaintsPage() {
   const canDelete = hasPermission('delete_complaints')
 
   const [estadoFilter, setEstadoFilter] = useState('Todas')
+  const [severidadFilter, setSeveridadFilter] = useState('Todas')
   const [search, setSearch] = useState('')
   const [expandedSols, setExpandedSols] = useState({})
   
-  const displayed = complaints.filter(c => 
-    estadoFilter === 'Todas' || (estadoFilter === 'Resueltas' ? c.estado === 'resuelta' : c.estado !== 'resuelta')
-  )
+  const displayed = complaints.filter(c => {
+    const pDni = c.dni || ''
+    const pClient = c.cliente || ''
+    const pId = String(c.id) || ''
+    const matchSearch = !search || pDni.includes(search) || pClient.toLowerCase().includes(search.toLowerCase()) || pId.includes(search)
+    const matchEstado = estadoFilter === 'Todas' || (estadoFilter === 'Resueltas' ? c.estado === 'resuelta' : c.estado !== 'resuelta')
+    const matchSeveridad = severidadFilter === 'Todas' || c.prioridad === severidadFilter
+    return matchSearch && matchEstado && matchSeveridad
+  })
 
   const [resolvingIds, setResolvingIds] = useState({})
   const [pendingResolution, setPendingResolution] = useState(null)
@@ -246,12 +253,30 @@ export default function ComplaintsPage() {
             <span className={styles.inboxTitle}><MessageSquare size={16} /> Bandeja</span>
             <div className={styles.filterWrap}>
               <Filter size={14} />
+              <input 
+                type="text" 
+                placeholder="Buscar DNI o código..." 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ddd', fontSize: '0.9em', maxWidth: '140px' }}
+              />
+              <select
+                className={styles.select}
+                value={severidadFilter}
+                onChange={e => setSeveridadFilter(e.target.value)}
+              >
+                <option value="Todas">Severidad (Todas)</option>
+                <option value="Crítica">Crítica</option>
+                <option value="Alta">Alta</option>
+                <option value="Media">Media</option>
+                <option value="Baja">Baja</option>
+              </select>
               <select
                 className={styles.select}
                 value={estadoFilter}
                 onChange={e => setEstadoFilter(e.target.value)}
               >
-                <option value="Todas">Todos los estados</option>
+                <option value="Todas">Estados (Todos)</option>
                 <option value="Pendientes">Pendientes</option>
                 <option value="Resueltas">Resueltas</option>
               </select>
@@ -271,8 +296,7 @@ export default function ComplaintsPage() {
                     <span className={`${styles.badge} ${PRIORIDAD_CLASS[c.prioridad] || ''}`}>
                       {c.prioridad}
                     </span>
-                    <span className={styles.sede} style={{ fontWeight: 'bold' }}>#{c.id}</span>
-                    <span className={styles.sede}>{c.sede}</span>
+                    <span className={styles.sede} style={{ fontWeight: 'bold' }}>#{String(c.id).slice(0, 8)}</span>
                     <span className={styles.estado} data-estado={c.estado}>{c.estado}</span>
                     {c.estado !== 'resuelta' && (
                       <button 

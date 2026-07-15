@@ -104,6 +104,7 @@ export function evaluarEvidencia(reclamo = {}, datos = {}) {
     reservationId: reserva.id,
     tableId:       reserva.tableId,
     fecha:         reserva.date,
+    clientEmail:   reserva.clientEmail,
     pago:          pago ? { id: pago.id, amount: pago.amount, fecha: pago.date } : null,
   }
 }
@@ -123,7 +124,7 @@ export async function verificarReclamo(reclamo = {}) {
          { data: pagos,    error: payErr },
          { data: comandas, error: kitErr },
          { data: quejas,   error: compErr }] = await Promise.all([
-    supabase.from('reservations').select('*, clients(dni, name)').eq('id', reclamo.codigo),
+    supabase.from('reservations').select('*, clients(dni, name, email)').eq('id', reclamo.codigo),
     supabase.from('payments').select('id, reservation_id, amount, date').eq('reservation_id', reclamo.codigo),
     supabase.from('kitchen_tickets').select('reservation_id, status').eq('reservation_id', reclamo.codigo),
     supabase.from('complaints').select('reservation_id').eq('reservation_id', reclamo.codigo),
@@ -138,7 +139,7 @@ export async function verificarReclamo(reclamo = {}) {
   const datos = {
     reservations: (reservas || []).map(r => ({
       id: r.id, tableId: r.table_id, clientDni: r.clients?.dni,
-      clientName: r.clients?.name, clientId: r.client_id, status: r.status, date: r.date,
+      clientName: r.clients?.name, clientEmail: r.clients?.email, clientId: r.client_id, status: r.status, date: r.date,
     })),
     payments: (pagos || []).map(p => ({
       id: p.id, reservationId: p.reservation_id, amount: p.amount, date: p.date,

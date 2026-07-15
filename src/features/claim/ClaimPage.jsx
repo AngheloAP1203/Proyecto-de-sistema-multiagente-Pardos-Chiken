@@ -19,6 +19,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MessageSquare, ArrowLeft, Send, CheckCircle2, AlertCircle, UtensilsCrossed, ShieldCheck, HelpCircle, FileText, Frown, Phone, MapPin, Search, Plus, Calendar, Clock, ChevronRight, ChevronLeft, Fingerprint, Receipt, Star, Loader2, Gift, Ticket } from 'lucide-react'
 import toast from 'react-hot-toast'
+import emailjs from '@emailjs/browser'
 import { useComplaints } from '../../context/ComplaintContext'
 import { useReservations } from '../../context/ReservationContext'
 import { useCash } from '../../context/CashContext'
@@ -99,14 +100,30 @@ export default function ClaimPage() {
         const clientId = res.clientId
         if (clientId) {
           try {
+            const respuesta_cliente = `Hola ${res.cliente}, queremos pedirte disculpas sinceras por la mala experiencia que tuviste en tu última visita. Como compensación, te ofrecemos un ${res.recompensa?.nombre || 'cupón especial'} que puedes usar en tu próximo consumo.\n\nCODIGO DE CUPON: ${res.recompensa?.codigo || ''}\n\nRevisa tu cupón y sus condiciones, esperamos darte un mejor servicio la próxima vez.`
+            
             await addComplaint({
               clientId, reservationId: res.reservationId,
               fecha: new Date().toISOString().split('T')[0],
-              canal: 'Web', estado: 'nueva', prioridad: severidad,
+              canal: 'Web', estado: 'resuelta', prioridad: severidad,
               mensaje, puntos_criticos, sentimiento: 'negativo',
-              razonamiento: 'Cuestionario guiado del cliente',
-              respuesta_cliente: res.mensaje, respuestas,
+              razonamiento: 'Cuestionario guiado del cliente + Auto-resolución',
+              respuesta_cliente: respuesta_cliente, respuestas,
+              resolution: { respuesta_cliente: respuesta_cliente }
             })
+
+            // Enviar correo si tenemos el email del cliente
+            if (res.clientEmail) {
+              const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
+              const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
+              const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+              if (serviceId && templateId && publicKey) {
+                await emailjs.send(serviceId, templateId, {
+                  to_email: res.clientEmail,
+                  message: respuesta_cliente
+                }, publicKey).catch(e => console.warn('Error EmailJS', e))
+              }
+            }
           } catch (err) { console.warn('No se pudo guardar la queja:', err) }
         }
       }
