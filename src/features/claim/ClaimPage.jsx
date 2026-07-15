@@ -114,14 +114,24 @@ export default function ClaimPage() {
 
             // Enviar correo (fallback a pardoschiken1986@gmail.com si el cliente no tiene email registrado)
             const emailDestino = res.clientEmail || 'pardoschiken1986@gmail.com'
+            console.log("Intentando enviar correo a:", emailDestino)
             const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
             const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
             const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
             if (serviceId && templateId && publicKey) {
-              await emailjs.send(serviceId, templateId, {
-                to_email: emailDestino,
-                message: respuesta_cliente
-              }, publicKey).catch(e => console.warn('Error EmailJS', e))
+              try {
+                await emailjs.send(serviceId, templateId, {
+                  to_email: emailDestino,
+                  message: respuesta_cliente
+                }, publicKey)
+                console.log("Email enviado exitosamente a:", emailDestino)
+              } catch (e) {
+                console.error('Error detallado de EmailJS:', e)
+                toast.error('Hubo un error al enviar el correo. Por favor toma captura a tu cupón.')
+              }
+            } else {
+              console.warn("Faltan credenciales de EmailJS en .env")
+              toast.error("Error del servidor: Faltan las credenciales de EmailJS en las variables de entorno de Vercel.")
             }
           } catch (err) { console.warn('No se pudo guardar la queja:', err) }
         }
