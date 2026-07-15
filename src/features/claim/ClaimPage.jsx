@@ -112,26 +112,40 @@ export default function ClaimPage() {
               resolution: { respuesta_cliente: respuesta_cliente }
             })
 
-            // Enviar correo (fallback a pardoschiken1986@gmail.com si el cliente no tiene email registrado)
+            // Enviar correo al cliente
             const emailDestino = res.clientEmail || 'pardoschiken1986@gmail.com'
-            console.log("Intentando enviar correo a:", emailDestino)
             const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
             const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
             const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+            console.log('[EMAIL] Datos de envío:', {
+              emailDestino,
+              clientEmailFromRes: res.clientEmail,
+              serviceId: serviceId ? '✓ configurado' : '✗ FALTA',
+              templateId: templateId ? '✓ configurado' : '✗ FALTA',
+              publicKey: publicKey ? '✓ configurado' : '✗ FALTA',
+            })
             if (serviceId && templateId && publicKey) {
               try {
-                await emailjs.send(serviceId, templateId, {
+                const templateParams = {
                   to_email: emailDestino,
-                  message: respuesta_cliente
-                }, publicKey)
-                console.log("Email enviado exitosamente a:", emailDestino)
+                  to_name: res.cliente || 'Cliente',
+                  message: respuesta_cliente,
+                }
+                console.log('[EMAIL] Enviando con params:', templateParams)
+                const emailResult = await emailjs.send(serviceId, templateId, templateParams, publicKey)
+                console.log('[EMAIL] ✓ Enviado exitosamente a:', emailDestino, 'Respuesta:', emailResult)
               } catch (e) {
-                console.error('Error detallado de EmailJS:', e)
+                console.error('[EMAIL] ✗ Error de EmailJS:', {
+                  status: e?.status,
+                  text: e?.text,
+                  message: e?.message,
+                  full: e,
+                })
                 toast.error('Hubo un error al enviar el correo. Por favor toma captura a tu cupón.')
               }
             } else {
-              console.warn("Faltan credenciales de EmailJS en .env")
-              toast.error("Error del servidor: Faltan las credenciales de EmailJS en las variables de entorno de Vercel.")
+              console.warn('[EMAIL] ✗ Faltan credenciales de EmailJS en variables de entorno')
+              toast.error('Error del servidor: Faltan las credenciales de EmailJS.')
             }
           } catch (err) { console.warn('No se pudo guardar la queja:', err) }
         }
