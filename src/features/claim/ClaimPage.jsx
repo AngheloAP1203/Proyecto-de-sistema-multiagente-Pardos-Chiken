@@ -112,17 +112,16 @@ export default function ClaimPage() {
               resolution: { respuesta_cliente: respuesta_cliente }
             })
 
-            // Enviar correo si tenemos el email del cliente
-            if (res.clientEmail) {
-              const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
-              const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
-              const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
-              if (serviceId && templateId && publicKey) {
-                await emailjs.send(serviceId, templateId, {
-                  to_email: res.clientEmail,
-                  message: respuesta_cliente
-                }, publicKey).catch(e => console.warn('Error EmailJS', e))
-              }
+            // Enviar correo (fallback a pardoschiken1986@gmail.com si el cliente no tiene email registrado)
+            const emailDestino = res.clientEmail || 'pardoschiken1986@gmail.com'
+            const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
+            const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
+            const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+            if (serviceId && templateId && publicKey) {
+              await emailjs.send(serviceId, templateId, {
+                to_email: emailDestino,
+                message: respuesta_cliente
+              }, publicKey).catch(e => console.warn('Error EmailJS', e))
             }
           } catch (err) { console.warn('No se pudo guardar la queja:', err) }
         }
@@ -292,6 +291,9 @@ function Resultado({ res }) {
         <div className={`${styles.resultIcon} ${styles.iconReward}`}><Gift size={22} /></div>
         <h3 className={styles.resultTitle}>¡Tu reclamo fue aceptado!</h3>
         <p className={styles.resultText}>{res.mensaje}</p>
+        <p style={{ marginTop: '12px', fontWeight: 'bold', color: '#166534', textAlign: 'center' }}>
+          Revisa tu bandeja de correo electrónico, te hemos enviado los detalles de tu cupón.
+        </p>
         {res.recompensa && (
           <div className={styles.coupon}>
             <div className={styles.couponLeft}><Ticket size={18} /></div>
