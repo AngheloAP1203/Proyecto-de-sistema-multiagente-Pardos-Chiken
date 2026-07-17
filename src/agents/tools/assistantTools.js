@@ -529,7 +529,7 @@ export const TOOL_REGISTRY = {
         },
       },
     },
-    handler: async ({ fecha }, { contextData }) => {
+    handler: async ({ fecha }, { contextData, emit }) => {
       const manana = new Date()
       manana.setDate(manana.getDate() + 1)
       const mananaISO = `${manana.getFullYear()}-${String(manana.getMonth() + 1).padStart(2, '0')}-${String(manana.getDate()).padStart(2, '0')}`
@@ -600,12 +600,17 @@ export const TOOL_REGISTRY = {
         })
       }
 
-      doc.save(`orden_compra_${objetivo}.pdf`)
+      const dataUri = doc.output('datauristring')
+      emit({
+        type: 'pdf_download',
+        filename: `orden_compra_${objetivo}.pdf`,
+        dataUri: dataUri
+      })
 
       return {
         exito: true,
         archivo: `orden_compra_${objetivo}.pdf`,
-        mensaje: 'El PDF ha sido generado y descargado exitosamente en el navegador del usuario.',
+        mensaje: 'Se ha generado un botón en la interfaz para descargar el PDF. Indícale al usuario que haga clic en el botón "Descargar PDF".',
         total_estimado: plan.total_estimado
       }
     }

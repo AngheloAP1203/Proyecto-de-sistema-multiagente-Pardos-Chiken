@@ -332,6 +332,27 @@ function ChatMessage({ msg }) {
           </div>
         )}
 
+        {/* Descarga de PDF */}
+        {result.type === 'pdf_download' && (
+          <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'inline-flex', alignItems: 'center', gap: '16px', marginTop: '16px', marginBottom: '8px' }}>
+            <div style={{ background: '#fee2e2', padding: '12px', borderRadius: '8px', display: 'flex' }}>
+              <FileText size={24} color="#e8453c" />
+            </div>
+            <div>
+              <p style={{ margin: '0 0 4px', fontWeight: '600', fontSize: '14px', color: '#1e293b' }}>{result.filename}</p>
+              <a 
+                href={result.dataUri} 
+                download={result.filename}
+                style={{ display: 'inline-block', background: '#e8453c', color: 'white', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', textDecoration: 'none', transition: 'background 0.2s' }}
+                onMouseOver={(e) => e.target.style.background = '#c9342b'}
+                onMouseOut={(e) => e.target.style.background = '#e8453c'}
+              >
+                Descargar PDF
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Texto de resumen (markdown simplificado) */}
         <MarkdownText text={result.summary} />
 
