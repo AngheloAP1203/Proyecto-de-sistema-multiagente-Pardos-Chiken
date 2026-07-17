@@ -9,7 +9,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../domain/supabase'
-import { MOCK_USERS } from '../data/seeds/usersSeed'
+import { MOCK_USERS, DEMO_LOGINS } from '../data/seeds/usersSeed'
 import { ROLE_PERMISSIONS } from '../domain/auth/permissions'
 import { auditLogger } from '../agents/core/auditLogger'
 import toast from 'react-hot-toast'
@@ -66,6 +66,27 @@ export function AuthProvider({ children }) {
     })
 
     if (error) {
+      // Fallback de conveniencia para la demo: si el usuario no fue creado en Supabase Auth,
+      // permitimos el login local usando las credenciales hardcodeadas.
+      const mockLogin = DEMO_LOGINS.find(u => u.email === email.trim().toLowerCase() && u.password === password)
+      const mockProfile = MOCK_USERS.find(u => u.email === email.trim().toLowerCase())
+      
+      if (mockLogin && mockProfile) {
+        console.warn(`[AuthContext] Fallback a login local para ${email} (no existe en Supabase Auth)`)
+        setUser(mockProfile)
+        
+        auditLogger.record({
+          actor: `${mockProfile.name} (${mockProfile.role})`,
+          tipoActor: 'usuario',
+          accion: 'auth.login.fallback',
+          nivel: 'warn',
+          detalle: { email: mockProfile.email }
+        })
+
+        toast.success(`Bienvenido, ${mockProfile.name} (Modo Demo)`)
+        return { success: true, message: `Bienvenido, ${mockProfile.name}` }
+      }
+
       toast.error('Correo o contraseña incorrectos.')
       return { success: false, message: 'Correo o contraseña incorrectos.' }
     }
