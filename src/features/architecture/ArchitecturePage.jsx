@@ -4,56 +4,62 @@ import Mermaid from '../../components/ui/Mermaid'
 import styles from './ArchitecturePage.module.css'
 
 const ARCHITECTURE_CHART = `
-graph TD
-    classDef frontend fill:#3498db,stroke:#2980b9,stroke-width:2px,color:#fff
-    classDef logic fill:#2ecc71,stroke:#27ae60,stroke-width:2px,color:#fff
-    classDef data fill:#f1c40f,stroke:#f39c12,stroke-width:2px,color:#333
-    classDef ai fill:#9b59b6,stroke:#8e44ad,stroke-width:2px,color:#fff
-    classDef default fill:#fff,stroke:#ccc,stroke-width:1px
+%%{init: { 'theme': 'base', 'themeVariables': { 'fontSize': '16px', 'nodeBorder': '2px', 'lineColor': '#555' } }}%%
+graph LR
+    classDef frontend   fill:#3498db,stroke:#1a6fa8,stroke-width:2px,color:#fff,font-weight:bold
+    classDef business   fill:#27ae60,stroke:#1a8048,stroke-width:2px,color:#fff,font-weight:bold
+    classDef ai         fill:#8e44ad,stroke:#6c3483,stroke-width:2px,color:#fff,font-weight:bold
+    classDef data       fill:#e67e22,stroke:#ca6f1e,stroke-width:2px,color:#fff,font-weight:bold
+    classDef db         fill:#f39c12,stroke:#d68910,stroke-width:2px,color:#fff,font-weight:bold
+    classDef user       fill:#e8453c,stroke:#c0392b,stroke-width:2px,color:#fff,font-weight:bold
 
-    User([👤 Usuario / Administrador]) --> Front
+    User(["👤 Administrador\n/ Líder"]):::user
 
-    subgraph "Capa de Presentación (React / Vite)"
-        Front[Frontend Dashboard]:::frontend
+    subgraph FE ["🖥️ Frontend  —  React + Vite"]
+        Dashboard["📊 Dashboard"]:::frontend
+        Modulos["📦 Módulos\n(Caja, Reservas,\nCocina, ROI…)"]:::frontend
+        Auth["🔐 Autenticación"]:::frontend
     end
 
-    subgraph "Módulos de Negocio"
-        Front --> Auth[Autenticación]:::logic
-        Front --> ROI[Módulo de ROI]:::logic
-        Front --> Res[Módulo de Reservas]:::logic
-        Front --> Cash[Módulo de Caja]:::logic
-        Front --> Kitchen[Módulo de Cocina]:::logic
+    subgraph MA ["🤖 Motor Multiagente  —  LangGraph"]
+        Asistente["🧠 AssistantAgent\n(Supervisor)"]:::ai
+        PI["🔎 PromptInterpreter\n(Guardrail + Fallback)"]:::ai
+        KA["👨‍🍳 KitchenAgent"]:::ai
+        CA["💰 CashAgent"]:::ai
+        RA["📅 ReservationAgent"]:::ai
+        VER["✅ Verificador\nde Cifras"]:::ai
+        KA -. "Handoff horizontal\n(participación ventas)" .-> CA
     end
 
-    subgraph "Orquestación Multiagente (LangGraph)"
-        Front --> AgentSystem{Assistant Agent}:::ai
-        AgentSystem --> PI[PromptInterpreter]:::ai
-        AgentSystem --> Supervisor[Supervisor LangGraph]:::ai
-        Supervisor --> KA[KitchenAgent]:::ai
-        Supervisor --> CA[CashAgent]:::ai
-        Supervisor --> RA[ReservationAgent]:::ai
-        Supervisor --> VA[Verificador Cifras]:::ai
-        
-        CA -. "Handoff Horizontal" .-> KA
+    subgraph ESpec ["📋 Agentes Especializados"]
+        M1["📩 ComplaintAgent\nM1 — Triaje IA"]:::ai
+        M2["📈 LeaderAnalyst\nM2 — ReAct"]:::ai
+        M3["🔒 SecurityAuditor\nM3 — Auditoría"]:::ai
     end
 
-    subgraph "Agentes Especializados (Prompts)"
-        Front --> Triaje[ComplaintAgent M1]:::ai
-        Front --> Leader[LeaderAnalystAgent M2]:::ai
-        Front --> Auditor[SecurityAuditorAgent M3]:::ai
+    subgraph Datos ["🗄️ Datos y Modelos"]
+        Supabase[("🐘 Supabase\nPostgreSQL")]:::db
+        LLM[("⚡ LLM\nGroq / Gemini")]:::data
     end
 
-    subgraph "Capa de Datos y Modelos"
-        Auth --> Supabase[(Supabase DB)]:::data
-        Res --> Supabase
-        Cash --> Supabase
-        Kitchen --> Supabase
-
-        Triaje --> LLM((LLM Groq/Gemini)):::data
-        Leader --> LLM
-        Auditor --> LLM
-        Supervisor --> LLM
-    end
+    User --> Dashboard
+    Dashboard --> Auth
+    Dashboard --> Modulos
+    Dashboard --> Asistente
+    Asistente --> PI
+    Asistente --> KA
+    Asistente --> CA
+    Asistente --> RA
+    Asistente --> VER
+    Dashboard --> M1
+    Dashboard --> M2
+    Dashboard --> M3
+    Modulos --> Supabase
+    Auth --> Supabase
+    Asistente --> LLM
+    M1 --> LLM
+    M2 --> LLM
+    M3 --> LLM
 `
 
 export default function ArchitecturePage() {
