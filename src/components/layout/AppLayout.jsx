@@ -21,7 +21,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard, CalendarCheck, Users, Clock, ChartBar,
   Settings, LogOut, Menu, X, UtensilsCrossed, ChevronRight,
-  TableProperties, CreditCard, ChefHat, TrendingUp, Cpu, Bot, MessageSquare, ScrollText, ShieldCheck, Package,
+  TableProperties, CreditCard, ChefHat, TrendingUp, Cpu, Bot, MessageSquare, ScrollText, ShieldCheck, Package, PiggyBank,
 } from 'lucide-react'
 import { useAuth, ROLE_PERMISSIONS } from '../../context/AuthContext'
 import { useAgents } from '../../context/AgentContext'
@@ -44,6 +44,13 @@ const NAV_ITEMS = [
     path: '/analiticas',
     label: 'Analíticas',
     icon: <TrendingUp size={20} />,
+    roles: ['admin'],
+  },
+  {
+    id: 'roi',
+    path: '/roi',
+    label: 'ROI',
+    icon: <PiggyBank size={20} />,
     roles: ['admin'],
   },
   {

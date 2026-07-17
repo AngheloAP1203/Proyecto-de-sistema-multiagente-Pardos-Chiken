@@ -80,6 +80,7 @@ const HistoryPage      = lazy(() => import('./features/history/HistoryPage'))
 const ReportsPage      = lazy(() => import('./features/reports/ReportsPage'))
 const SettingsPage     = lazy(() => import('./features/settings/SettingsPage'))
 const AdminPromptPage  = lazy(() => import('./features/admin/AdminPromptPage'))
+const RoiPage          = lazy(() => import('./features/roi/RoiPage'))
 const AlmacenPage      = lazy(() => import('./features/almacen/AlmacenPage'))
 const AuditPage        = lazy(() => import('./features/audit/AuditPage'))
 const SecurityPage     = lazy(() => import('./features/security/SecurityPage'))
@@ -223,6 +224,11 @@ export default function App() {
                           {/* Analíticas — solo admin */}
                           <Route element={<ProtectedRoute requiredPermission="canViewIncomesChart" />}>
                             <Route path="/analiticas" element={<AnalyticsPage />} />
+                          </Route>
+
+                          {/* ROI — panel del líder, solo admin */}
+                          <Route element={<ProtectedRoute requiredPermission="canConfigureSystem" />}>
+                            <Route path="/roi" element={<RoiPage />} />
                           </Route>
 
                           {/* Reservas (todos los roles autenticados) */}
