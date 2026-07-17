@@ -85,6 +85,7 @@ const AlmacenPage      = lazy(() => import('./features/almacen/AlmacenPage'))
 const AuditPage        = lazy(() => import('./features/audit/AuditPage'))
 const SecurityPage     = lazy(() => import('./features/security/SecurityPage'))
 const ComplaintsPage   = lazy(() => import('./features/complaints/ComplaintsPage'))
+const ArchitecturePage = lazy(() => import('./features/architecture/ArchitecturePage'))
 const NotFoundPage     = lazy(() => import('./pages/NotFoundPage'))
 
 // ── Página de acceso denegado ─────────────────────────────────────────────────
@@ -229,6 +230,7 @@ export default function App() {
                           {/* ROI — panel del líder, solo admin */}
                           <Route element={<ProtectedRoute requiredPermission="canConfigureSystem" />}>
                             <Route path="/roi" element={<RoiPage />} />
+                            <Route path="/arquitectura" element={<ArchitecturePage />} />
                           </Route>
 
                           {/* Reservas (todos los roles autenticados) */}

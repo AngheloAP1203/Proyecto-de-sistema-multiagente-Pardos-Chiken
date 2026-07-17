@@ -1,0 +1,71 @@
+.page {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #3b1a1a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.titleIcon {
+  color: #e8453c;
+}
+
+.subtitle {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f0ebe3;
+  margin-bottom: 2rem;
+}
+
+.diagramContainer {
+  width: 100%;
+  overflow-x: auto;
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+  background: #fafaf9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.legend {
+  margin-top: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.legendItem h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #3b1a1a;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legendItem p {
+  font-size: 0.95rem;
+  color: #555;
+  line-height: 1.5;
+}
