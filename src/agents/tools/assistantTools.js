@@ -184,9 +184,9 @@ export const TOOL_REGISTRY = {
         },
       },
     },
-    handler: ({ fecha_inicio, fecha_fin }, { contextData }) => {
-      let inicio = fecha_inicio ? normalizarFecha(fecha_inicio) : todayISO()
-      let fin = fecha_fin ? normalizarFecha(fecha_fin) : inicio
+    handler: ({ fecha, fecha_inicio, fecha_fin }, { contextData }) => {
+      let inicio = normalizarFecha(fecha_inicio || fecha)
+      let fin = normalizarFecha(fecha_fin || fecha_inicio || fecha)
       
       // Asegurar que inicio <= fin
       if (inicio > fin) {
@@ -198,6 +198,7 @@ export const TOOL_REGISTRY = {
       const igv   = total * 0.18
 
       return {
+        fecha:           inicio === fin ? inicio : undefined,
         periodo:         inicio === fin ? inicio : `${inicio} al ${fin}`,
         total:           money(total),
         subtotal_sin_igv: money(total - igv),
