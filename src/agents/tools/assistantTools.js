@@ -21,6 +21,11 @@
  */
 
 import { STATUS_LABELS } from '../../domain/reservations/reservationStatus.js'
+import { planificarCompras } from '../../domain/inventory/purchasePlanner.js'
+import { RECIPES } from '../../data/seeds/recipesSeed.js'
+import { SUPPLIES } from '../../data/seeds/suppliesSeed.js'
+import { SUPPLIERS } from '../../data/seeds/suppliersSeed.js'
+import { MENU_ITEMS } from '../../domain/kitchen/menu.js'
 
 const CHART_COLORS = ['#e8622a', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b']
 
@@ -418,6 +423,90 @@ export const TOOL_REGISTRY = {
         porcentaje_vip:  clients.length > 0 ? money((vip / clients.length) * 100) : 0,
         // El seed usa `registeredAt`, no `createdAt`.
         nuevos_hoy:      clients.filter(c => (c.registeredAt || c.createdAt || '').startsWith(hoy)).length,
+      }
+    },
+  },
+
+  read_purchase_plan: {
+    roles: ['admin', 'jefe_cocina'],
+    agents: ['InventoryAgent'],
+    schema: {
+      name: 'read_purchase_plan',
+      description:
+        'Plan de compras del almacén para una fecha futura (por defecto, mañana): proyecta ' +
+        'la demanda por plato desde el histórico de ventas, la convierte a insumos con las ' +
+        'recetas, ajusta por fechas especiales (Día de la Madre, Día del Pollo a la Brasa, ' +
+        'Fiestas Patrias), cruza contra el stock y sugiere qué comprar, a qué proveedor ' +
+        '(el más barato registrado) y su contacto. Úsala para "¿qué debo comprar?", ' +
+        '"plan de compras", "¿alcanza el stock para mañana?", "pedido al proveedor".',
+      parameters: {
+        type: 'object',
+        properties: {
+          fecha: { type: 'string', description: 'OMITE este parámetro salvo que el líder nombre una fecha concreta. Formato YYYY-MM-DD. Si se omite, se planifica para MAÑANA.' },
+        },
+      },
+    },
+    handler: ({ fecha }, { contextData, emit }) => {
+      // A diferencia de las tools de lectura, aquí la fecha válida es FUTURA:
+      // se planifica lo que viene, no se reporta lo que pasó.
+      const manana = new Date()
+      manana.setDate(manana.getDate() + 1)
+      const mananaISO = `${manana.getFullYear()}-${String(manana.getMonth() + 1).padStart(2, '0')}-${String(manana.getDate()).padStart(2, '0')}`
+      const objetivo = /^\d{4}-\d{2}-\d{2}$/.test(String(fecha || '')) && fecha > todayISO()
+        ? fecha
+        : mananaISO
+
+      // Histórico desde los pagos reales: cada línea consumida con su menuId.
+      // El seed usa `itemId`; los cobros nuevos usan `menuId`; si solo hay
+      // nombre, se resuelve contra la carta.
+      const porNombre = Object.fromEntries(MENU_ITEMS.map(m => [m.name, m.id]))
+      const historico = []
+      for (const p of contextData.payments || []) {
+        for (const it of p.items || []) {
+          const menuId = it.menuId || it.itemId || porNombre[it.name]
+          if (!menuId) continue
+          historico.push({ fecha: p.date, menuId, qty: Number(it.qty) || 0 })
+        }
+      }
+
+      const plan = planificarCompras({
+        historico,
+        fechaObjetivo: objetivo,
+        recetas:   RECIPES,
+        supplies:  SUPPLIES,
+        suppliers: SUPPLIERS,
+      })
+
+      if (plan.orden_compra.length > 0) {
+        emit({
+          type: 'bar_chart',
+          chartConfig: {
+            title:  `Orden de compra sugerida — ${objetivo}${plan.fecha_especial ? ` (${plan.fecha_especial.nombre} ×${plan.factor_demanda})` : ''}`,
+            xLabel: 'Insumo',
+            yLabel: 'Costo estimado (S/)',
+            labels: plan.orden_compra.slice(0, 8).map(i => i.insumo),
+            values: plan.orden_compra.slice(0, 8).map(i => i.costo_estimado || 0),
+            color:  '#e8622a',
+          },
+        })
+      }
+
+      return {
+        fecha_objetivo:  plan.fecha_objetivo,
+        fecha_especial:  plan.fecha_especial ? { nombre: plan.fecha_especial.nombre, factor: plan.factor_demanda } : null,
+        base_proyeccion: plan.base_proyeccion,
+        platos_proyectados: plan.proyeccion_platos.slice(0, 10),
+        comprar: plan.orden_compra.map(i => ({
+          insumo:    i.insumo,
+          cantidad:  i.comprar,
+          unidad:    i.unidad,
+          proveedor: i.proveedor?.proveedor || 'SIN PROVEEDOR REGISTRADO',
+          contacto:  i.proveedor?.contacto?.telefono || i.proveedor?.contacto?.whatsapp || i.proveedor?.contacto?.web || null,
+          costo_estimado: i.costo_estimado,
+        })),
+        total_estimado: plan.total_estimado,
+        nota_precios: 'Precios referenciales del seed de proveedores; confirmar con la lista negociada.',
+        ...(plan.advertencias.length > 0 ? { advertencias: plan.advertencias } : {}),
       }
     },
   },
