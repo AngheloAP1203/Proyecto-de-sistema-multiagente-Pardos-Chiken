@@ -476,17 +476,22 @@ export default function AdminPromptPage() {
         {/* Panel de pruebas (Solo lider_almacen) */}
         {role === 'lider_almacen' && (
           <div style={{
-            background: '#fff', padding: '16px 20px', borderRadius: '12px', marginBottom: '24px',
-            border: '1px solid #fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            boxShadow: '0 4px 12px rgba(232, 69, 60, 0.08)', animation: 'fadeIn 0.5s ease'
+            background: 'linear-gradient(135deg, #1e1b4b, #312e81)', padding: '16px 24px', borderRadius: '16px', marginBottom: '24px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            boxShadow: '0 8px 32px rgba(30, 27, 75, 0.15)', color: '#fff', animation: 'fadeIn 0.5s ease'
           }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '15px', color: '#e8453c', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ShieldAlert size={16} /> Pruebas de Inventario Reales
-              </h3>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
-                Esto reduce el stock en Supabase. Luego pídele al asistente un plan de compras.
-              </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center' }}>
+                <ShieldAlert size={20} color="#818cf8" />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#fff' }}>
+                  Simulador de Entorno
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#a5b4fc' }}>
+                  Altera la base de datos en tiempo real para poner a prueba el razonamiento de la IA.
+                </p>
+              </div>
             </div>
             <button
               onClick={async () => {
@@ -495,18 +500,18 @@ export default function AdminPromptPage() {
                 if (error) {
                   toast.error('Error reduciendo stock: ' + error.message, { id: toastId });
                 } else {
-                  toast.success('¡Stock reducido! Ya puedes pedir el plan.', { id: toastId });
+                  toast.success('¡Stock en nivel crítico! Pídele a la IA un plan de compras.', { id: toastId });
                 }
               }}
               style={{
-                background: '#e8453c', color: 'white', padding: '10px 16px', border: 'none',
-                borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px',
-                whiteSpace: 'nowrap', transition: 'background 0.2s'
+                background: '#4f46e5', color: 'white', padding: '10px 20px', border: '1px solid #6366f1',
+                borderRadius: '10px', cursor: 'pointer', fontWeight: '600', fontSize: '13px',
+                whiteSpace: 'nowrap', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
               }}
-              onMouseOver={(e) => e.target.style.background = '#c9342b'}
-              onMouseOut={(e) => e.target.style.background = '#e8453c'}
+              onMouseOver={(e) => { e.target.style.background = '#6366f1'; e.target.style.transform = 'translateY(-1px)' }}
+              onMouseOut={(e) => { e.target.style.background = '#4f46e5'; e.target.style.transform = 'translateY(0)' }}
             >
-              Simular falta de Pollo
+              Forzar quiebre de stock (Pollo)
             </button>
           </div>
         )}

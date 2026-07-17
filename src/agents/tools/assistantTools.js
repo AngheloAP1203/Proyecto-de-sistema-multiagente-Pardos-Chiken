@@ -24,6 +24,8 @@ import { STATUS_LABELS } from '../../domain/reservations/reservationStatus.js'
 import { planificarCompras } from '../../domain/inventory/purchasePlanner.js'
 import { loadInventoryData } from '../../data/api/inventoryApi.js'
 import { MENU_ITEMS } from '../../domain/kitchen/menu.js'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
 
 const CHART_COLORS = ['#e8622a', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b']
 
@@ -509,6 +511,104 @@ export const TOOL_REGISTRY = {
         ...(plan.advertencias.length > 0 ? { advertencias: plan.advertencias } : {}),
       }
     },
+  },
+
+  export_purchase_plan_pdf: {
+    roles: ['admin', 'lider_almacen'],
+    agents: ['InventoryAgent'],
+    schema: {
+      name: 'export_purchase_plan_pdf',
+      description:
+        'Genera un reporte PDF detallado con la orden de compra y dispara la descarga en el navegador. ' +
+        'Úsala CUANDO el usuario te pida explícitamente "dame un pdf", "genera el reporte detallado", "exporta la orden de compra", etc. ' +
+        'Debes generar el plan y exportarlo. Dile al usuario que el archivo se ha descargado.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fecha: { type: 'string', description: 'Fecha objetivo del plan. YYYY-MM-DD. Si se omite, es para MAÑANA.' },
+        },
+      },
+    },
+    handler: async ({ fecha }, { contextData }) => {
+      const manana = new Date()
+      manana.setDate(manana.getDate() + 1)
+      const mananaISO = `${manana.getFullYear()}-${String(manana.getMonth() + 1).padStart(2, '0')}-${String(manana.getDate()).padStart(2, '0')}`
+      const objetivo = /^\d{4}-\d{2}-\d{2}$/.test(String(fecha || '')) && fecha > todayISO() ? fecha : mananaISO
+
+      const porNombre = Object.fromEntries(MENU_ITEMS.map(m => [m.name, m.id]))
+      const historico = []
+      for (const p of contextData.payments || []) {
+        for (const it of p.items || []) {
+          const menuId = it.menuId || it.itemId || porNombre[it.name]
+          if (!menuId) continue
+          historico.push({ fecha: p.date, menuId, qty: Number(it.qty) || 0 })
+        }
+      }
+
+      const { supplies, recipes, suppliers } = await loadInventoryData()
+      const plan = planificarCompras({
+        historico,
+        fechaObjetivo: objetivo,
+        recetas:   recipes,
+        supplies:  supplies,
+        suppliers: suppliers,
+      })
+
+      // Generar PDF
+      const doc = new jsPDF()
+      
+      // Título
+      doc.setFontSize(18)
+      doc.setTextColor(232, 69, 60) // Pardos red
+      doc.text('Plan de Compras - Pardos Chicken', 14, 22)
+      
+      doc.setFontSize(11)
+      doc.setTextColor(100)
+      doc.text(`Fecha objetivo: ${plan.fecha_objetivo}`, 14, 30)
+      if (plan.fecha_especial) {
+        doc.text(`Campaña: ${plan.fecha_especial.nombre} (Factor: x${plan.factor_demanda})`, 14, 36)
+      }
+      
+      const tableData = plan.orden_compra.map(i => [
+        i.insumo,
+        `${i.comprar} ${i.unidad}`,
+        i.proveedor?.proveedor || 'Sin proveedor',
+        i.proveedor?.contacto?.telefono || i.proveedor?.contacto?.whatsapp || '-',
+        `S/ ${i.costo_estimado.toFixed(2)}`
+      ])
+
+      doc.autoTable({
+        startY: plan.fecha_especial ? 42 : 36,
+        head: [['Insumo a Comprar', 'Cantidad', 'Proveedor Sugerido', 'Contacto', 'Costo Estimado']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [232, 69, 60] },
+        styles: { fontSize: 9 }
+      })
+
+      const finalY = doc.lastAutoTable.finalY || 40
+      doc.setFontSize(12)
+      doc.setTextColor(0)
+      doc.text(`Total Estimado: S/ ${plan.total_estimado.toFixed(2)}`, 14, finalY + 10)
+      
+      if (plan.advertencias.length > 0) {
+        doc.setFontSize(10)
+        doc.setTextColor(232, 69, 60)
+        doc.text('Advertencias:', 14, finalY + 20)
+        plan.advertencias.forEach((adv, idx) => {
+          doc.text(`- ${adv}`, 14, finalY + 26 + (idx * 5))
+        })
+      }
+
+      doc.save(`orden_compra_${objetivo}.pdf`)
+
+      return {
+        exito: true,
+        archivo: `orden_compra_${objetivo}.pdf`,
+        mensaje: 'El PDF ha sido generado y descargado exitosamente en el navegador del usuario.',
+        total_estimado: plan.total_estimado
+      }
+    }
   },
 
   read_system_status: {
