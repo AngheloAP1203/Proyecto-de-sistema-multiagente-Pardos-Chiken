@@ -57,11 +57,30 @@ export class KitchenAgent extends AgentBase {
       ['add_ticket', 'update_ticket_status', 'complete_ticket', 'get_queue']
     )
     this._contextActions = null
+    this._setupEventListeners()
     this._registerTools()
   }
 
   setContextActions(actions) {
     this._contextActions = actions
+  }
+
+  _setupEventListeners() {
+    this.bus.subscribe(EVENT_TYPES.INVENTORY_EXPIRING_SOON, (msg) => {
+      // Cuando hay insumos por vencer, alertar a la cocina
+      const insumosStr = msg.payload.lotes.map(l => `${l.insumo} (vence: ${l.fecha_caducidad})`).join(', ')
+      console.warn(`[KitchenAgent] ALERTA DE MERMA: Priorizar uso de ${insumosStr} como Especial del Chef.`)
+      // Notificar usando la memoria o creando un ticket especial de alerta
+      const alertMessage = `¡ATENCIÓN COCINA! Insumos por vencer: ${insumosStr}. Prioricen su uso hoy.`
+      this.bus.publish(EVENT_TYPES.KITCHEN_TICKET_ADDED, {
+        ticketId: `alert-${Date.now()}`,
+        tableId: 'ALERTA',
+        clientName: 'Sistema (Chef)',
+        itemCount: 1,
+        priority: 'urgent',
+        notes: alertMessage
+      }, this.name, msg.correlationId)
+    })
   }
 
   _registerTools() {

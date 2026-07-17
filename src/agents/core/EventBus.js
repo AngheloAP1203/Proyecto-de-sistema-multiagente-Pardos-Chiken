@@ -59,6 +59,9 @@ export const EVENT_TYPES = {
 
   // Almacén (M7) — automatización de reabastecimiento
   INVENTORY_LOW_STOCK:     'inventory:low_stock',
+  INVENTORY_EXPIRING_SOON: 'inventory:expiring_soon',
+  INVENTORY_MINIMUM_ADJUSTED: 'inventory:minimum_adjusted',
+  INVENTORY_RECEIPT_UPLOADED: 'inventory:receipt_uploaded',
 
   // Clientes
   CLIENT_CREATED: 'client:created',
@@ -105,6 +108,9 @@ const EVENT_PAYLOAD_SCHEMAS = {
   'kitchen:order_ready':   { required: ['ticketId', 'tableId'] },
   'cash:payment_registered':{ required: ['amount', 'method'] },
   'inventory:low_stock':   { required: ['insumos'] },
+  'inventory:expiring_soon':{ required: ['lotes'] },
+  'inventory:minimum_adjusted':{ required: ['insumos'] },
+  'inventory:receipt_uploaded':{ required: ['insumos', 'proveedor'] },
   'cash:shift_opened':     { required: ['cashier'] },
   'cash:shift_closed':     { required: ['cashier', 'totalRevenue'] },
   'client:created':        { required: ['clientName'] },

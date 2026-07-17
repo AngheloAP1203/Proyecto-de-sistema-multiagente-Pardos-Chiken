@@ -92,3 +92,34 @@ export async function fetchVentasDesdePagos() {
     return []
   }
 }
+
+/**
+ * fetchSupplyBatches — Trae los lotes de insumos y sus fechas de caducidad.
+ */
+export async function fetchSupplyBatches() {
+  try {
+    const { data, error } = await supabase.from('supply_batches').select('*')
+    if (error || !data) return []
+    return data
+  } catch (e) {
+    console.warn('[inventoryApi] Error obteniendo lotes', e)
+    return []
+  }
+}
+
+/**
+ * updateStockMinimo — Actualiza el stock mínimo sugerido por el ForecastAgent.
+ */
+export async function updateStockMinimo(supplyId, newMinimo) {
+  try {
+    const { error } = await supabase
+      .from('supplies')
+      .update({ stock_minimo: newMinimo })
+      .eq('id', supplyId)
+    if (error) throw error
+    return true
+  } catch (e) {
+    console.warn(`[inventoryApi] Error actualizando stock mínimo para ${supplyId}`, e)
+    return false
+  }
+}

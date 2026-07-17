@@ -38,6 +38,8 @@ import { leaderAnalystAgent }   from '../LeaderAnalystAgent.js'
 import { securityAuditorAgent } from '../SecurityAuditorAgent.js'
 import { resolutionAgent }      from '../ResolutionAgent.js'
 import { inventoryAgent }       from '../InventoryAgent.js'
+import { forecastAgent }        from '../ForecastAgent.js'
+import { visionAgent }          from '../VisionAgent.js'
 import { eventBus, EVENT_TYPES } from './EventBus.js'
 import { sharedMemory, MEMORY_KEYS } from './SharedMemory.js'
 import { RESOLUTION_POLICIES } from '../../data/seeds/resolutionPoliciesSeed.js'
@@ -135,6 +137,8 @@ class AgentOrchestratorClass {
     this.registry.register(securityAuditorAgent)
     this.registry.register(resolutionAgent)
     this.registry.register(inventoryAgent)
+    this.registry.register(forecastAgent)
+    this.registry.register(visionAgent)
 
     // 1b. Inicializar seeds de resolución y promociones en SharedMemory
     sharedMemory.set(MEMORY_KEYS.RESOLUTION_POLICIES, RESOLUTION_POLICIES, this.name)

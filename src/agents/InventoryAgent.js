@@ -27,7 +27,7 @@
 import { AgentBase } from './core/AgentBase.js'
 import { EVENT_TYPES } from './core/EventBus.js'
 import { planificarCompras, explotarVentasAInsumos, calcularConsumoDia, aplicarStockVivo } from '../domain/inventory/purchasePlanner.js'
-import { loadInventoryData, fetchVentasDesdePagos } from '../data/api/inventoryApi.js'
+import { loadInventoryData, fetchVentasDesdePagos, fetchSupplyBatches } from '../data/api/inventoryApi.js'
 
 const hoyISO = () => {
   const d = new Date()
@@ -74,10 +74,40 @@ export class InventoryAgent extends AgentBase {
             disparado_por: 'cobro',
           }, this.name, msg.correlationId || `inv-${Date.now()}`)
         }
+
+        // Nueva Automatización: Chequeo de caducidad (FIFO)
+        const porVencer = await this._detectarLotesPorVencer()
+        if (porVencer.length > 0) {
+          this.bus.publish(EVENT_TYPES.INVENTORY_EXPIRING_SOON, {
+            lotes: porVencer,
+            disparado_por: 'cobro',
+          }, this.name, msg.correlationId || `inv-exp-${Date.now()}`)
+        }
       } catch (e) {
         console.warn('[InventoryAgent] No se pudo evaluar el stock tras el cobro', e)
       }
     })
+  }
+
+  /** Busca lotes que vencen en <= 2 días */
+  async _detectarLotesPorVencer() {
+    const lotes = await fetchSupplyBatches()
+    if (!lotes || lotes.length === 0) return []
+    
+    const hoy = new Date()
+    const msEnDosDias = 2 * 24 * 60 * 60 * 1000
+    
+    return lotes.filter(l => {
+      if (l.cantidad_restante <= 0) return false
+      const caducidad = new Date(l.fecha_caducidad)
+      const diff = caducidad.getTime() - hoy.getTime()
+      return diff <= msEnDosDias
+    }).map(l => ({
+      loteId: l.id,
+      insumo: l.supply_id,
+      fecha_caducidad: l.fecha_caducidad,
+      restante: l.cantidad_restante
+    }))
   }
 
   /** Recalcula el stock disponible de hoy y devuelve los insumos bajo mínimo. */
