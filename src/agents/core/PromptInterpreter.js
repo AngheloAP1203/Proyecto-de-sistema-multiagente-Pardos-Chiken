@@ -178,6 +178,16 @@ const INTENT_PATTERNS = [
     ],
     description: 'Resumen de ventas del día',
   },
+  {
+    intent: 'read.sales.trend',
+    priority: 8,
+    patterns: [
+      /gr[aá]fica?\s+(para\s+)?comparar/i,
+      /tendencia\s+(de\s+)?(ventas?|ingresos?|pagos?)/i,
+      /comparar?\s+(ventas?|ingresos?|pagos?)/i,
+    ],
+    description: 'Tendencia comparativa de ventas (gráfica)',
+  },
   // ── Reservas ──────────────────────────────────────────────────────────────
   {
     intent: 'read.reservations.chart',
@@ -529,6 +539,42 @@ class PromptInterpreterClass {
           },
           data:    byMethod,
           summary: this._formatByMethodSummary(byMethod),
+        }
+      }
+
+      case 'read.sales.trend': {
+        // Fallback rápido que muestra los últimos 7 días
+        const d = (daysAgo) => {
+          const dt = new Date()
+          dt.setDate(dt.getDate() - daysAgo)
+          return dt.toISOString().split('T')[0]
+        }
+        const inicio = d(6)
+        const fin = today
+        const pagos = payments.filter(p => p.date >= inicio && p.date <= fin)
+        
+        // groupByDay helper for PromptInterpreter
+        const map = {}
+        for (const p of pagos) {
+          const fecha = p.date || 'desconocido'
+          if (!map[fecha]) map[fecha] = { fecha, total: 0 }
+          map[fecha].total += p.amount || 0
+        }
+        const byDay = Object.values(map).sort((a, b) => a.fecha.localeCompare(b.fecha))
+
+        return {
+          type:       'bar_chart',
+          agentsUsed: ['CashAgent'],
+          chartConfig: {
+            title:  `Tendencia de Ventas (últimos 7 días)`,
+            xLabel: 'Día',
+            yLabel: 'Ingresos (S/.)',
+            labels: byDay.map(d => d.fecha.slice(5)),
+            values: byDay.map(d => d.total),
+            color:  '#10b981',
+          },
+          data:    byDay,
+          summary: `Tendencia de ventas de los últimos 7 días generada rápidamente. Para fechas específicas o meses enteros, asegúrate de indicarlo en la pregunta.`,
         }
       }
 

@@ -102,6 +102,19 @@ function groupByStatus(reservations) {
   return Object.values(map).sort((a, b) => b.cantidad - a.cantidad)
 }
 
+function groupByDay(payments) {
+  const map = {}
+  for (const p of payments) {
+    const d = p.date || 'desconocido'
+    if (!map[d]) map[d] = { fecha: d, total: 0, transacciones: 0 }
+    map[d].total += p.amount || 0
+    map[d].transacciones++
+  }
+  return Object.values(map)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .map(d => ({ ...d, total: money(d.total) }))
+}
+
 function rankItems(payments, topN) {
   const map = {}
   for (const p of payments) {
@@ -243,6 +256,55 @@ export const TOOL_REGISTRY = {
         ultima_venta:          conVentas[conVentas.length - 1]?.hora ?? null,
         hora_pico:             pico ? { hora: pico.hora, total: pico.total, transacciones: pico.transacciones } : null,
         por_hora:              byHour,
+      }
+    },
+  },
+
+  read_sales_trend: {
+    roles: ['admin', 'cajero'],
+    agents: ['CashAgent'],
+    schema: {
+      name: 'read_sales_trend',
+      description:
+        'Genera una gráfica de barras (tendencia) comparando las ventas por día a lo largo de un periodo de tiempo. ' +
+        'Úsala para "¿cómo fueron las ventas esta semana?", "hazlo en graficas para comparar", "tendencia de ventas del mes".',
+      parameters: {
+        type: 'object',
+        properties: {
+          fecha_inicio: { type: 'string', description: 'Fecha de inicio del periodo (YYYY-MM-DD).' },
+          fecha_fin: { type: 'string', description: 'Fecha de fin del periodo (YYYY-MM-DD).' },
+        },
+        required: ['fecha_inicio', 'fecha_fin']
+      },
+    },
+    handler: ({ fecha_inicio, fecha_fin }, { contextData, emit }) => {
+      let inicio = normalizarFecha(fecha_inicio)
+      let fin = normalizarFecha(fecha_fin)
+      if (inicio > fin) {
+        const temp = inicio; inicio = fin; fin = temp
+      }
+
+      const pagos = (contextData.payments || []).filter(p => p.date >= inicio && p.date <= fin)
+      const byDay = groupByDay(pagos)
+
+      emit({
+        type: 'bar_chart',
+        chartConfig: {
+          title:  `Tendencia de Ventas (${inicio} al ${fin})`,
+          xLabel: 'Día',
+          yLabel: 'Ingresos (S/.)',
+          labels: byDay.map(d => d.fecha.slice(5)), // MM-DD
+          values: byDay.map(d => d.total),
+          color:  '#10b981',
+        },
+      })
+
+      const total_periodo = pagos.reduce((s, p) => s + (p.amount || 0), 0)
+      return {
+        periodo: `${inicio} al ${fin}`,
+        total_recaudado: money(total_periodo),
+        dias_con_ventas: byDay.length,
+        por_dia: byDay,
       }
     },
   },
