@@ -22,7 +22,9 @@ export function ClientProvider({ children }) {
     try {
       const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false })
       if (error) throw error
-      setClients(data || [])
+      // Supabase entrega `is_vip`; la UI (dashboard, reportes, clientes) lee `vip`.
+      // Se normaliza aquí para que ambos nombres funcionen en toda la app.
+      setClients((data || []).map(c => ({ ...c, vip: c.is_vip === true })))
     } catch (err) {
       console.error('Error fetching clients:', err)
       toast.error('Error al cargar clientes')
@@ -48,8 +50,8 @@ export function ClientProvider({ children }) {
       }
       const { data: inserted, error } = await supabase.from('clients').insert(payload).select().single()
       if (error) throw error
-      
-      setClients(prev => [inserted, ...prev])
+
+      setClients(prev => [{ ...inserted, vip: inserted.is_vip === true }, ...prev])
       toast.success('Cliente registrado correctamente')
       return inserted
     } catch (err) {
@@ -71,7 +73,7 @@ export function ClientProvider({ children }) {
       const { data: updated, error } = await supabase.from('clients').update(payload).eq('id', id).select().single()
       if (error) throw error
 
-      setClients(prev => prev.map(c => c.id === id ? updated : c))
+      setClients(prev => prev.map(c => c.id === id ? { ...updated, vip: updated.is_vip === true } : c))
       toast.success('Cliente actualizado')
     } catch (err) {
       console.error('Error updating client:', err)
