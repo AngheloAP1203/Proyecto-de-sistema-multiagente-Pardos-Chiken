@@ -157,6 +157,18 @@ export class NotificationAgent extends AgentBase {
       })
     })
 
+    // Insumo bajo el mínimo (detectado solo tras un cobro) → alerta al almacén
+    this.bus.subscribe(EVENT_TYPES.INVENTORY_LOW_STOCK, (msg) => {
+      const nombres = (msg.payload.insumos || []).map(i => i.nombre).join(', ')
+      this._createNotification({
+        priority: NOTIFICATION_PRIORITY.URGENT,
+        title:    '📦 Stock bajo — reponer',
+        message:  `El sistema detectó tras el cobro que estos insumos cayeron bajo el mínimo: ${nombres}. Revisa el plan de compras.`,
+        eventType: msg.type,
+        correlationId: msg.correlationId,
+      })
+    })
+
     // Reserva completada → success
     this.bus.subscribe(EVENT_TYPES.RESERVATION_COMPLETED, (msg) => {
       this._createNotification({

@@ -15,7 +15,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Package, ShoppingCart, RefreshCw, AlertTriangle, FileDown, Phone, TrendingDown, CheckCircle2 } from 'lucide-react'
+import { Package, ShoppingCart, RefreshCw, AlertTriangle, FileDown, Phone, TrendingDown, CheckCircle2, Zap, MessageCircle } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { useCash } from '../../context/CashContext'
@@ -72,6 +72,32 @@ export default function AlmacenPage() {
 
   const bajos = stockVivo.filter(s => s.bajo_minimo)
   const conConsumo = stockVivo.filter(s => s.consumido_hoy > 0).length
+
+  // AUTOMATIZACIÓN VISIBLE: el sistema ya agrupó la orden por proveedor y dejó
+  // el mensaje de WhatsApp listo para enviar. El líder solo aprueba y envía.
+  const accionesAuto = useMemo(() => {
+    if (!plan) return []
+    const grupos = {}
+    for (const i of plan.orden_compra) {
+      const prov = i.proveedor
+      if (!prov) continue
+      const key = prov.proveedorId || prov.proveedor
+      if (!grupos[key]) grupos[key] = { proveedor: prov.proveedor, contacto: prov.contacto, items: [], total: 0 }
+      grupos[key].items.push(i)
+      grupos[key].total += i.costo_estimado || 0
+    }
+    return Object.values(grupos).map(g => {
+      const tel = (g.contacto?.telefono || g.contacto?.whatsapp || '').replace(/\D/g, '')
+      const telE164 = tel ? (tel.startsWith('51') ? tel : `51${tel}`) : null
+      const lineas = g.items.map(i => `• ${i.insumo}: ${i.comprar} ${i.unidad}`).join('\n')
+      const texto = `Hola ${g.proveedor}, desde Pardos Chicken Miraflores queremos hacer un pedido para ${plan.fecha_objetivo}:\n${lineas}\n\nTotal aprox: S/ ${g.total.toFixed(2)}. Gracias.`
+      return {
+        ...g,
+        total: Math.round(g.total * 100) / 100,
+        waLink: telE164 ? `https://wa.me/${telE164}?text=${encodeURIComponent(texto)}` : null,
+      }
+    })
+  }, [plan])
 
   const descargarPDF = () => {
     if (!plan) return
@@ -147,6 +173,40 @@ export default function AlmacenPage() {
           <p style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 800, color: C.tealDark }}>S/ {plan ? plan.total_estimado.toFixed(2) : '—'}</p>
         </div>
       </div>
+
+      {/* ── ACCIÓN AUTOMÁTICA (se genera sola tras los cobros) ── */}
+      {!cargando && bajos.length > 0 && accionesAuto.length > 0 && (
+        <div style={{ ...card, border: '1px solid #99f6e4', background: 'linear-gradient(180deg,#f0fdfa,#ffffff)', marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <div style={{ background: C.teal, borderRadius: 8, padding: 5, display: 'flex' }}><Zap size={16} color="#fff" /></div>
+            <strong style={{ fontSize: 15, color: C.tealDark }}>Acción automática del sistema</strong>
+          </div>
+          <p style={{ margin: '0 0 14px', color: C.slate, fontSize: 13.5, lineHeight: 1.5 }}>
+            A partir de los cobros de hoy, el sistema detectó solo el bajo stock, calculó cuánto reponer,
+            eligió el proveedor más barato y <strong>dejó el pedido listo</strong>. Solo revisa y envía:
+          </p>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {accionesAuto.map((g, idx) => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+                flexWrap: 'wrap', border: `1px solid ${C.line}`, borderRadius: 10, padding: '12px 14px', background: '#fff' }}>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, color: C.ink, fontSize: 14 }}>{g.proveedor}</p>
+                  <p style={{ margin: '2px 0 0', color: C.slate, fontSize: 13 }}>
+                    {g.items.map(i => `${i.comprar} ${i.unidad} ${i.insumo}`).join(' · ')} — <strong>S/ {g.total.toFixed(2)}</strong>
+                  </p>
+                </div>
+                {g.waLink
+                  ? <a href={g.waLink} target="_blank" rel="noopener noreferrer"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#25D366', color: '#fff',
+                        padding: '9px 14px', borderRadius: 9, fontWeight: 700, fontSize: 13.5, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                      <MessageCircle size={16} /> Enviar pedido por WhatsApp
+                    </a>
+                  : <span style={{ color: C.slate, fontSize: 13 }}>Sin WhatsApp registrado</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Botones */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>

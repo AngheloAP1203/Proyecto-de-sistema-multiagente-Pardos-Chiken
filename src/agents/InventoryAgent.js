@@ -25,8 +25,14 @@
  */
 
 import { AgentBase } from './core/AgentBase.js'
-import { planificarCompras, explotarVentasAInsumos } from '../domain/inventory/purchasePlanner.js'
-import { loadInventoryData } from '../data/api/inventoryApi.js'
+import { EVENT_TYPES } from './core/EventBus.js'
+import { planificarCompras, explotarVentasAInsumos, calcularConsumoDia, aplicarStockVivo } from '../domain/inventory/purchasePlanner.js'
+import { loadInventoryData, fetchVentasDesdePagos } from '../data/api/inventoryApi.js'
+
+const hoyISO = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 export class InventoryAgent extends AgentBase {
   constructor() {
@@ -44,6 +50,43 @@ export class InventoryAgent extends AgentBase {
       ['plan_purchases', 'explode_sales_to_supplies', 'get_stock']
     )
     this._registerTools()
+    this._setupEventListeners()
+  }
+
+  /**
+   * _setupEventListeners — AUTOMATIZACIÓN EVENT-DRIVEN.
+   *
+   * Cada vez que se COBRA un pedido (cash:payment_registered), el agente
+   * recalcula el stock disponible del día a partir de los cobros reales y, si
+   * algún insumo cayó por debajo de su mínimo, publica `inventory:low_stock`.
+   * El NotificationAgent lo convierte en una alerta para el líder de almacén.
+   *
+   * Nadie pregunta ni pulsa un botón: el proceso corre solo tras el cobro.
+   * Envuelto en try/catch para no interferir jamás con el flujo de caja.
+   */
+  _setupEventListeners() {
+    this.bus.subscribe(EVENT_TYPES.CASH_PAYMENT_REGISTERED, async (msg) => {
+      try {
+        const bajos = await this._detectarBajoStock()
+        if (bajos.length > 0) {
+          this.bus.publish(EVENT_TYPES.INVENTORY_LOW_STOCK, {
+            insumos: bajos.map(b => ({ nombre: b.nombre, disponible: b.stock_actual, minimo: b.stock_minimo, unidad: b.unidad })),
+            disparado_por: 'cobro',
+          }, this.name, msg.correlationId || `inv-${Date.now()}`)
+        }
+      } catch (e) {
+        console.warn('[InventoryAgent] No se pudo evaluar el stock tras el cobro', e)
+      }
+    })
+  }
+
+  /** Recalcula el stock disponible de hoy y devuelve los insumos bajo mínimo. */
+  async _detectarBajoStock() {
+    const { supplies, recipes } = await loadInventoryData()
+    const ventas = await fetchVentasDesdePagos()
+    const ventasHoy = ventas.filter(v => v.fecha === hoyISO())
+    const consumo = calcularConsumoDia(ventasHoy, recipes, supplies)
+    return aplicarStockVivo(supplies, consumo).filter(s => s.bajo_minimo)
   }
 
   _registerTools() {

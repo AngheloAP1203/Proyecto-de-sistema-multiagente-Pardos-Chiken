@@ -17,6 +17,7 @@ import { PAYMENT_METHODS } from '../domain/cash/paymentMethods'
 import { summarizeShift, calculateTotalByMethod } from '../domain/cash/cashCalculations'
 import { supabase } from '../domain/supabase'
 import { auditLogger } from '../agents/core/auditLogger'
+import { eventBus, EVENT_TYPES } from '../agents/core/EventBus'
 import { useAuth } from './AuthContext'
 import toast from 'react-hot-toast'
 
@@ -194,6 +195,18 @@ export function CashProvider({ children }) {
     const mapped = mapPayment(inserted)
     setPayments(prev => [mapped, ...prev])
     auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'cash.add_payment', nivel: 'info', detalle: { id: mapped.id, amount: mapped.amount, method: mapped.method } })
+
+    // AUTOMATIZACIÓN: el cobro dispara la revisión de stock del almacén.
+    // El InventoryAgent escucha este evento, recalcula el stock y, si algo cayó
+    // bajo el mínimo, publica una alerta — sin que nadie lo pida. Nunca rompe el cobro.
+    try {
+      eventBus.publish(EVENT_TYPES.CASH_PAYMENT_REGISTERED, {
+        paymentId: mapped.id, amount: mapped.amount, method: mapped.method, clientName: mapped.clientName,
+      }, 'CashContext')
+    } catch (e) {
+      console.warn('[CashContext] No se pudo publicar el evento de cobro', e)
+    }
+
     toast.success('Pago registrado correctamente')
     return mapped
   }, [actorName])

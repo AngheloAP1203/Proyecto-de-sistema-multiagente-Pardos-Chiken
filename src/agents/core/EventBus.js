@@ -57,6 +57,9 @@ export const EVENT_TYPES = {
   CASH_SHIFT_OPENED:       'cash:shift_opened',
   CASH_SHIFT_CLOSED:       'cash:shift_closed',
 
+  // Almacén (M7) — automatización de reabastecimiento
+  INVENTORY_LOW_STOCK:     'inventory:low_stock',
+
   // Clientes
   CLIENT_CREATED: 'client:created',
   CLIENT_UPDATED: 'client:updated',
@@ -101,6 +104,7 @@ const EVENT_PAYLOAD_SCHEMAS = {
   'kitchen:ticket_updated':{ required: ['ticketId'] },
   'kitchen:order_ready':   { required: ['ticketId', 'tableId'] },
   'cash:payment_registered':{ required: ['amount', 'method'] },
+  'inventory:low_stock':   { required: ['insumos'] },
   'cash:shift_opened':     { required: ['cashier'] },
   'cash:shift_closed':     { required: ['cashier', 'totalRevenue'] },
   'client:created':        { required: ['clientName'] },
