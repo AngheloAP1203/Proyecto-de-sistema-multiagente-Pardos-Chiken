@@ -55,10 +55,20 @@ console.log('\n4) Proyección: promedio por día de semana × factor especial')
   ok(diaPollo.factor === 3, 'factor aplicado = 3')
 }
 
-console.log('\n5) Sin histórico comparable → advertencia honesta, no un cero inventado')
+console.log('\n5a) Sin día de semana comparable → fallback a todo el histórico (mejor que un cero)')
 {
+  // Solo hay un martes en el histórico, pero se pide un domingo (Día del Pollo ×3).
+  // Antes devolvía vacío; ahora promedia lo disponible y aplica el factor.
   const r = proyectarDemanda([{ fecha: '2026-07-14', menuId: 'B01', qty: 10 }], '2026-07-19')
-  ok(r.proyeccion.length === 0 && !!r.advertencia, 'devuelve advertencia y proyección vacía')
+  ok(r.proyeccion.length > 0, 'proyecta usando el histórico disponible, no lo ignora')
+  ok(r.proyeccion[0].qty === 30, `10 × factor 3 = ${r.proyeccion[0].qty} (esperado 30)`)
+}
+
+console.log('\n5b) Histórico totalmente vacío → advertencia honesta, no un cero inventado')
+{
+  const r = proyectarDemanda([], '2026-07-19')
+  ok(r.proyeccion.length === 0 && !!r.advertencia, 'sin datos: advertencia y proyección vacía')
+  ok(r.base === 'sin_historico', 'base marcada como sin_historico')
 }
 
 console.log('\n6) Plan de compra: cubre demanda + colchón y elige el proveedor más barato')
