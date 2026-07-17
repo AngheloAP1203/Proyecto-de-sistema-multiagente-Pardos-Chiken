@@ -66,6 +66,15 @@ export const MOCK_USERS = [
     avatar: 'MR',
     sucursal: 'Miraflores',
   },
+  {
+    id: 'u006',
+    name: 'Rosa Núñez',
+    email: 'almacen@pardos.com',
+    passwordHash: '3461c5dae52f7e05774a957a38952b0d57b5333a63c8b0dcb90c59b8146b5910',
+    role: 'lider_almacen',
+    avatar: 'RN',
+    sucursal: 'Miraflores',
+  },
 ]
 
 /** Pepper de la app: entra en el hash junto con la sal por-usuario (el id). */
@@ -78,4 +87,5 @@ export const DEMO_LOGINS = [
   { email: 'mozo@pardos.com',    password: 'mozo123',    role: 'mozo' },
   { email: 'hostess@pardos.com', password: 'hostess123', role: 'hostess' },
   { email: 'cocina@pardos.com',  password: 'cocina123',  role: 'jefe_cocina' },
+  { email: 'almacen@pardos.com', password: 'almacen123', role: 'lider_almacen' },
 ]

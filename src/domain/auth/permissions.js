@@ -165,4 +165,38 @@ export const ROLE_PERMISSIONS = {
     canModifyOrderItems: false,
     canEditClients: false,
   },
+  lider_almacen: {
+    label: 'Líder de Almacén',
+    color: '#0d9488',
+    canManageUsers: false,
+    canManageReservations: false,
+    canViewReports: true, // ve reportes de consumo/compras
+    canManageClients: false,
+    canManageTables: false,
+    canViewAllReservations: false,
+    canCancelAnyReservation: false,
+    canConfigureSystem: false,
+    canViewIncomesChart: false,
+    canViewAdminDashboard: false,
+    canManageAllUsers: false,
+    canExportData: true, // puede exportar la orden de compra
+    canViewCash: false,
+    canManageCash: false,
+    canViewKitchen: true, // lee la cocina para dimensionar consumo
+    canManageKitchenOrders: false,
+    canDeleteClients: false,
+    canDeleteReservations: false,
+    canSeatGuests: false,
+    // IA — SÍ, pero acotada al almacén (solo la tool de plan de compras)
+    canViewAgents: false,
+    canViewAssistant: true,
+    canViewComplaints: false,
+    canViewAudit: false,
+    canViewSecurity: false,
+    canModifyOrderItems: false,
+    canEditClients: false,
+    // Exclusivo del almacén
+    canViewInventory: true,
+    canPlanPurchases: true,
+  },
 }

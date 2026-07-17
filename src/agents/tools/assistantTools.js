@@ -428,7 +428,7 @@ export const TOOL_REGISTRY = {
   },
 
   read_purchase_plan: {
-    roles: ['admin', 'jefe_cocina'],
+    roles: ['admin', 'lider_almacen'],
     agents: ['InventoryAgent'],
     schema: {
       name: 'read_purchase_plan',

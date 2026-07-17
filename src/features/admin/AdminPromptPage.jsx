@@ -47,6 +47,12 @@ const PROMPT_SUGGESTIONS = {
     'Gráfica de reservas por estado',
     'Resumen de clientes',
   ],
+  lider_almacen: [
+    '¿Qué debo comprar para mañana?',
+    'Plan de compras para el Día del Pollo a la Brasa',
+    '¿Alcanza el stock para el fin de semana?',
+    'Genérame la orden de compra con proveedores',
+  ],
 }
 
 // ── Colores de los estados de intención ──────────────────────────────────────

@@ -283,6 +283,9 @@ const ROLE_PERMISSIONS = {
   ],
   mozo:        [], // Sin acceso al asistente
   jefe_cocina: [], // Sin acceso al asistente
+  lider_almacen: [
+    'read.purchase.plan',
+  ],
 }
 
 // ── Clase PromptInterpreter ───────────────────────────────────────────────────
