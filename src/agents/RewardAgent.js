@@ -54,7 +54,7 @@ class RewardAgentClass {
     const codigo = generateCouponCode()
 
     const promo = {
-      id: codigo,
+      id: `PRD-${conf.codigoVal}-${codigo}`,
       nombre: conf.nombre,
       tipo: conf.tipo,
       valor: conf.valor,
