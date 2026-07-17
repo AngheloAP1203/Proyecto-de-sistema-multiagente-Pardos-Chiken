@@ -83,7 +83,7 @@ export function AuthProvider({ children }) {
           detalle: { email: mockProfile.email }
         })
 
-        toast.success(`Bienvenido, ${mockProfile.name} (Modo Demo)`)
+        toast.success(`Bienvenido, ${mockProfile.name}`)
         return { success: true, message: `Bienvenido, ${mockProfile.name}` }
       }
 
