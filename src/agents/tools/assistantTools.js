@@ -151,7 +151,9 @@ function rankItems(payments, topN) {
  * Silva, 6 reservas). Aplicar el umbral aquí daría 9 VIP frente a los 5 que
  * muestra la app.
  */
-const isVip = (c) => c.vip === true
+// Tras la migración a Supabase los clientes traen `is_vip`; el seed antiguo
+// usaba `vip`. Se aceptan ambos para no contradecir a la pantalla de Clientes.
+const isVip = (c) => c.vip === true || c.is_vip === true
 
 /** Reservas acumuladas del cliente, con el nombre de campo que usa el seed. */
 const reservasDe = (c) => c.totalReservations || 0

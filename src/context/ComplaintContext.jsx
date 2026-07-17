@@ -115,6 +115,9 @@ export function ComplaintProvider({ children }) {
         sede: resObj.sede || 'San Isidro',
         puntos_criticos: resObj.puntos_criticos || null,
         respuesta_cliente: resObj.respuesta_cliente || '',
+        // Sin esto, el cupón recién otorgado no existe en memoria hasta recargar
+        // y la Caja no puede detectarlo ni aplicar el descuento.
+        recompensa: resObj.recompensa || null,
         estado: inserted.estado,
         createdAt: inserted.created_at
       }
@@ -146,7 +149,21 @@ export function ComplaintProvider({ children }) {
     const { error } = await supabase.from('complaints').update(recordUpdates).eq('id', id)
     if (!error) {
       setComplaints(prev =>
-        prev.map(c => c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c)
+        prev.map(c => {
+          if (c.id !== id) return c
+          // La BD guarda el cupón dentro de `resolution`, pero la Caja lee los
+          // campos planos (c.recompensa, c.respuesta_cliente). Al actualizar la
+          // resolución hay que reflejarlos también en el shape plano.
+          const res = updates.resolution
+          const planos = res ? {
+            recompensa:        res.recompensa        ?? c.recompensa,
+            respuesta_cliente: res.respuesta_cliente ?? c.respuesta_cliente,
+            razonamiento:      res.razonamiento      ?? c.razonamiento,
+            sentimiento:       res.sentimiento       ?? c.sentimiento,
+            puntos_criticos:   res.puntos_criticos   ?? c.puntos_criticos,
+          } : {}
+          return { ...c, ...updates, ...planos, updatedAt: new Date().toISOString() }
+        })
       )
       auditLogger.record({ actor: actorName, tipoActor: 'usuario', accion: 'complaint.update', nivel: 'info', detalle: { id, updates } })
     }

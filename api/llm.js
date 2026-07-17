@@ -104,8 +104,16 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'messages debe ser un array de 1 a 40 mensajes' })
     return
   }
-  if (JSON.stringify(messages).length > MAX_BODY_CHARS) {
+  // El límite cubre mensajes Y tools: sin esto, un payload podía inflar `tools`
+  // sin tope y quemar tokens de entrada igual.
+  if (JSON.stringify(messages).length + (tools ? JSON.stringify(tools).length : 0) > MAX_BODY_CHARS) {
     res.status(413).json({ error: 'Payload demasiado grande' })
+    return
+  }
+  // Temperatura acotada: valores fuera de rango son señal de payload manipulado.
+  const temp = Number(temperature)
+  if (!Number.isFinite(temp) || temp < 0 || temp > 1) {
+    res.status(400).json({ error: 'temperature debe estar entre 0 y 1' })
     return
   }
 
@@ -113,7 +121,11 @@ export default async function handler(req, res) {
 
   try {
     const payload = {
-      model, messages, temperature,
+      model, messages, temperature: temp,
+      // Tope de tokens de SALIDA: las respuestas del asistente son resúmenes
+      // cortos; 2048 sobra y evita que un prompt malicioso ("escribe un libro")
+      // vacíe la cuota de un tirón.
+      max_tokens: 2048,
       ...(Array.isArray(tools) && tools.length > 0 ? { tools } : {}),
     }
     respuesta = await llamarGroqTrazado({ url: GROQ_URL, apiKey, payload })
