@@ -114,7 +114,7 @@ const NAV_ITEMS = [
     path: '/asistente',
     label: 'Asistente IA',
     icon: <Bot size={20} />,
-    roles: ['admin', 'lider_almacen'],
+    roles: ['admin'],
   },
   {
     id: 'complaints',
