@@ -3,7 +3,8 @@
  * M7 — Planificador de demanda y compras. Todo determinista: asserts exactos.
  */
 const base = '../src/agents/'
-const { explotarVentasAInsumos, proyectarDemanda, generarPlanCompra, planificarCompras } =
+const { explotarVentasAInsumos, proyectarDemanda, generarPlanCompra, planificarCompras,
+        calcularConsumoDia, aplicarStockVivo } =
   await import('../src/domain/inventory/purchasePlanner.js')
 const { RECIPES } = await import('../src/data/seeds/recipesSeed.js')
 const { SUPPLIES } = await import('../src/data/seeds/suppliesSeed.js')
@@ -94,6 +95,28 @@ console.log('\n7) Insumo sin proveedor → advertencia, no silencio')
   const plan = generarPlanCompra({ MISTERIO: 5 }, supplies, SUPPLIERS)
   ok(plan.advertencias.some(a => a.includes('MISTERIO')), 'advierte que MISTERIO no tiene proveedor')
   ok(plan.items[0].proveedor === null && plan.items[0].costo_estimado === null, 'item sin proveedor ni costo')
+}
+
+console.log('\n7b) Regla del pollo: el consumo en unidades se redondea ARRIBA')
+{
+  const supplies = [
+    { id: 'POLLO_ENTERO', nombre: 'Pollo', unidad: 'unidad', stock_actual: 50, stock_minimo: 10 },
+    { id: 'PAPA', nombre: 'Papa', unidad: 'kg', stock_actual: 40, stock_minimo: 20 },
+  ]
+  // 3 cuartos vendidos = 0.75 pollo → se abre 1 pollo entero
+  const c1 = calcularConsumoDia([{ menuId: 'B01', qty: 3 }], RECIPES, supplies)
+  ok(c1.POLLO_ENTERO === 1, `3 cuartos → ${c1.POLLO_ENTERO} pollo consumido (esperado 1)`)
+  ok(c1.PAPA === 0.75, `papa se descuenta exacta: ${c1.PAPA} kg (esperado 0.75)`)
+
+  // Stock vivo: de 50 quedan 49
+  const vivo = aplicarStockVivo(supplies, c1)
+  const pollo = vivo.find(s => s.id === 'POLLO_ENTERO')
+  ok(pollo.stock_actual === 49, `de 50 pollos quedan ${pollo.stock_actual} (esperado 49)`)
+  ok(pollo.stock_inicial === 50 && pollo.consumido_hoy === 1, 'guarda el rastro inicial/consumido')
+
+  // 2 medios = 1 pollo entero
+  const c2 = calcularConsumoDia([{ menuId: 'B02', qty: 2 }], RECIPES, supplies)
+  ok(c2.POLLO_ENTERO === 1, `2 medios → ${c2.POLLO_ENTERO} pollo (esperado 1)`)
 }
 
 console.log('\n8) Flujo completo (planificarCompras) — determinista e idempotente')

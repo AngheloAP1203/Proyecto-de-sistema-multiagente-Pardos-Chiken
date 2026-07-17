@@ -80,6 +80,7 @@ const HistoryPage      = lazy(() => import('./features/history/HistoryPage'))
 const ReportsPage      = lazy(() => import('./features/reports/ReportsPage'))
 const SettingsPage     = lazy(() => import('./features/settings/SettingsPage'))
 const AdminPromptPage  = lazy(() => import('./features/admin/AdminPromptPage'))
+const AlmacenPage      = lazy(() => import('./features/almacen/AlmacenPage'))
 const AuditPage        = lazy(() => import('./features/audit/AuditPage'))
 const SecurityPage     = lazy(() => import('./features/security/SecurityPage'))
 const ComplaintsPage   = lazy(() => import('./features/complaints/ComplaintsPage'))
@@ -256,6 +257,9 @@ export default function App() {
 
                           {/* Asistente IA — admin, cajero, hostess */}
                           <Route path="/asistente" element={<AdminPromptPage />} />
+
+                          {/* Almacén — líder de almacén y admin */}
+                          <Route path="/almacen" element={<AlmacenPage />} />
 
                           {/* Quejas con IA — admin, cajero, hostess */}
                           <Route path="/quejas" element={<ComplaintsPage />} />

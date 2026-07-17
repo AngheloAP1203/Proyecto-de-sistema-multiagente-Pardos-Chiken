@@ -65,3 +65,30 @@ export async function loadInventoryData() {
 
   return { supplies, recipes, suppliers }
 }
+
+/**
+ * fetchPaymentsItems — Trae los pagos (cobros) desde Supabase con sus líneas de
+ * consumo, para derivar el consumo real de insumos. Devuelve
+ * [{ fecha, menuId, qty }] listo para el planificador y el cálculo de stock.
+ *
+ * Fuente de verdad = pagos realmente cobrados. Si no hay conexión, [].
+ */
+export async function fetchVentasDesdePagos() {
+  try {
+    const { data, error } = await supabase.from('payments').select('date, items')
+    if (error || !data) return []
+    const ventas = []
+    for (const p of data) {
+      const lineas = p.items?.lineas || []
+      for (const it of lineas) {
+        const menuId = it.menuId || it.itemId
+        if (!menuId) continue
+        ventas.push({ fecha: p.date, menuId, qty: Number(it.qty) || 0 })
+      }
+    }
+    return ventas
+  } catch (e) {
+    console.warn('[inventoryApi] No se pudieron leer los pagos', e)
+    return []
+  }
+}

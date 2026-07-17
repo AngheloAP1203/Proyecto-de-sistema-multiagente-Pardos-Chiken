@@ -21,7 +21,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard, CalendarCheck, Users, Clock, ChartBar,
   Settings, LogOut, Menu, X, UtensilsCrossed, ChevronRight,
-  TableProperties, CreditCard, ChefHat, TrendingUp, Cpu, Bot, MessageSquare, ScrollText, ShieldCheck,
+  TableProperties, CreditCard, ChefHat, TrendingUp, Cpu, Bot, MessageSquare, ScrollText, ShieldCheck, Package,
 } from 'lucide-react'
 import { useAuth, ROLE_PERMISSIONS } from '../../context/AuthContext'
 import { useAgents } from '../../context/AgentContext'
@@ -101,6 +101,13 @@ const NAV_ITEMS = [
     label: 'Configuración',
     icon: <Settings size={20} />,
     roles: ['admin'],
+  },
+  {
+    id: 'almacen',
+    path: '/almacen',
+    label: 'Almacén',
+    icon: <Package size={20} />,
+    roles: ['admin', 'lider_almacen'],
   },
   {
     id: 'assistant',

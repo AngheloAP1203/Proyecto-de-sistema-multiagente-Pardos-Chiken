@@ -199,6 +199,55 @@ export function generarPlanCompra(demandaInsumos = {}, supplies = [], suppliers 
 }
 
 /**
+ * calcularConsumoDia — Cuánto insumo se consumió realmente por las ventas de un
+ * día, aplicando la regla de indivisibilidad del pollo.
+ *
+ * El pollo (y todo insumo en 'unidad'/'porcion') solo se gasta en piezas enteras:
+ * vender 3 cuartos abre 1 pollo, no 0.75. Por eso el consumo de esos insumos se
+ * redondea HACIA ARRIBA. Los insumos por peso/volumen (kg, L) se gastan exactos.
+ *
+ * @param {Array}  ventasDia  [{ menuId, qty }]  ventas (cobradas) del día
+ * @param {Object} recetas    BOM
+ * @param {Array}  supplies   catálogo (para saber la unidad de cada insumo)
+ * @returns {Object<string, number>} { supplyId: cantidadConsumida }
+ */
+export function calcularConsumoDia(ventasDia = [], recetas = {}, supplies = []) {
+  const { insumos } = explotarVentasAInsumos(ventasDia, recetas)
+  const porId = Object.fromEntries(supplies.map(s => [s.id, s]))
+  const consumo = {}
+  for (const [supplyId, cant] of Object.entries(insumos)) {
+    const insumo = porId[supplyId]
+    const enPiezasEnteras = insumo && (insumo.unidad === 'unidad' || insumo.unidad === 'porcion')
+    consumo[supplyId] = enPiezasEnteras ? Math.ceil(cant) : redondear2(cant)
+  }
+  return consumo
+}
+
+/**
+ * aplicarStockVivo — Descuenta el consumo del día del stock inicial de cada
+ * insumo. El stock que ve el líder de almacén = inicial − consumido, sin bajar
+ * de cero. No muta nada: devuelve una copia con el rastro (stock_inicial y
+ * consumido_hoy) para poder narrarlo.
+ *
+ * @param {Array}  supplies  catálogo con stock_actual = stock INICIAL del día
+ * @param {Object} consumo   salida de calcularConsumoDia
+ */
+export function aplicarStockVivo(supplies = [], consumo = {}) {
+  return supplies.map(s => {
+    const usado = consumo[s.id] || 0
+    const inicial = Number(s.stock_actual) || 0
+    const restante = Math.max(0, inicial - usado)
+    return {
+      ...s,
+      stock_inicial: inicial,
+      consumido_hoy: usado,
+      stock_actual:  redondear2(restante),
+      bajo_minimo:   restante < (Number(s.stock_minimo) || 0),
+    }
+  })
+}
+
+/**
  * planificarCompras — Orquestación completa en un paso:
  * histórico → proyección de mañana → explosión a insumos → orden de compra.
  * Devuelve todo el rastro intermedio para que el LLM narre con cifras trazables
