@@ -64,15 +64,48 @@ export class InventoryAgent extends AgentBase {
    * Nadie pregunta ni pulsa un botón: el proceso corre solo tras el cobro.
    * Envuelto en try/catch para no interferir jamás con el flujo de caja.
    */
+  async _detectarBajoStock() {
+    try {
+      const { supplies } = await loadInventoryData()
+      const bajos = supplies.filter(s => {
+        const d = parseFloat(s.stock_actual) || 0
+        const m = parseFloat(s.stock_minimo) || 0
+        return d < m
+      })
+      return bajos
+    } catch (e) {
+      console.warn('[InventoryAgent] Error verificando stock', e)
+      return []
+    }
+  }
+
   _setupEventListeners() {
     this.bus.subscribe(EVENT_TYPES.CASH_PAYMENT_REGISTERED, async (msg) => {
       try {
         const bajos = await this._detectarBajoStock()
         if (bajos.length > 0) {
-          this.bus.publish(EVENT_TYPES.INVENTORY_LOW_STOCK, {
+          // Publicar evento general
+          this.bus.publish(EVENT_TYPES.INVENTORY_LOW_STOCK, { 
             insumos: bajos.map(b => ({ nombre: b.nombre, disponible: b.stock_actual, minimo: b.stock_minimo, unidad: b.unidad })),
             disparado_por: 'cobro',
           }, this.name, msg.correlationId || `inv-${Date.now()}`)
+          
+          // Ejecutar Swarm de Compras
+          const { PurchasingLeader } = await import('./SwarmPurchasingAgents.js')
+          const leader = new PurchasingLeader(this.bus, msg.correlationId)
+          
+          // Conseguir data adicional
+          const ventas = await fetchVentasDesdePagos()
+          // Asumimos objetivo = mañana
+          const fObj = new Date()
+          fObj.setDate(fObj.getDate() + 1)
+          const fISO = `${fObj.getFullYear()}-${String(fObj.getMonth()+1).padStart(2,'0')}-${String(fObj.getDate()).padStart(2,'0')}`
+          
+          // Orquestar
+          const plan = await leader.coordinatePurchasing(bajos, ventas, fISO)
+          
+          // Avisar a la UI que ya terminó el Swarm
+          this.bus.publish(EVENT_TYPES.AGENT_COMPLETED, { plan }, this.name, msg.correlationId)
         }
 
         // Nueva Automatización: Chequeo de caducidad (FIFO)

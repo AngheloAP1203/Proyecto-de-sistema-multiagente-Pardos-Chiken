@@ -81,6 +81,7 @@ export const EVENT_TYPES = {
   AGENT_STARTED:    'system:agent_started',
   AGENT_COMPLETED:  'system:agent_completed',
   AGENT_ERROR:      'system:agent_error',
+  AGENT_THOUGHT:    'system:agent_thought', // Para trazas del ciclo ReAct
   CONFLICT_DETECTED:'system:conflict_detected',
   CONFLICT_RESOLVED:'system:conflict_resolved',
 }
@@ -111,6 +112,7 @@ const EVENT_PAYLOAD_SCHEMAS = {
   'inventory:expiring_soon':{ required: ['lotes'] },
   'inventory:minimum_adjusted':{ required: ['insumos'] },
   'inventory:receipt_uploaded':{ required: ['insumos', 'proveedor'] },
+  'system:agent_thought':  { required: ['agent', 'step', 'message'] },
   'cash:shift_opened':     { required: ['cashier'] },
   'cash:shift_closed':     { required: ['cashier', 'totalRevenue'] },
   'client:created':        { required: ['clientName'] },

@@ -22,6 +22,8 @@ import { useCash } from '../../context/CashContext'
 import { loadInventoryData } from '../../data/api/inventoryApi'
 import { planificarCompras, calcularConsumoDia, aplicarStockVivo } from '../../domain/inventory/purchasePlanner'
 
+import { eventBus, EVENT_TYPES } from '../../agents/core/EventBus.js'
+
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const hoyISO = () => iso(new Date())
 const mananaISO = () => { const d = new Date(); d.setDate(d.getDate() + 1); return iso(d) }
@@ -39,13 +41,40 @@ export default function AlmacenPage() {
   const [vista, setVista] = useState('stock')
   const [fechaObjetivo, setFechaObjetivo] = useState(mananaISO())
   const [cargando, setCargando] = useState(true)
+  const [thoughts, setThoughts] = useState([])
+  const [swarmPlan, setSwarmPlan] = useState(null)
 
   const cargar = useCallback(async () => {
     setCargando(true)
     setInv(await loadInventoryData())
     setCargando(false)
   }, [])
+
   useEffect(() => { cargar() }, [cargar])
+
+  useEffect(() => {
+    // Listen for agent thoughts globally
+    const subId = eventBus.subscribe(EVENT_TYPES.AGENT_THOUGHT, (msg) => {
+      setThoughts(prev => {
+        // Keep last 20 thoughts
+        const updated = [...prev, { id: Date.now() + Math.random(), ...msg }]
+        if (updated.length > 20) updated.shift()
+        return updated
+      })
+    })
+    
+    // Listen for Swarm completion
+    const compId = eventBus.subscribe(EVENT_TYPES.AGENT_COMPLETED, (msg) => {
+      if (msg.payload && msg.payload.plan) {
+        setSwarmPlan(msg.payload.plan)
+      }
+    })
+    
+    return () => {
+      eventBus.unsubscribe(subId)
+      eventBus.unsubscribe(compId)
+    }
+  }, [])
 
   // Ventas reales derivadas de los cobros.
   const ventas = useMemo(() => {
@@ -76,28 +105,27 @@ export default function AlmacenPage() {
   // AUTOMATIZACIÓN VISIBLE: el sistema ya agrupó la orden por proveedor y dejó
   // el mensaje de WhatsApp listo para enviar. El líder solo aprueba y envía.
   const accionesAuto = useMemo(() => {
-    if (!plan) return []
+    // Usamos el swarmPlan que viene del evento asíncrono, no el local síncrono.
+    if (!swarmPlan) return []
     const grupos = {}
-    for (const i of plan.orden_compra) {
+    for (const i of swarmPlan.orden_compra) {
       const prov = i.proveedor
       if (!prov) continue
       const key = prov.proveedorId || prov.proveedor
-      if (!grupos[key]) grupos[key] = { proveedor: prov.proveedor, contacto: prov.contacto, items: [], total: 0 }
+      if (!grupos[key]) grupos[key] = { proveedor: prov.proveedor, contacto: prov.contacto, items: [] }
       grupos[key].items.push(i)
-      grupos[key].total += i.costo_estimado || 0
     }
     return Object.values(grupos).map(g => {
       const tel = (g.contacto?.telefono || g.contacto?.whatsapp || '').replace(/\D/g, '')
       const telE164 = tel ? (tel.startsWith('51') ? tel : `51${tel}`) : null
       const lineas = g.items.map(i => `• ${i.insumo}: ${i.comprar} ${i.unidad}`).join('\n')
-      const texto = `Hola ${g.proveedor}, desde Pardos Chicken Miraflores queremos hacer un pedido para ${plan.fecha_objetivo}:\n${lineas}\n\nTotal aprox: S/ ${g.total.toFixed(2)}. Gracias.`
+      const texto = `Hola ${g.proveedor}, desde Pardos Chicken Miraflores queremos hacer un pedido para ${swarmPlan.fecha_objetivo}:\n${lineas}\n\nQuedo a la espera de confirmación. Gracias.`
       return {
         ...g,
-        total: Math.round(g.total * 100) / 100,
         waLink: telE164 ? `https://wa.me/${telE164}?text=${encodeURIComponent(texto)}` : null,
       }
     })
-  }, [plan])
+  }, [swarmPlan])
 
   const descargarPDF = () => {
     if (!plan) return
@@ -174,6 +202,25 @@ export default function AlmacenPage() {
           <p style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 800, color: C.tealDark }}>S/ {plan ? plan.total_estimado.toFixed(2) : '—'}</p>
         </div>
       </div>
+
+      {/* ── CONSOLA DE RAZONAMIENTO ReAct (Swarm) ── */}
+      {thoughts.length > 0 && (
+        <div style={{ ...card, background: '#1e293b', border: '1px solid #334155', color: '#f8fafc', marginBottom: 18, fontFamily: 'monospace' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, borderBottom: '1px solid #334155', paddingBottom: 8 }}>
+            <div style={{ background: '#3b82f6', borderRadius: 4, padding: 3 }}><Zap size={14} color="#fff" /></div>
+            <strong style={{ fontSize: 13, color: '#94a3b8' }}>Consola de Razonamiento del Enjambre (ReAct)</strong>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto', fontSize: 12 }}>
+            {thoughts.map((t) => (
+              <div key={t.id} style={{ display: 'flex', gap: 10 }}>
+                <span style={{ color: '#fbbf24', minWidth: 110 }}>[{t.payload.agent}]</span>
+                <span style={{ color: t.payload.step === 'decide' ? '#4ade80' : '#38bdf8', minWidth: 70 }}>{t.payload.step}:</span>
+                <span style={{ color: '#e2e8f0' }}>{t.payload.message}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── ACCIÓN AUTOMÁTICA (se genera sola tras los cobros) ── */}
       {!cargando && bajos.length > 0 && accionesAuto.length > 0 && (
