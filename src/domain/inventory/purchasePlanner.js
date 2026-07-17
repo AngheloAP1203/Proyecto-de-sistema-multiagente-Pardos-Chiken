@@ -75,17 +75,26 @@ export function proyectarDemanda(historico = [], fechaObjetivo) {
     porFecha[h.fecha][h.menuId] = (porFecha[h.fecha][h.menuId] || 0) + (Number(h.qty) || 0)
   }
 
-  const fechas = Object.keys(porFecha)
+  let fechas = Object.keys(porFecha)
   const especial = resolverFechaEspecial(fechaObjetivo)
   const factor = especial ? especial.factor : 1
 
   if (fechas.length === 0) {
-    return {
-      proyeccion: [],
-      base: 'sin_historico',
-      fecha_especial: especial,
-      factor,
-      advertencia: `No hay ventas históricas de ese día de semana; no se puede proyectar ${fechaObjetivo}.`,
+    // Fallback: Si no hay ventas en ese día de la semana, promediar TODOS los días disponibles
+    for (const h of historico) {
+      if (!porFecha[h.fecha]) porFecha[h.fecha] = {}
+      porFecha[h.fecha][h.menuId] = (porFecha[h.fecha][h.menuId] || 0) + (Number(h.qty) || 0)
+    }
+    fechas = Object.keys(porFecha)
+
+    if (fechas.length === 0) {
+      return {
+        proyeccion: [],
+        base: 'sin_historico',
+        fecha_especial: especial,
+        factor,
+        advertencia: `No hay ventas históricas registradas; no se puede proyectar ${fechaObjetivo}.`,
+      }
     }
   }
 

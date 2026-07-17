@@ -21,6 +21,8 @@ import { useReservations } from '../../context/ReservationContext'
 import { useClients }      from '../../context/ClientContext'
 import { promptInterpreter } from '../../agents/core/PromptInterpreter'
 import { assistantAgent }    from '../../agents/AssistantAgent'
+import { supabase }          from '../../domain/supabase'
+import toast                 from 'react-hot-toast'
 import styles from './AdminPromptPage.module.css'
 
 // ── Sugerencias de prompts por rol ────────────────────────────────────────────
@@ -470,6 +472,44 @@ export default function AdminPromptPage() {
 
       {/* Área de mensajes */}
       <div className={styles.chatArea}>
+
+        {/* Panel de pruebas (Solo lider_almacen) */}
+        {role === 'lider_almacen' && (
+          <div style={{
+            background: '#fff', padding: '16px 20px', borderRadius: '12px', marginBottom: '24px',
+            border: '1px solid #fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            boxShadow: '0 4px 12px rgba(232, 69, 60, 0.08)', animation: 'fadeIn 0.5s ease'
+          }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#e8453c', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldAlert size={16} /> Pruebas de Inventario Reales
+              </h3>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
+                Esto reduce el stock en Supabase. Luego pídele al asistente un plan de compras.
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                const toastId = toast.loading('Reduciendo stock...');
+                const { error } = await supabase.from('supplies').update({ stock_actual: 5 }).eq('id', 'POLLO_ENTERO');
+                if (error) {
+                  toast.error('Error reduciendo stock: ' + error.message, { id: toastId });
+                } else {
+                  toast.success('¡Stock reducido! Ya puedes pedir el plan.', { id: toastId });
+                }
+              }}
+              style={{
+                background: '#e8453c', color: 'white', padding: '10px 16px', border: 'none',
+                borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px',
+                whiteSpace: 'nowrap', transition: 'background 0.2s'
+              }}
+              onMouseOver={(e) => e.target.style.background = '#c9342b'}
+              onMouseOut={(e) => e.target.style.background = '#e8453c'}
+            >
+              Simular falta de Pollo
+            </button>
+          </div>
+        )}
 
         {/* Panel informativo inicial */}
         {showInfo && (

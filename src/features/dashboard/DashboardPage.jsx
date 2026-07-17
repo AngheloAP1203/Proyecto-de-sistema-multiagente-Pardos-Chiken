@@ -220,38 +220,6 @@ export default function DashboardPage() {
       )}
 
       {/* ── Panel interactivo del sistema multiagente ── */}
-      {/*
-        AgentStatusPanel muestra: estado de agentes, historial MCP, topología,
-        notificaciones. Es la PRUEBA VISUAL del sistema multiagente funcionando.
-      */}
-      {user?.role === 'admin' && <AgentStatusPanel />}
-
-      {/* ── Panel de Pruebas Almacén (Solo lider_almacen) ── */}
-      {user?.role === 'lider_almacen' && (
-        <div style={{ marginBottom: '24px' }}>
-          <Card title="Pruebas de Inventario" subtitle="Acciones directas a la base de datos">
-            <p style={{ marginBottom: '16px', color: '#666' }}>Usa este botón para provocar un quiebre de stock real en Supabase y probar cómo responde el Asistente IA al planificar compras.</p>
-            <button 
-              onClick={async () => {
-                const toastId = toast.loading('Reduciendo stock de Pollo Entero en Supabase...');
-                const { error } = await supabase.from('supplies').update({ stock_actual: 5 }).eq('id', 'POLLO_ENTERO');
-                if (error) {
-                  toast.error('Error reduciendo stock: ' + error.message, { id: toastId });
-                } else {
-                  toast.success('¡Stock reducido al mínimo! Ve a hablar con la IA.', { id: toastId });
-                }
-              }}
-              style={{
-                background: '#e8453c', color: 'white', padding: '10px 20px', 
-                border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'
-              }}
-            >
-              Simular falta de Pollo Entero
-            </button>
-          </Card>
-        </div>
-      )}
-
       {/* ── Grid inferior: tabla de reservas + resumen ── */}
       <div className={styles.bottomGrid}>
         {/* Tabla de reservas activas del día */}
