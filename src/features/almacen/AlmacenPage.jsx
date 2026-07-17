@@ -135,28 +135,6 @@ export default function AlmacenPage() {
   const td = { padding: '10px 12px', fontSize: 14, borderBottom: `1px solid #f1f5f9` }
   const badge = (bg, fg) => ({ background: bg, color: fg, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, display: 'inline-block' })
 
-  // ── OCR ──
-  const [ocrLoading, setOcrLoading] = useState(false)
-  const [ocrResult, setOcrResult] = useState(null)
-  
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    setOcrLoading(true)
-    setOcrResult(null)
-
-    const reader = new FileReader()
-    reader.onload = async (ev) => {
-      const { visionAgent } = await import('../../agents/VisionAgent')
-      const res = await visionAgent._processInvoiceImage({ imageUrl: ev.target.result })
-      setOcrResult(res)
-      setOcrLoading(false)
-      if (res.success) {
-        cargar() // Recargar stock después de insertar
-      }
-    }
-    reader.readAsDataURL(file)
-  }
 
   return (
     <div style={wrap}>
@@ -195,30 +173,6 @@ export default function AlmacenPage() {
           <p style={{ margin: 0, color: C.tealDark, fontSize: 13 }}>Compra sugerida</p>
           <p style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 800, color: C.tealDark }}>S/ {plan ? plan.total_estimado.toFixed(2) : '—'}</p>
         </div>
-      </div>
-
-      {/* ── SECCIÓN DE INGRESO OCR ── */}
-      <div style={{ ...card, background: '#f8fafc', marginBottom: 18 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <Zap size={16} color={C.teal} /> <strong style={{ color: C.ink }}>Ingreso Automático (OCR)</strong>
-        </div>
-        <p style={{ margin: '0 0 12px', fontSize: 13, color: C.slate }}>
-          Sube la foto de la guía de remisión o factura del proveedor. El sistema leerá los insumos y cantidades para actualizar el stock solo.
-        </p>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <input type="file" accept="image/*" onChange={handleFileUpload} style={{ fontSize: 13 }} />
-          {ocrLoading && <span style={{ color: C.teal, fontSize: 13, fontWeight: 'bold' }}>Procesando imagen con IA local (esto puede tardar unos segundos)...</span>}
-        </div>
-        {ocrResult && (
-          <div style={{ marginTop: 12, padding: 10, background: ocrResult.success ? '#dcfce7' : '#fee2e2', borderRadius: 8, fontSize: 13 }}>
-            <strong>{ocrResult.success ? '✅ OCR Exitoso: ' : '❌ Error: '}</strong> {ocrResult.message}
-            {ocrResult.success && (
-              <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
-                {ocrResult.items.map((it, i) => <li key={i}>{it.cantidad} {it.unidad} de {it.nombre}</li>)}
-              </ul>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ── ACCIÓN AUTOMÁTICA (se genera sola tras los cobros) ── */}
