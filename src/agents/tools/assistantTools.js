@@ -25,7 +25,9 @@ import { planificarCompras } from '../../domain/inventory/purchasePlanner.js'
 import { loadInventoryData } from '../../data/api/inventoryApi.js'
 import { MENU_ITEMS } from '../../domain/kitchen/menu.js'
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+// jspdf-autotable v5 + jsPDF v4 eliminaron el plugin de prototipo (`doc.autoTable`).
+// La API válida es la funcional: autoTable(doc, { ... }).
+import autoTable from 'jspdf-autotable'
 
 const CHART_COLORS = ['#e8622a', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b']
 
@@ -574,10 +576,11 @@ export const TOOL_REGISTRY = {
         `${i.comprar} ${i.unidad}`,
         i.proveedor?.proveedor || 'Sin proveedor',
         i.proveedor?.contacto?.telefono || i.proveedor?.contacto?.whatsapp || '-',
-        `S/ ${i.costo_estimado.toFixed(2)}`
+        // costo_estimado es null cuando el insumo no tiene proveedor registrado.
+        i.costo_estimado != null ? `S/ ${i.costo_estimado.toFixed(2)}` : 'S/ —',
       ])
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: plan.fecha_especial ? 42 : 36,
         head: [['Insumo a Comprar', 'Cantidad', 'Proveedor Sugerido', 'Contacto', 'Costo Estimado']],
         body: tableData,
@@ -586,7 +589,7 @@ export const TOOL_REGISTRY = {
         styles: { fontSize: 9 }
       })
 
-      const finalY = doc.lastAutoTable.finalY || 40
+      const finalY = doc.lastAutoTable?.finalY || 40
       doc.setFontSize(12)
       doc.setTextColor(0)
       doc.text(`Total Estimado: S/ ${plan.total_estimado.toFixed(2)}`, 14, finalY + 10)
