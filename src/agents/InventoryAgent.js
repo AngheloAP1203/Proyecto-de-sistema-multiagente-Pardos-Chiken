@@ -26,9 +26,7 @@
 
 import { AgentBase } from './core/AgentBase.js'
 import { planificarCompras, explotarVentasAInsumos } from '../domain/inventory/purchasePlanner.js'
-import { RECIPES } from '../data/seeds/recipesSeed.js'
-import { SUPPLIES } from '../data/seeds/suppliesSeed.js'
-import { SUPPLIERS } from '../data/seeds/suppliersSeed.js'
+import { loadInventoryData } from '../data/api/inventoryApi.js'
 
 export class InventoryAgent extends AgentBase {
   constructor() {
@@ -73,25 +71,28 @@ export class InventoryAgent extends AgentBase {
     if (!fechaObjetivo) {
       return { success: false, error: 'Se requiere fechaObjetivo (YYYY-MM-DD)' }
     }
+    const { supplies, recipes, suppliers } = await loadInventoryData()
     const plan = planificarCompras({
       historico,
       fechaObjetivo,
-      recetas:   RECIPES,
-      supplies:  SUPPLIES,
-      suppliers: SUPPLIERS,
+      recetas:   recipes,
+      supplies:  supplies,
+      suppliers: suppliers,
     })
     return { success: true, ...plan }
   }
 
   async _explodeSales({ ventas = [] }) {
-    const { insumos, sin_receta } = explotarVentasAInsumos(ventas, RECIPES)
+    const { recipes } = await loadInventoryData()
+    const { insumos, sin_receta } = explotarVentasAInsumos(ventas, recipes)
     return { success: true, insumos, sin_receta }
   }
 
   async _getStock() {
+    const { supplies } = await loadInventoryData()
     return {
       success: true,
-      insumos: SUPPLIES.map(s => ({
+      insumos: supplies.map(s => ({
         id: s.id, nombre: s.nombre, unidad: s.unidad,
         stock_actual: s.stock_actual, stock_minimo: s.stock_minimo,
         bajo_minimo: s.stock_actual < s.stock_minimo,

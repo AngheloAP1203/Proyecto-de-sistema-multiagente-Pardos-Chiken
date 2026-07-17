@@ -22,9 +22,7 @@
 
 import { STATUS_LABELS } from '../../domain/reservations/reservationStatus.js'
 import { planificarCompras } from '../../domain/inventory/purchasePlanner.js'
-import { RECIPES } from '../../data/seeds/recipesSeed.js'
-import { SUPPLIES } from '../../data/seeds/suppliesSeed.js'
-import { SUPPLIERS } from '../../data/seeds/suppliersSeed.js'
+import { loadInventoryData } from '../../data/api/inventoryApi.js'
 import { MENU_ITEMS } from '../../domain/kitchen/menu.js'
 
 const CHART_COLORS = ['#e8622a', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b']
@@ -446,7 +444,7 @@ export const TOOL_REGISTRY = {
         },
       },
     },
-    handler: ({ fecha }, { contextData, emit }) => {
+    handler: async ({ fecha }, { contextData, emit }) => {
       // A diferencia de las tools de lectura, aquí la fecha válida es FUTURA:
       // se planifica lo que viene, no se reporta lo que pasó.
       const manana = new Date()
@@ -469,12 +467,14 @@ export const TOOL_REGISTRY = {
         }
       }
 
+      const { supplies, recipes, suppliers } = await loadInventoryData()
+
       const plan = planificarCompras({
         historico,
         fechaObjetivo: objetivo,
-        recetas:   RECIPES,
-        supplies:  SUPPLIES,
-        suppliers: SUPPLIERS,
+        recetas:   recipes,
+        supplies:  supplies,
+        suppliers: suppliers,
       })
 
       if (plan.orden_compra.length > 0) {
@@ -565,7 +565,7 @@ export function buildToolsForRole(role, contextData) {
     handlers[tool.schema.name] = async (args) => {
       tool.agents.forEach(a => agentsUsed.add(a))
       const emit = (payload) => emitted.push(payload)
-      const salida = tool.handler(args || {}, { contextData, emit })
+      const salida = await tool.handler(args || {}, { contextData, emit })
       results.push(salida)
       return salida
     }
