@@ -161,26 +161,31 @@ export const TOOL_REGISTRY = {
     schema: {
       name: 'read_sales_summary',
       description:
-        'Ventas del día: total cobrado, subtotal sin IGV, IGV, número de transacciones, ' +
-        'ticket promedio y desglose por método de pago. Úsala para preguntas como ' +
-        '"¿cuánto vendimos?", "¿cómo vamos hoy?", "¿cuál es el ticket promedio?".',
+        'Ventas: total cobrado, subtotal, IGV, transacciones, ticket promedio y desglose por método. ' +
+        'Úsala para "¿cuánto vendimos hoy?", "ventas de la semana pasada", "ventas de los primeros 15 días", etc.',
       parameters: {
         type: 'object',
         properties: {
-          fecha: { type: 'string', description: 'OMITE este parámetro salvo que el líder nombre una fecha concreta. Formato YYYY-MM-DD. Si se omite, es hoy.' },
+          fecha_inicio: { type: 'string', description: 'Fecha de inicio (YYYY-MM-DD). Si es un solo día, usa la misma fecha en inicio y fin. Si no especifica, asume hoy.' },
+          fecha_fin: { type: 'string', description: 'Fecha de fin (YYYY-MM-DD).' },
         },
       },
     },
-    handler: ({ fecha }, { contextData }) => {
-      const dia   = normalizarFecha(fecha)
-      const pagos = paymentsOfDay(contextData.payments || [], dia)
+    handler: ({ fecha_inicio, fecha_fin }, { contextData }) => {
+      let inicio = fecha_inicio ? normalizarFecha(fecha_inicio) : todayISO()
+      let fin = fecha_fin ? normalizarFecha(fecha_fin) : inicio
+      
+      // Asegurar que inicio <= fin
+      if (inicio > fin) {
+        const temp = inicio; inicio = fin; fin = temp
+      }
+
+      const pagos = (contextData.payments || []).filter(p => p.date >= inicio && p.date <= fin)
       const total = pagos.reduce((s, p) => s + (p.amount || 0), 0)
       const igv   = total * 0.18
 
-      // Ambos promedios vienen precalculados: si solo diéramos uno, el modelo
-      // tiende a rehacer la división por su cuenta con el otro criterio.
       return {
-        fecha:           dia,
+        periodo:         inicio === fin ? inicio : `${inicio} al ${fin}`,
         total:           money(total),
         subtotal_sin_igv: money(total - igv),
         igv:             money(igv),
